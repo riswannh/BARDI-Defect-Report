@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/i18n";
 import { formatIDR, formatNumber, MONTHS } from "@/lib/format";
 import {
   factories,
@@ -69,6 +70,7 @@ const emptyForm: SaleForm = {
 
 export default function SalesPage() {
   const { isAdmin, user } = useAuth();
+  const { t } = useLanguage();
   const [sales, setSales] = useState<Sale[]>(initialSales);
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
@@ -177,19 +179,19 @@ export default function SalesPage() {
   return (
     <div>
       <PageHeader
-        title="Data Sales"
-        description="Kelola data penjualan per produk, pabrik, dan bulan."
+        title={t("sales.title")}
+        description={t("sales.description")}
         actions={
           isAdmin && (
             <>
               <Button variant="outline" size="sm">
-                <Upload className="size-4" /> Import Excel
+                <Upload className="size-4" /> {t("common.importExcel")}
               </Button>
               <Button variant="outline" size="sm">
-                <Download className="size-4" /> Export Excel
+                <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
               <Button size="sm" onClick={openCreate}>
-                <Plus className="size-4" /> Tambah
+                <Plus className="size-4" /> {t("common.add")}
               </Button>
             </>
           )
@@ -200,12 +202,12 @@ export default function SalesPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingId === null ? "Tambah Sales" : "Ubah Sales"}
+              {editingId === null ? t("sales.addTitle") : t("sales.editTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>Produk</Label>
+              <Label>{t("common.product")}</Label>
               <Select
                 value={form.productId}
                 onValueChange={(v) =>
@@ -226,7 +228,7 @@ export default function SalesPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Pabrik</Label>
+              <Label>{t("common.factory")}</Label>
               <Select
                 value={form.factoryId}
                 onValueChange={(v) =>
@@ -247,7 +249,7 @@ export default function SalesPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Bulan</Label>
+              <Label>{t("common.month")}</Label>
               <Select
                 value={form.month}
                 onValueChange={(v) =>
@@ -267,7 +269,7 @@ export default function SalesPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Quantity</Label>
+              <Label>{t("common.quantity")}</Label>
               <Input
                 type="number"
                 value={form.quantity}
@@ -279,7 +281,7 @@ export default function SalesPage() {
             </div>
             {isAdmin && (
               <div className="flex flex-col gap-1.5">
-                <Label>Value (IDR)</Label>
+                <Label>{t("common.valueIdr")}</Label>
                 <Input
                   type="number"
                   value={form.value}
@@ -292,7 +294,9 @@ export default function SalesPage() {
             )}
             <DialogFooter>
               <Button type="submit">
-                {editingId === null ? "Simpan" : "Perbarui"}
+                {editingId === null
+                  ? t("common.save")
+                  : t("common.update")}
               </Button>
             </DialogFooter>
           </form>
@@ -301,13 +305,13 @@ export default function SalesPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SummaryCard
-          title="Total Quantity Sales"
+          title={t("sales.totalQty")}
           value={formatNumber(totalQty)}
           icon={ShoppingCart}
         />
         {isAdmin && (
           <SummaryCard
-            title="Total Value Sales"
+            title={t("sales.totalValue")}
             value={formatIDR(totalVal)}
             icon={Wallet}
           />
@@ -317,17 +321,20 @@ export default function SalesPage() {
       <Card size="sm">
         <CardContent className="flex flex-wrap items-end gap-4 pt-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Produk</Label>
+            <Label>{t("common.product")}</Label>
             <Select
               value={filterProduct}
               onValueChange={(v) => setFilterProduct(String(v))}
-              items={[{ value: "all", label: "Semua Produk" }, ...productOptions]}
+              items={[
+                { value: "all", label: t("sales.allProducts") },
+                ...productOptions,
+              ]}
             >
               <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Produk</SelectItem>
+                <SelectItem value="all">{t("sales.allProducts")}</SelectItem>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -338,17 +345,20 @@ export default function SalesPage() {
           </div>
           {isAdmin && (
             <div className="flex flex-col gap-1.5">
-              <Label>Pabrik</Label>
+              <Label>{t("common.factory")}</Label>
               <Select
                 value={filterFactory}
                 onValueChange={(v) => setFilterFactory(String(v))}
-                items={[{ value: "all", label: "Semua Pabrik" }, ...factoryOptions]}
+                items={[
+                  { value: "all", label: t("header.allFactories") },
+                  ...factoryOptions,
+                ]}
               >
                 <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Pabrik</SelectItem>
+                  <SelectItem value="all">{t("header.allFactories")}</SelectItem>
                   {factories.map((f) => (
                     <SelectItem key={f.id} value={String(f.id)}>
                       {f.name}
@@ -359,12 +369,12 @@ export default function SalesPage() {
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <Label>Bulan</Label>
+            <Label>{t("common.month")}</Label>
             <Select
               value={filterMonth}
               onValueChange={(v) => setFilterMonth(String(v))}
               items={[
-                { value: "all", label: "Semua" },
+                { value: "all", label: t("common.all") },
                 ...MONTHS.map((m) => ({ value: m, label: m })),
               ]}
             >
@@ -372,7 +382,7 @@ export default function SalesPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
+                <SelectItem value="all">{t("common.all")}</SelectItem>
                 {MONTHS.map((m) => (
                   <SelectItem key={m} value={m}>
                     {m}
@@ -382,11 +392,11 @@ export default function SalesPage() {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Cari</Label>
+            <Label>{t("common.search")}</Label>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari produk, pabrik, bulan…"
+              placeholder={t("sales.searchPlaceholder")}
               className="w-56"
             />
           </div>
@@ -396,12 +406,16 @@ export default function SalesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Produk</TableHead>
-                <TableHead>Pabrik</TableHead>
-                <TableHead>Bulan</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead>{t("common.product")}</TableHead>
+                <TableHead>{t("common.factory")}</TableHead>
+                <TableHead>{t("common.month")}</TableHead>
+                <TableHead className="text-right">
+                  {t("common.quantity")}
+                </TableHead>
                 {isAdmin && (
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-right">
+                    {t("common.value")}
+                  </TableHead>
                 )}
                 {isAdmin && <TableHead className="w-24"></TableHead>}
               </TableRow>
@@ -452,7 +466,7 @@ export default function SalesPage() {
                     colSpan={isAdmin ? 6 : 4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Tidak ada data.
+                    {t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}

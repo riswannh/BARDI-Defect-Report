@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const emptyUserForm: UserForm = {
 };
 
 export default function UsersPage() {
+  const { t } = useLanguage();
   const [factories, setFactories] = useState<Factory[]>(initialFactories);
   const [users, setUsers] = useState<User[]>(initialUsers);
 
@@ -115,14 +117,14 @@ export default function UsersPage() {
   return (
     <div>
       <PageHeader
-        title="User Management"
-        description="Kelola akun user dan daftar pabrik."
+        title={t("users.title")}
+        description={t("users.description")}
       />
 
       <Tabs defaultValue="users" className="w-full">
         <TabsList>
-          <TabsTrigger value="users">Akun User</TabsTrigger>
-          <TabsTrigger value="factories">Daftar Pabrik</TabsTrigger>
+          <TabsTrigger value="users">{t("users.tabAccounts")}</TabsTrigger>
+          <TabsTrigger value="factories">{t("users.tabFactories")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="mt-4">
@@ -130,15 +132,15 @@ export default function UsersPage() {
             <CardContent className="pt-4">
               <div className="mb-4 flex justify-end">
                 <Button size="sm" onClick={openCreate}>
-                  <Plus className="size-4" /> Tambah User
+                  <Plus className="size-4" /> {t("users.addUser")}
                 </Button>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Pabrik</TableHead>
-                    <TableHead>Peran</TableHead>
+                    <TableHead>{t("common.username")}</TableHead>
+                    <TableHead>{t("common.factory")}</TableHead>
+                    <TableHead>{t("common.role")}</TableHead>
                     <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -154,7 +156,7 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={u.isAdmin ? "default" : "secondary"}>
-                          {u.isAdmin ? "Admin" : "Pabrik"}
+                          {u.isAdmin ? t("common.admin") : t("common.factory")}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -188,7 +190,7 @@ export default function UsersPage() {
             <CardContent className="pt-4">
               <MasterList
                 items={factories}
-                addPlaceholder="Nama pabrik baru"
+                addPlaceholder={t("users.newFactory")}
                 onAdd={(name) =>
                   setFactories((prev) => [
                     ...prev,
@@ -213,12 +215,12 @@ export default function UsersPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingId === null ? "Tambah User" : "Ubah User"}
+              {editingId === null ? t("users.addUser") : t("users.editUser")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>Username</Label>
+              <Label>{t("common.username")}</Label>
               <Input
                 value={form.username}
                 onChange={(e) =>
@@ -229,7 +231,9 @@ export default function UsersPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>
-                Password {editingId !== null && "(kosongkan jika tidak diubah)"}
+                {editingId === null
+                  ? t("common.password")
+                  : t("users.passwordHint")}
               </Label>
               <Input
                 type="password"
@@ -241,29 +245,29 @@ export default function UsersPage() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Peran</Label>
+              <Label>{t("common.role")}</Label>
               <Select
                 value={form.isAdmin}
                 onValueChange={(v) =>
                   setForm((f) => ({ ...f, isAdmin: String(v) }))
                 }
                 items={[
-                  { value: "false", label: "Pabrik" },
-                  { value: "true", label: "Admin" },
+                  { value: "false", label: t("common.factory") },
+                  { value: "true", label: t("common.admin") },
                 ]}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="false">Pabrik</SelectItem>
-                  <SelectItem value="true">Admin</SelectItem>
+                  <SelectItem value="false">{t("common.factory")}</SelectItem>
+                  <SelectItem value="true">{t("common.admin")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {form.isAdmin !== "true" && (
               <div className="flex flex-col gap-1.5">
-                <Label>Pabrik</Label>
+                <Label>{t("common.factory")}</Label>
                 <Select
                   value={form.factoryId}
                   onValueChange={(v) =>
@@ -286,7 +290,9 @@ export default function UsersPage() {
             )}
             <DialogFooter>
               <Button type="submit">
-                {editingId === null ? "Simpan" : "Perbarui"}
+                {editingId === null
+                  ? t("common.save")
+                  : t("common.update")}
               </Button>
             </DialogFooter>
           </form>

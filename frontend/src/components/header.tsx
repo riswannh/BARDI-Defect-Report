@@ -1,7 +1,9 @@
 "use client";
 
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/i18n";
 import { factories } from "@/lib/mock-data";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,12 +18,13 @@ import { LogOut, ShieldCheck, ShieldAlert, User } from "lucide-react";
 
 export function Header() {
   const { user, logout, isAdmin } = useAuth();
+  const { t } = useLanguage();
 
   if (!user) return null;
 
   const factoryName = user.factoryId
     ? factories.find((f) => f.id === user.factoryId)?.name ?? "-"
-    : "Semua Pabrik";
+    : t("header.allFactories");
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-6">
@@ -34,24 +37,29 @@ export function Header() {
         <span className="text-sm font-medium">{factoryName}</span>
       </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-          <User className="size-4" />
-          {user.username}
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>
-              {isAdmin ? "Administrator" : `Pabrik · ${factoryName}`}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={logout}>
-              <LogOut className="size-4" />
-              Keluar
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center gap-1">
+        <LanguageSwitcher />
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+            <User className="size-4" />
+            {user.username}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                {isAdmin
+                  ? t("header.administrator")
+                  : t("header.factoryLabel", { name: factoryName })}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onClick={logout}>
+                <LogOut className="size-4" />
+                {t("header.logout")}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }

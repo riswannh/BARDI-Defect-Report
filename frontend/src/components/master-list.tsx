@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Plus, Trash2, Check, X } from "lucide-react";
@@ -24,9 +25,10 @@ export function MasterList({
   onAdd,
   onRename,
   onDelete,
-  addPlaceholder = "Nama baru",
+  addPlaceholder,
   readOnly = false,
 }: MasterListProps) {
+  const { t } = useLanguage();
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -57,10 +59,10 @@ export function MasterList({
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder={addPlaceholder}
+            placeholder={addPlaceholder ?? t("masterList.newName")}
           />
           <Button type="submit" size="sm">
-            <Plus className="size-4" /> Tambah
+            <Plus className="size-4" /> {t("common.add")}
           </Button>
         </form>
       )}
@@ -116,7 +118,7 @@ export function MasterList({
         ))}
         {items.length === 0 && (
           <li className="py-4 text-center text-sm text-muted-foreground">
-            Belum ada data.
+            {t("masterList.empty")}
           </li>
         )}
       </ul>

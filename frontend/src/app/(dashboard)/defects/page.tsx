@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/i18n";
 import { formatDateTime, formatIDR, formatNumber, MONTHS } from "@/lib/format";
 import { matchesDefectPeriod, type PeriodFilter } from "@/lib/period";
 import {
@@ -91,6 +92,7 @@ const emptyForm: DefectForm = {
 
 export default function DefectsPage() {
   const { isAdmin, user } = useAuth();
+  const { t } = useLanguage();
   const [defects, setDefects] = useState<Defect[]>(initialDefects);
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
@@ -250,19 +252,19 @@ export default function DefectsPage() {
   return (
     <div>
       <PageHeader
-        title="Data Defect"
-        description="Kelola data produk cacat per pabrik."
+        title={t("defects.title")}
+        description={t("defects.description")}
         actions={
           isAdmin && (
             <>
               <Button variant="outline" size="sm">
-                <Upload className="size-4" /> Import Excel
+                <Upload className="size-4" /> {t("common.importExcel")}
               </Button>
               <Button variant="outline" size="sm">
-                <Download className="size-4" /> Export Excel
+                <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
               <Button size="sm" onClick={openCreate}>
-                <Plus className="size-4" /> Tambah
+                <Plus className="size-4" /> {t("common.add")}
               </Button>
             </>
           )
@@ -273,13 +275,15 @@ export default function DefectsPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingId === null ? "Tambah Data Defect" : "Ubah Data Defect"}
+              {editingId === null
+                ? t("defects.addTitle")
+                : t("defects.editTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label>Code Garansi</Label>
+                <Label>{t("common.codeGaransi")}</Label>
                 <Input
                   value={form.codeGaransi}
                   onChange={(e) =>
@@ -289,7 +293,7 @@ export default function DefectsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Timestamp</Label>
+                <Label>{t("common.timestamp")}</Label>
                 <Input
                   type="datetime-local"
                   value={form.timestamp}
@@ -299,7 +303,7 @@ export default function DefectsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Link Foto</Label>
+                <Label>{t("defects.photoLink")}</Label>
                 <Input
                   value={form.photosLink}
                   onChange={(e) =>
@@ -309,7 +313,7 @@ export default function DefectsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Link Video</Label>
+                <Label>{t("defects.videoLink")}</Label>
                 <Input
                   value={form.videosLink}
                   onChange={(e) =>
@@ -319,7 +323,7 @@ export default function DefectsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Problem</Label>
+                <Label>{t("common.problem")}</Label>
                 <Select
                   value={form.problemId}
                   onValueChange={(v) =>
@@ -340,7 +344,7 @@ export default function DefectsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Status</Label>
+                <Label>{t("common.status")}</Label>
                 <Select
                   value={form.statusId}
                   onValueChange={(v) =>
@@ -361,7 +365,7 @@ export default function DefectsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Produk</Label>
+                <Label>{t("common.product")}</Label>
                 <Select
                   value={form.productId}
                   onValueChange={(v) =>
@@ -382,7 +386,7 @@ export default function DefectsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Pabrik</Label>
+                <Label>{t("common.factory")}</Label>
                 <Select
                   value={form.factoryId}
                   onValueChange={(v) =>
@@ -403,7 +407,7 @@ export default function DefectsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Quantity</Label>
+                <Label>{t("common.quantity")}</Label>
                 <Input
                   type="number"
                   value={form.quantity}
@@ -415,7 +419,7 @@ export default function DefectsPage() {
               </div>
               {isAdmin && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Value (IDR)</Label>
+                  <Label>{t("common.valueIdr")}</Label>
                   <Input
                     type="number"
                     value={form.value}
@@ -428,18 +432,20 @@ export default function DefectsPage() {
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Problem Detail</Label>
+              <Label>{t("defects.problemDetail")}</Label>
               <Textarea
                 value={form.problemDetail}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, problemDetail: e.target.value }))
                 }
-                placeholder="Penjelasan detail problem"
+                placeholder={t("defects.problemDetailPlaceholder")}
               />
             </div>
             <DialogFooter>
               <Button type="submit">
-                {editingId === null ? "Simpan" : "Perbarui"}
+                {editingId === null
+                  ? t("common.save")
+                  : t("common.update")}
               </Button>
             </DialogFooter>
           </form>
@@ -448,13 +454,13 @@ export default function DefectsPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SummaryCard
-          title="Total Quantity Defect"
+          title={t("defects.totalQty")}
           value={formatNumber(totalQty)}
           icon={AlertTriangle}
         />
         {isAdmin && (
           <SummaryCard
-            title="Total Value Defect"
+            title={t("defects.totalValue")}
             value={formatIDR(totalVal)}
             icon={Wallet}
           />
@@ -464,36 +470,36 @@ export default function DefectsPage() {
       <Card size="sm">
         <CardContent className="flex flex-wrap items-end gap-4 pt-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Periode</Label>
+            <Label>{t("report.period")}</Label>
             <Select
               value={period}
               onValueChange={(v) => setPeriod(String(v) as PeriodType)}
               items={[
-                { value: "daily", label: "Harian" },
-                { value: "weekly", label: "Mingguan" },
-                { value: "monthly", label: "Bulanan" },
-                { value: "custom", label: "Rentang Tanggal" },
+                { value: "daily", label: t("report.daily") },
+                { value: "weekly", label: t("report.weekly") },
+                { value: "monthly", label: t("report.monthly") },
+                { value: "custom", label: t("report.custom") },
               ]}
             >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Harian</SelectItem>
-                <SelectItem value="weekly">Mingguan</SelectItem>
-                <SelectItem value="monthly">Bulanan</SelectItem>
-                <SelectItem value="custom">Rentang Tanggal</SelectItem>
+                <SelectItem value="daily">{t("report.daily")}</SelectItem>
+                <SelectItem value="weekly">{t("report.weekly")}</SelectItem>
+                <SelectItem value="monthly">{t("report.monthly")}</SelectItem>
+                <SelectItem value="custom">{t("report.custom")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           {period === "monthly" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Bulan</Label>
+              <Label>{t("common.month")}</Label>
               <Select
                 value={month}
                 onValueChange={(v) => setMonth(String(v))}
                 items={[
-                  { value: "all", label: "Semua Bulan" },
+                  { value: "all", label: t("report.allMonths") },
                   ...MONTHS.map((m) => ({ value: m, label: m })),
                 ]}
               >
@@ -501,7 +507,7 @@ export default function DefectsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Bulan</SelectItem>
+                  <SelectItem value="all">{t("report.allMonths")}</SelectItem>
                   {MONTHS.map((m) => (
                     <SelectItem key={m} value={m}>
                       {m}
@@ -513,7 +519,7 @@ export default function DefectsPage() {
           )}
           {period === "daily" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Tanggal</Label>
+              <Label>{t("report.date")}</Label>
               <Input
                 type="date"
                 value={day}
@@ -523,7 +529,7 @@ export default function DefectsPage() {
           )}
           {period === "weekly" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Akhir Minggu</Label>
+              <Label>{t("report.weekEnd")}</Label>
               <Input
                 type="date"
                 value={weekEnd}
@@ -534,7 +540,7 @@ export default function DefectsPage() {
           {period === "custom" && (
             <>
               <div className="flex flex-col gap-1.5">
-                <Label>Dari</Label>
+                <Label>{t("report.from")}</Label>
                 <Input
                   type="date"
                   value={from}
@@ -542,7 +548,7 @@ export default function DefectsPage() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Sampai</Label>
+                <Label>{t("report.to")}</Label>
                 <Input
                   type="date"
                   value={to}
@@ -552,26 +558,29 @@ export default function DefectsPage() {
             </>
           )}
           <div className="flex flex-col gap-1.5">
-            <Label>Cari</Label>
+            <Label>{t("common.search")}</Label>
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari code, problem, produk…"
+              placeholder={t("defects.searchPlaceholder")}
               className="w-56"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Produk</Label>
+            <Label>{t("common.product")}</Label>
             <Select
               value={filterProduct}
               onValueChange={(v) => setFilterProduct(String(v))}
-              items={[{ value: "all", label: "Semua Produk" }, ...productOptions]}
+              items={[
+                { value: "all", label: t("defects.allProducts") },
+                ...productOptions,
+              ]}
             >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Produk</SelectItem>
+                <SelectItem value="all">{t("defects.allProducts")}</SelectItem>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -581,17 +590,20 @@ export default function DefectsPage() {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Problem</Label>
+            <Label>{t("common.problem")}</Label>
             <Select
               value={filterProblem}
               onValueChange={(v) => setFilterProblem(String(v))}
-              items={[{ value: "all", label: "Semua Problem" }, ...problemOptions]}
+              items={[
+                { value: "all", label: t("defects.allProblems") },
+                ...problemOptions,
+              ]}
             >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Problem</SelectItem>
+                <SelectItem value="all">{t("defects.allProblems")}</SelectItem>
                 {problems.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
@@ -601,17 +613,20 @@ export default function DefectsPage() {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Status</Label>
+            <Label>{t("common.status")}</Label>
             <Select
               value={filterStatus}
               onValueChange={(v) => setFilterStatus(String(v))}
-              items={[{ value: "all", label: "Semua Status" }, ...statusOptions]}
+              items={[
+                { value: "all", label: t("defects.allStatuses") },
+                ...statusOptions,
+              ]}
             >
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="all">{t("defects.allStatuses")}</SelectItem>
                 {statuses.map((s) => (
                   <SelectItem key={s.id} value={String(s.id)}>
                     {s.name}
@@ -622,17 +637,22 @@ export default function DefectsPage() {
           </div>
           {isAdmin && (
             <div className="flex flex-col gap-1.5">
-              <Label>Pabrik</Label>
+              <Label>{t("common.factory")}</Label>
               <Select
                 value={filterFactory}
                 onValueChange={(v) => setFilterFactory(String(v))}
-                items={[{ value: "all", label: "Semua Pabrik" }, ...factoryOptions]}
+                items={[
+                  { value: "all", label: t("header.allFactories") },
+                  ...factoryOptions,
+                ]}
               >
                 <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Pabrik</SelectItem>
+                  <SelectItem value="all">
+                    {t("header.allFactories")}
+                  </SelectItem>
                   {factories.map((f) => (
                     <SelectItem key={f.id} value={String(f.id)}>
                       {f.name}
@@ -648,17 +668,21 @@ export default function DefectsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code Garansi</TableHead>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Produk</TableHead>
-                <TableHead>Problem</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Pabrik</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead>{t("common.codeGaransi")}</TableHead>
+                <TableHead>{t("common.timestamp")}</TableHead>
+                <TableHead>{t("common.product")}</TableHead>
+                <TableHead>{t("common.problem")}</TableHead>
+                <TableHead>{t("common.status")}</TableHead>
+                <TableHead>{t("common.factory")}</TableHead>
+                <TableHead className="text-right">
+                  {t("common.quantity")}
+                </TableHead>
                 {isAdmin && (
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead className="text-right">
+                    {t("common.value")}
+                  </TableHead>
                 )}
-                <TableHead>Media</TableHead>
+                <TableHead>{t("common.media")}</TableHead>
                 {isAdmin && <TableHead className="w-24"></TableHead>}
               </TableRow>
             </TableHeader>
@@ -748,7 +772,7 @@ export default function DefectsPage() {
                     colSpan={isAdmin ? 10 : 8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Tidak ada data.
+                    {t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}
@@ -780,7 +804,7 @@ export default function DefectsPage() {
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Detail Defect</DialogTitle>
+            <DialogTitle>{t("defects.detailTitle")}</DialogTitle>
             <DialogDescription>
               {detailDefect?.codeGaransi ?? "-"}
             </DialogDescription>
@@ -788,35 +812,47 @@ export default function DefectsPage() {
           {detailDefect && (
             <dl className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-2">
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Code Garansi</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.codeGaransi")}
+                </dt>
                 <dd className="font-mono text-xs">{detailDefect.codeGaransi}</dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Timestamp</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.timestamp")}
+                </dt>
                 <dd>{formatDateTime(detailDefect.timestamp)}</dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Produk</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.product")}
+                </dt>
                 <dd className="font-medium">
                   {productName(products, detailDefect.productId)}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Pabrik</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.factory")}
+                </dt>
                 <dd>
                   {factories.find((f) => f.id === detailDefect.factoryId)
                     ?.name ?? "-"}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Problem</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.problem")}
+                </dt>
                 <dd>
                   {problems.find((p) => p.id === detailDefect.problemId)
                     ?.name ?? "-"}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Status</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.status")}
+                </dt>
                 <dd>
                   <Badge variant="secondary">
                     {statuses.find((s) => s.id === detailDefect.statusId)
@@ -825,25 +861,31 @@ export default function DefectsPage() {
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5">
-                <dt className="text-xs text-muted-foreground">Quantity</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.quantity")}
+                </dt>
                 <dd>{formatNumber(detailDefect.quantity)}</dd>
               </div>
               {isAdmin && (
                 <div className="flex flex-col gap-0.5">
-                  <dt className="text-xs text-muted-foreground">Value</dt>
+                  <dt className="text-xs text-muted-foreground">
+                    {t("common.value")}
+                  </dt>
                   <dd>{formatIDR(detailDefect.value)}</dd>
                 </div>
               )}
               <div className="flex flex-col gap-0.5 sm:col-span-2">
                 <dt className="text-xs text-muted-foreground">
-                  Problem Detail
+                  {t("defects.problemDetail")}
                 </dt>
                 <dd className="whitespace-pre-wrap">
                   {detailDefect.problemDetail || "-"}
                 </dd>
               </div>
               <div className="flex flex-col gap-0.5 sm:col-span-2">
-                <dt className="text-xs text-muted-foreground">Media</dt>
+                <dt className="text-xs text-muted-foreground">
+                  {t("common.media")}
+                </dt>
                 <dd className="flex gap-3">
                   {detailDefect.photosLink ? (
                     <a
@@ -852,7 +894,7 @@ export default function DefectsPage() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline"
                     >
-                      <Camera className="size-4" /> Foto
+                      <Camera className="size-4" /> {t("common.photo")}
                     </a>
                   ) : null}
                   {detailDefect.videosLink ? (
@@ -862,7 +904,7 @@ export default function DefectsPage() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-primary hover:underline"
                     >
-                      <Video className="size-4" /> Video
+                      <Video className="size-4" /> {t("common.video")}
                     </a>
                   ) : null}
                   {!detailDefect.photosLink && !detailDefect.videosLink && (

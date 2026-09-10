@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/lib/i18n";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Upload } from "lucide-react";
 
 export default function MasterPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [problems, setProblems] = useState<Problem[]>(initialProblems);
   const [statuses, setStatuses] = useState<Status[]>(initialStatuses);
@@ -26,15 +28,15 @@ export default function MasterPage() {
   return (
     <div>
       <PageHeader
-        title="Data Master"
-        description="Kelola daftar produk, problem, dan status."
+        title={t("master.title")}
+        description={t("master.description")}
         actions={
           <>
             <Button variant="outline" size="sm">
-              <Upload className="size-4" /> Import Excel
+              <Upload className="size-4" /> {t("common.importExcel")}
             </Button>
             <Button variant="outline" size="sm">
-              <Download className="size-4" /> Export Excel
+              <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
           </>
         }
@@ -42,9 +44,9 @@ export default function MasterPage() {
 
       <Tabs defaultValue="products" className="w-full">
         <TabsList>
-          <TabsTrigger value="products">Produk</TabsTrigger>
-          <TabsTrigger value="problems">Problem</TabsTrigger>
-          <TabsTrigger value="statuses">Status</TabsTrigger>
+          <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
+          <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
+          <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
         </TabsList>
 
         <Card size="sm" className="mt-4">
@@ -52,7 +54,7 @@ export default function MasterPage() {
             <TabsContent value="products">
               <MasterList
                 items={products}
-                addPlaceholder="Nama produk baru"
+                addPlaceholder={t("master.newProduct")}
                 onAdd={(name) =>
                   setProducts((prev) => [...prev, { id: nextId(prev), name }])
                 }
@@ -69,7 +71,7 @@ export default function MasterPage() {
             <TabsContent value="problems">
               <MasterList
                 items={problems}
-                addPlaceholder="Nama problem baru"
+                addPlaceholder={t("master.newProblem")}
                 onAdd={(name) =>
                   setProblems((prev) => [...prev, { id: nextId(prev), name }])
                 }
@@ -86,7 +88,7 @@ export default function MasterPage() {
             <TabsContent value="statuses">
               <MasterList
                 items={statuses}
-                addPlaceholder="Nama status baru"
+                addPlaceholder={t("master.newStatus")}
                 onAdd={(name) =>
                   setStatuses((prev) => [...prev, { id: nextId(prev), name }])
                 }

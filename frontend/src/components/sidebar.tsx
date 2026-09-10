@@ -12,25 +12,27 @@ import {
   Factory,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage, type TranslationKey } from "@/lib/i18n";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { href: "/report", label: "Report", icon: LayoutDashboard },
-  { href: "/sales", label: "Data Sales", icon: ShoppingCart },
-  { href: "/defects", label: "Data Defect", icon: AlertTriangle },
-  { href: "/master", label: "Data Master", icon: Database, adminOnly: true },
-  { href: "/users", label: "User Management", icon: Users, adminOnly: true },
+  { href: "/report", labelKey: "nav.report", icon: LayoutDashboard },
+  { href: "/sales", labelKey: "nav.sales", icon: ShoppingCart },
+  { href: "/defects", labelKey: "nav.defects", icon: AlertTriangle },
+  { href: "/master", labelKey: "nav.master", icon: Database, adminOnly: true },
+  { href: "/users", labelKey: "nav.users", icon: Users, adminOnly: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
 
   const items = navItems.filter((item) => !item.adminOnly || isAdmin);
 
@@ -39,7 +41,7 @@ export function Sidebar() {
       <div className="flex h-14 items-center gap-2 border-b px-4">
         <Factory className="size-5 text-primary" />
         <span className="font-heading text-sm font-semibold">
-          Defect &amp; Sales
+          {t("nav.brand")}
         </span>
       </div>
 
@@ -60,14 +62,14 @@ export function Sidebar() {
               )}
             >
               <Icon className="size-4" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
       </nav>
 
       <div className="border-t p-3 text-xs text-muted-foreground">
-        {isAdmin ? "Admin — akses penuh" : "Pabrik — akses terbatas"}
+        {isAdmin ? t("nav.adminAccess") : t("nav.factoryAccess")}
       </div>
     </aside>
   );

@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/i18n";
 import {
   buildChartBuckets,
   summarizeByProduct,
@@ -91,6 +92,7 @@ function ChartTooltip({
   payload,
   metric = "qty",
 }: ChartTooltipProps) {
+  const { t } = useLanguage();
   if (!active || !payload || payload.length === 0) return null;
   const bucket = payload[0].payload;
   const isValue = metric === "value";
@@ -103,15 +105,15 @@ function ChartTooltip({
       <div className="mb-1.5 font-medium">{label}</div>
       <div className="grid gap-1">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Defect</span>
+          <span className="text-muted-foreground">{t("report.defect")}</span>
           <span>{format(defect)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Sales</span>
+          <span className="text-muted-foreground">{t("report.sales")}</span>
           <span>{format(sales)}</span>
         </div>
         <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">Rasio Defect/Sales</span>
+          <span className="text-muted-foreground">{t("report.ratio")}</span>
           <span>{ratio === null ? "-" : `${(ratio * 100).toFixed(2)}%`}</span>
         </div>
       </div>
@@ -129,6 +131,7 @@ type RecapSortKey =
 
 export default function ReportPage() {
   const { isAdmin, user } = useAuth();
+  const { t } = useLanguage();
 
   const [period, setPeriod] = useState<PeriodType>("monthly");
   const [month, setMonth] = useState<string>("all");
@@ -266,44 +269,44 @@ export default function ReportPage() {
   return (
     <div>
       <PageHeader
-        title="Report"
-        description="Analisis perbandingan defect dan sales per produk."
+        title={t("report.title")}
+        description={t("report.description")}
       />
 
       <Card size="sm" className="mb-6">
         <CardContent className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label>Periode</Label>
+            <Label>{t("report.period")}</Label>
             <Select value={period} onValueChange={(v) => setPeriod(String(v) as PeriodType)} items={[
-              { value: "daily", label: "Harian" },
-              { value: "weekly", label: "Mingguan" },
-              { value: "monthly", label: "Bulanan" },
-              { value: "custom", label: "Rentang Tanggal" },
+              { value: "daily", label: t("report.daily") },
+              { value: "weekly", label: t("report.weekly") },
+              { value: "monthly", label: t("report.monthly") },
+              { value: "custom", label: t("report.custom") },
             ]}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">Harian</SelectItem>
-                <SelectItem value="weekly">Mingguan</SelectItem>
-                <SelectItem value="monthly">Bulanan</SelectItem>
-                <SelectItem value="custom">Rentang Tanggal</SelectItem>
+                <SelectItem value="daily">{t("report.daily")}</SelectItem>
+                <SelectItem value="weekly">{t("report.weekly")}</SelectItem>
+                <SelectItem value="monthly">{t("report.monthly")}</SelectItem>
+                <SelectItem value="custom">{t("report.custom")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {period === "monthly" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Bulan</Label>
+              <Label>{t("common.month")}</Label>
               <Select value={month} onValueChange={(v) => setMonth(String(v))} items={[
-                { value: "all", label: "Semua Bulan" },
+                { value: "all", label: t("report.allMonths") },
                 ...MONTHS.map((m) => ({ value: m, label: m })),
               ]}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Bulan</SelectItem>
+                  <SelectItem value="all">{t("report.allMonths")}</SelectItem>
                   {MONTHS.map((m) => (
                     <SelectItem key={m} value={m}>
                       {m}
@@ -316,14 +319,14 @@ export default function ReportPage() {
 
           {period === "daily" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Tanggal</Label>
+              <Label>{t("report.date")}</Label>
               <Input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
             </div>
           )}
 
           {period === "weekly" && (
             <div className="flex flex-col gap-1.5">
-              <Label>Akhir Minggu</Label>
+              <Label>{t("report.weekEnd")}</Label>
               <Input
                 type="date"
                 value={weekEnd}
@@ -335,11 +338,11 @@ export default function ReportPage() {
           {period === "custom" && (
             <>
               <div className="flex flex-col gap-1.5">
-                <Label>Dari</Label>
+                <Label>{t("report.from")}</Label>
                 <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Sampai</Label>
+                <Label>{t("report.to")}</Label>
                 <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
               </div>
             </>
@@ -347,16 +350,16 @@ export default function ReportPage() {
 
           {isAdmin && (
             <div className="flex flex-col gap-1.5">
-              <Label>Pabrik</Label>
+              <Label>{t("common.factory")}</Label>
               <Select value={factoryId} onValueChange={(v) => setFactoryId(String(v))} items={[
-                { value: "all", label: "Semua Pabrik" },
+                { value: "all", label: t("header.allFactories") },
                 ...factoryOptions,
               ]}>
                 <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Semua Pabrik</SelectItem>
+                  <SelectItem value="all">{t("header.allFactories")}</SelectItem>
                   {factories.map((f) => (
                     <SelectItem key={f.id} value={String(f.id)}>
                       {f.name}
@@ -371,30 +374,30 @@ export default function ReportPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          title="Total Defect"
+          title={t("report.totalDefect")}
           value={formatNumber(dQty)}
-          description="Quantity"
+          description={t("common.quantity")}
           icon={AlertTriangle}
         />
         <SummaryCard
-          title="Total Sales"
+          title={t("report.totalSales")}
           value={formatNumber(sQty)}
-          description="Quantity"
+          description={t("common.quantity")}
           icon={ShoppingCart}
         />
         {isAdmin && (
           <SummaryCard
-            title="Nilai Defect"
+            title={t("report.defectValue")}
             value={formatIDR(dVal)}
-            description="Value (IDR)"
+            description={t("common.valueIdr")}
             icon={Wallet}
           />
         )}
         {isAdmin && (
           <SummaryCard
-            title="Nilai Sales"
+            title={t("report.salesValue")}
             value={formatIDR(sVal)}
-            description="Value (IDR)"
+            description={t("common.valueIdr")}
             icon={Banknote}
           />
         )}
@@ -403,7 +406,7 @@ export default function ReportPage() {
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card size="sm">
           <CardHeader>
-            <CardTitle>Total Defect &amp; Sales — Quantity</CardTitle>
+            <CardTitle>{t("report.chartQtyTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -420,11 +423,15 @@ export default function ReportPage() {
                 <YAxis />
                 <Tooltip content={<ChartTooltip metric="qty" />} />
                 <Legend />
-                <Bar dataKey="defectQty" name="Defect" fill="var(--chart-4)" />
+                <Bar
+                  dataKey="defectQty"
+                  name={t("report.defect")}
+                  fill="var(--chart-4)"
+                />
                 <Line
                   type="monotone"
                   dataKey="salesQty"
-                  name="Sales"
+                  name={t("report.sales")}
                   stroke="var(--chart-2)"
                   strokeWidth={2}
                   dot={{ r: 3 }}
@@ -437,7 +444,7 @@ export default function ReportPage() {
         {isAdmin && (
           <Card size="sm">
             <CardHeader>
-              <CardTitle>Total Defect &amp; Sales — Value (IDR)</CardTitle>
+              <CardTitle>{t("report.chartValueTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={280}>
@@ -454,11 +461,15 @@ export default function ReportPage() {
                   <YAxis tickFormatter={(v) => compactIDR.format(Number(v))} />
                   <Tooltip content={<ChartTooltip metric="value" />} />
                   <Legend />
-                  <Bar dataKey="defectValue" name="Defect" fill="var(--chart-4)" />
+                  <Bar
+                    dataKey="defectValue"
+                    name={t("report.defect")}
+                    fill="var(--chart-4)"
+                  />
                   <Line
                     type="monotone"
                     dataKey="salesValue"
-                    name="Sales"
+                    name={t("report.sales")}
                     stroke="var(--chart-2)"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -472,14 +483,14 @@ export default function ReportPage() {
 
       <Card size="sm">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Rekap Per Produk</CardTitle>
+          <CardTitle>{t("report.recapTitle")}</CardTitle>
           <Input
             value={recapSearch}
             onChange={(e) => {
               setRecapSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Cari produk…"
+            placeholder={t("report.searchProduct")}
             className="w-56"
           />
         </CardHeader>
@@ -493,7 +504,7 @@ export default function ReportPage() {
                     className="inline-flex items-center gap-1 hover:text-foreground"
                     onClick={() => toggleSort("productName")}
                   >
-                    Produk {sortIcon("productName")}
+                    {t("common.product")} {sortIcon("productName")}
                   </button>
                 </TableHead>
                 <TableHead className="text-right">
@@ -502,7 +513,7 @@ export default function ReportPage() {
                     className="inline-flex items-center gap-1 hover:text-foreground"
                     onClick={() => toggleSort("defectQty")}
                   >
-                    Qty Defect {sortIcon("defectQty")}
+                    {t("report.qtyDefect")} {sortIcon("defectQty")}
                   </button>
                 </TableHead>
                 {isAdmin && (
@@ -512,7 +523,7 @@ export default function ReportPage() {
                       className="inline-flex items-center gap-1 hover:text-foreground"
                       onClick={() => toggleSort("defectValue")}
                     >
-                      Value Defect {sortIcon("defectValue")}
+                      {t("report.valueDefect")} {sortIcon("defectValue")}
                     </button>
                   </TableHead>
                 )}
@@ -522,7 +533,7 @@ export default function ReportPage() {
                     className="inline-flex items-center gap-1 hover:text-foreground"
                     onClick={() => toggleSort("salesQty")}
                   >
-                    Qty Sales {sortIcon("salesQty")}
+                    {t("report.qtySales")} {sortIcon("salesQty")}
                   </button>
                 </TableHead>
                 {isAdmin && (
@@ -532,7 +543,7 @@ export default function ReportPage() {
                       className="inline-flex items-center gap-1 hover:text-foreground"
                       onClick={() => toggleSort("salesValue")}
                     >
-                      Value Sales {sortIcon("salesValue")}
+                      {t("report.valueSales")} {sortIcon("salesValue")}
                     </button>
                   </TableHead>
                 )}
@@ -542,7 +553,7 @@ export default function ReportPage() {
                     className="inline-flex items-center gap-1 hover:text-foreground"
                     onClick={() => toggleSort("ratio")}
                   >
-                    Rasio Defect/Sales {sortIcon("ratio")}
+                    {t("report.ratio")} {sortIcon("ratio")}
                   </button>
                 </TableHead>
               </TableRow>
@@ -584,7 +595,7 @@ export default function ReportPage() {
                     colSpan={isAdmin ? 6 : 4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    Tidak ada data.
+                    {t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}
@@ -617,18 +628,19 @@ export default function ReportPage() {
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>
-              Detail Defect — {detailProduct?.name ?? "-"}
+              {t("report.detailTitle", {
+                product: detailProduct?.name ?? "-",
+              })}
             </DialogTitle>
             <DialogDescription>
-              {detailDefects.length} data defect pada periode &amp; filter yang
-              aktif.
+              {t("report.detailDesc", { count: detailDefects.length })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">
-                  Total Qty Defect
+                  {t("report.totalQtyDefect")}
                 </div>
                 <div className="text-lg font-semibold">
                   {formatNumber(detailDefectQty)}
@@ -637,7 +649,7 @@ export default function ReportPage() {
               {isAdmin && (
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">
-                    Total Value Defect
+                    {t("report.totalValueDefect")}
                   </div>
                   <div className="text-lg font-semibold">
                     {formatIDR(detailDefectValue)}
@@ -655,7 +667,7 @@ export default function ReportPage() {
             >
               <div>
                 <div className="mb-2 text-sm font-medium">
-                  Total Defect &amp; Sales — Quantity
+                  {t("report.chartQtyTitle")}
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
                   <ComposedChart data={detailBuckets}>
@@ -673,13 +685,13 @@ export default function ReportPage() {
                     <Legend />
                     <Bar
                       dataKey="defectQty"
-                      name="Defect"
+                      name={t("report.defect")}
                       fill="var(--chart-4)"
                     />
                     <Line
                       type="monotone"
                       dataKey="salesQty"
-                      name="Sales"
+                      name={t("report.sales")}
                       stroke="var(--chart-2)"
                       strokeWidth={2}
                       dot={{ r: 3 }}
@@ -690,7 +702,7 @@ export default function ReportPage() {
               {isAdmin && (
                 <div>
                   <div className="mb-2 text-sm font-medium">
-                    Total Defect &amp; Sales — Value (IDR)
+                    {t("report.chartValueTitle")}
                   </div>
                   <ResponsiveContainer width="100%" height={220}>
                     <ComposedChart data={detailBuckets}>
@@ -710,13 +722,13 @@ export default function ReportPage() {
                       <Legend />
                       <Bar
                         dataKey="defectValue"
-                        name="Defect"
+                        name={t("report.defect")}
                         fill="var(--chart-4)"
                       />
                       <Line
                         type="monotone"
                         dataKey="salesValue"
-                        name="Sales"
+                        name={t("report.sales")}
                         stroke="var(--chart-2)"
                         strokeWidth={2}
                         dot={{ r: 3 }}
@@ -730,15 +742,19 @@ export default function ReportPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code Garansi</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Problem</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>{t("common.codeGaransi")}</TableHead>
+                  <TableHead>{t("common.timestamp")}</TableHead>
+                  <TableHead>{t("common.problem")}</TableHead>
+                  <TableHead>{t("common.status")}</TableHead>
+                  <TableHead className="text-right">
+                    {t("common.qty")}
+                  </TableHead>
                   {isAdmin && (
-                    <TableHead className="text-right">Value</TableHead>
+                    <TableHead className="text-right">
+                      {t("common.value")}
+                    </TableHead>
                   )}
-                  <TableHead>Media</TableHead>
+                  <TableHead>{t("common.media")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -799,7 +815,7 @@ export default function ReportPage() {
                       colSpan={isAdmin ? 7 : 6}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      Tidak ada data defect.
+                      {t("report.noDefectData")}
                     </TableCell>
                   </TableRow>
                 )}

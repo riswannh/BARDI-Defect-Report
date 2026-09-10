@@ -1,5 +1,6 @@
 "use client";
 
+import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -27,6 +28,7 @@ export function Pagination({
   onPageChange,
   onPageSizeChange,
 }: PaginationProps) {
+  const { t } = useLanguage();
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const currentPage = Math.min(Math.max(1, page), totalPages);
   const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -40,12 +42,12 @@ export function Pagination({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-xs text-muted-foreground">
-        Menampilkan {start}–{end} dari {totalItems} data
+        {t("pagination.showing", { start, end, total: totalItems })}
       </span>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground">
-            Baris per halaman
+            {t("pagination.rowsPerPage")}
           </span>
           <Select
             value={String(pageSize)}
@@ -74,11 +76,13 @@ export function Pagination({
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
         >
-          <ChevronLeft className="size-4" /> Sebelumnya
+          <ChevronLeft className="size-4" /> {t("pagination.previous")}
         </Button>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Halaman</span>
+          <span className="text-xs text-muted-foreground">
+            {t("pagination.page")}
+          </span>
           <Select
             value={String(currentPage)}
             onValueChange={(v) => onPageChange(Number(v))}
@@ -104,7 +108,7 @@ export function Pagination({
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
         >
-          Berikutnya <ChevronRight className="size-4" />
+          {t("pagination.next")} <ChevronRight className="size-4" />
         </Button>
       </div>
     </div>
