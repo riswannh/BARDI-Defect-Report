@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, getTableName } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
+import { backupDatabase } from "@/lib/api/bulk";
 import { masterNameSchema } from "@/lib/api/validation";
 
 export type MasterTable =
@@ -53,6 +54,25 @@ export function masterCollectionHandlers(table: MasterTable) {
 
       const [row] = await db.insert(table).values({ name }).returning();
       return jsonOk(row, 201);
+    },
+
+    DELETE: async () => {
+      const guard = await requireAdmin();
+      if (!guard.ok) return guard.response;
+
+      const moduleName = getTableName(table);
+      const backup = backupDatabase(moduleName);
+      try {
+        const rows = await db
+          .delete(table)
+          .returning({ id: table.id });
+        return jsonOk({ deleted: rows.length, backup });
+      } catch {
+        return jsonError(
+          "Tidak bisa menghapus semua data karena masih dipakai di Data Defect/Sales. Hapus data terkait terlebih dahulu.",
+          409
+        );
+      }
     },
   };
 }

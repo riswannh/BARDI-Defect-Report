@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/i18n";
 import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type { ImportResult, Problem, Product, Status } from "@/lib/types";
+import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
@@ -13,13 +14,14 @@ import { Pagination } from "@/components/pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download, FileDown, History, Upload } from "lucide-react";
+import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
 
 export default function MasterPage() {
   const { t } = useLanguage();
   const [tab, setTab] = useState("products");
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: productData, reload: reloadProducts } =
@@ -103,6 +105,26 @@ export default function MasterPage() {
     e.target.value = "";
   }
 
+  const tabLabel =
+    tab === "products"
+      ? t("common.product")
+      : tab === "problems"
+        ? t("common.problem")
+        : t("common.status");
+
+  async function handleDeleteAll() {
+    try {
+      const res = await apiDelete<{ deleted: number }>(`/api/${tab}`);
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setDeleteAllOpen(false);
+      if (tab === "products") reloadProducts();
+      if (tab === "problems") reloadProblems();
+      if (tab === "statuses") reloadStatuses();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -147,6 +169,13 @@ export default function MasterPage() {
                 <History className="size-4" /> {t("import.lastResult")}
               </Button>
             )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteAllOpen(true)}
+            >
+              <Trash2 className="size-4" /> {t("deleteAll.button")}
+            </Button>
           </>
         }
       />
@@ -249,6 +278,13 @@ export default function MasterPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         result={importResult}
+      />
+
+      <DeleteAllDialog
+        open={deleteAllOpen}
+        onOpenChange={setDeleteAllOpen}
+        label={tabLabel}
+        onConfirm={handleDeleteAll}
       />
     </div>
   );

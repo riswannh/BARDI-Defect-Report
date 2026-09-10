@@ -15,6 +15,7 @@ import {
 import { useApi } from "@/lib/use-api";
 import type { Factory, ImportResult, Product, Sale } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -109,6 +110,7 @@ export default function SalesPage() {
   const [form, setForm] = useState<SaleForm>(emptyForm);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [filterProduct, filterFactory, filterMonth, search].join(
@@ -218,6 +220,17 @@ export default function SalesPage() {
     }
   }
 
+  async function handleDeleteAll() {
+    try {
+      const res = await apiDelete<{ deleted: number }>("/api/sales");
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setDeleteAllOpen(false);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -283,6 +296,13 @@ export default function SalesPage() {
                   <History className="size-4" /> {t("import.lastResult")}
                 </Button>
               )}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteAllOpen(true)}
+              >
+                <Trash2 className="size-4" /> {t("deleteAll.button")}
+              </Button>
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
@@ -587,6 +607,13 @@ export default function SalesPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         result={importResult}
+      />
+
+      <DeleteAllDialog
+        open={deleteAllOpen}
+        onOpenChange={setDeleteAllOpen}
+        label={t("sales.title")}
+        onConfirm={handleDeleteAll}
       />
     </div>
   );

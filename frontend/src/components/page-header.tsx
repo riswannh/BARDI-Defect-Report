@@ -22,7 +22,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
         </div>
       </div>
       {actions && (
-        <div className="animate-fade-in-soft flex items-center gap-2">
+        <div className="animate-fade-in-soft flex flex-wrap items-center justify-end gap-2">
           {actions}
         </div>
       )}

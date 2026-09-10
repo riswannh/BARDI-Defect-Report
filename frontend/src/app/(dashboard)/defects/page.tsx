@@ -24,6 +24,7 @@ import type {
   Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -158,6 +159,7 @@ export default function DefectsPage() {
   const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [
@@ -308,6 +310,17 @@ export default function DefectsPage() {
     }
   }
 
+  async function handleDeleteAll() {
+    try {
+      const res = await apiDelete<{ deleted: number }>("/api/defects");
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setDeleteAllOpen(false);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -373,6 +386,13 @@ export default function DefectsPage() {
                   <History className="size-4" /> {t("import.lastResult")}
                 </Button>
               )}
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteAllOpen(true)}
+              >
+                <Trash2 className="size-4" /> {t("deleteAll.button")}
+              </Button>
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
@@ -1031,6 +1051,13 @@ export default function DefectsPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         result={importResult}
+      />
+
+      <DeleteAllDialog
+        open={deleteAllOpen}
+        onOpenChange={setDeleteAllOpen}
+        label={t("defects.title")}
+        onConfirm={handleDeleteAll}
       />
     </div>
   );

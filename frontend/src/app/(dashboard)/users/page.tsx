@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type { Factory, ImportResult } from "@/lib/types";
+import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
@@ -74,6 +75,7 @@ export default function UsersPage() {
   const [tab, setTab] = useState("users");
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: userData, reload: reloadUsers } =
@@ -212,6 +214,22 @@ export default function UsersPage() {
     e.target.value = "";
   }
 
+  const deleteAllLabel =
+    tab === "users" ? t("users.tabAccounts") : t("common.factory");
+
+  async function handleDeleteAll() {
+    try {
+      const endpoint = tab === "users" ? "/api/users" : "/api/factories";
+      const res = await apiDelete<{ deleted: number }>(endpoint);
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setDeleteAllOpen(false);
+      if (tab === "users") reloadUsers();
+      else reloadFactories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -256,6 +274,13 @@ export default function UsersPage() {
                 <History className="size-4" /> {t("import.lastResult")}
               </Button>
             )}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteAllOpen(true)}
+            >
+              <Trash2 className="size-4" /> {t("deleteAll.button")}
+            </Button>
           </>
         }
       />
@@ -456,6 +481,14 @@ export default function UsersPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         result={importResult}
+      />
+
+      <DeleteAllDialog
+        open={deleteAllOpen}
+        onOpenChange={setDeleteAllOpen}
+        label={deleteAllLabel}
+        note={tab === "users" ? t("deleteAll.usersNote") : undefined}
+        onConfirm={handleDeleteAll}
       />
     </div>
   );

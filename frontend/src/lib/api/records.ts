@@ -16,6 +16,7 @@ import {
   type SessionUser,
 } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
+import { backupDatabase } from "@/lib/api/bulk";
 import {
   defectSchema,
   defectUpdateSchema,
@@ -249,6 +250,15 @@ export async function defectsDELETE(
   return jsonOk({ deleted: rowId });
 }
 
+export async function defectsDELETEALL() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const backup = backupDatabase("defects");
+  const rows = await db.delete(defects).returning({ id: defects.id });
+  return jsonOk({ deleted: rows.length, backup });
+}
+
 /* =============================== Sales =============================== */
 
 export async function salesGET(req: NextRequest) {
@@ -345,4 +355,13 @@ export async function salesDELETE(
   const [row] = await db.delete(sales).where(eq(sales.id, rowId)).returning();
   if (!row) return jsonError("Data tidak ditemukan.", 404);
   return jsonOk({ deleted: rowId });
+}
+
+export async function salesDELETEALL() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const backup = backupDatabase("sales");
+  const rows = await db.delete(sales).returning({ id: sales.id });
+  return jsonOk({ deleted: rows.length, backup });
 }

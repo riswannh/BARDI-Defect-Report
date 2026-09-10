@@ -60,6 +60,7 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - **Aturan akses**: Admin bisa semua; role Pabrik hanya data pabriknya & field `value` dihapus dari respons
 - **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, defects, sales, users)
 - **Tracing import**: respons import berisi `errors[]` & `skippedDetails[]` (baris, data, alasan) → ditampilkan di dialog `ImportResultDialog`, bisa diunduh CSV, dan dicatat di log server dengan prefix `[import:{module}]`
+- **Hapus semua data**: `DELETE /api/{module}` (admin only) — backup otomatis `backup-{module}-{timestamp}.db` dibuat dulu di folder data; master data gagal dihapus (409) jika masih dipakai defect/sales; hapus semua users mengecualikan akun sendiri
 - **Import users**: pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`
 
 ## Konvensi Aplikasi

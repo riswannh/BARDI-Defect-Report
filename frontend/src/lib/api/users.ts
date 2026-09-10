@@ -1,10 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { account, factories, user } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
+import { backupDatabase } from "@/lib/api/bulk";
 import { userCreateSchema, userUpdateSchema } from "@/lib/api/validation";
 
 function syntheticEmail(username: string) {
@@ -168,4 +169,16 @@ export async function usersDELETE(
   const [row] = await db.delete(user).where(eq(user.id, id)).returning();
   if (!row) return jsonError("User tidak ditemukan.", 404);
   return jsonOk({ deleted: id });
+}
+
+export async function usersDELETEALL() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const backup = backupDatabase("users");
+  const rows = await db
+    .delete(user)
+    .where(ne(user.id, guard.user.id))
+    .returning({ id: user.id });
+  return jsonOk({ deleted: rows.length, backup, keptSelf: true });
 }

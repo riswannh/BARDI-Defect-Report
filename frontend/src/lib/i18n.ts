@@ -449,6 +449,44 @@ const translations = {
     en: "Last import result",
     zh: "上次导入结果",
   },
+
+  // Delete all
+  "deleteAll.button": {
+    id: "Hapus Semua",
+    en: "Delete All",
+    zh: "全部删除",
+  },
+  "deleteAll.title": {
+    id: "Hapus Semua {label}?",
+    en: "Delete all {label}?",
+    zh: "删除所有{label}？",
+  },
+  "deleteAll.warning": {
+    id: "Semua data {label} akan dihapus permanen dan tidak bisa dikembalikan.",
+    en: "All {label} data will be permanently deleted and cannot be undone.",
+    zh: "所有{label}数据将被永久删除，无法恢复。",
+  },
+  "deleteAll.backupNote": {
+    id: "Backup database otomatis dibuat sebelum penghapusan.",
+    en: "A database backup is created automatically before deletion.",
+    zh: "删除前会自动创建数据库备份。",
+  },
+  "deleteAll.usersNote": {
+    id: "Akun Anda sendiri tidak akan dihapus.",
+    en: "Your own account will not be deleted.",
+    zh: "您自己的账户不会被删除。",
+  },
+  "deleteAll.confirm": {
+    id: "Ya, Hapus Semua",
+    en: "Yes, Delete All",
+    zh: "是，全部删除",
+  },
+  "deleteAll.cancel": { id: "Batal", en: "Cancel", zh: "取消" },
+  "deleteAll.success": {
+    id: "{count} data berhasil dihapus.",
+    en: "{count} records deleted.",
+    zh: "已删除 {count} 条数据。",
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
