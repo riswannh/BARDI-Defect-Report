@@ -343,18 +343,34 @@ async function importDefects(sheet: SheetRow[]) {
     }
 
     const productName = cellString(row.Produk);
-    const problemName = cellString(row.Problem);
+    const rawProblemName = cellString(row.Problem);
     const statusName = cellString(row.Status);
     const factoryName = cellString(row.Pabrik);
 
     const productId = productMap.get(productName.toLowerCase());
-    const problemId = problemMap.get(problemName.toLowerCase());
+
+    // Problem kosong tetap bisa diimport → dipetakan ke problem "Kosong"
+    let problemId: number | undefined;
+    if (rawProblemName) {
+      problemId = problemMap.get(rawProblemName.toLowerCase());
+    } else {
+      problemId = problemMap.get("kosong");
+      if (!problemId) {
+        const [created] = await db
+          .insert(problems)
+          .values({ name: "Kosong" })
+          .returning();
+        problemId = created.id;
+        problemMap.set("kosong", created.id);
+      }
+    }
+
     const statusId = statusMap.get(statusName.toLowerCase());
     const factoryId = factoryMap.get(factoryName.toLowerCase());
 
     const missing: string[] = [];
     if (!productId) missing.push(`Produk "${productName || "(kosong)"}"`);
-    if (!problemId) missing.push(`Problem "${problemName || "(kosong)"}"`);
+    if (!problemId) missing.push(`Problem "${rawProblemName}"`);
     if (!statusId) missing.push(`Status "${statusName || "(kosong)"}"`);
     if (!factoryId) missing.push(`Pabrik "${factoryName || "(kosong)"}"`);
     if (missing.length > 0) {
