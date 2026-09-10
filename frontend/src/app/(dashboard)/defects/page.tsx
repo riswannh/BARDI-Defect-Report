@@ -17,12 +17,14 @@ import { useApi } from "@/lib/use-api";
 import type {
   Defect,
   Factory,
+  ImportResult,
   PeriodType,
   Problem,
   Product,
   Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
@@ -60,6 +62,7 @@ import {
   Camera,
   Download,
   FileDown,
+  History,
   Pencil,
   Plus,
   Trash2,
@@ -74,12 +77,6 @@ interface DefectRow extends Omit<Defect, "value"> {
   factoryName?: string | null;
   problemName?: string | null;
   statusName?: string | null;
-}
-
-interface ImportSummary {
-  inserted: number;
-  skipped: number;
-  errors: { row: number; reason: string }[];
 }
 
 interface DefectForm {
@@ -159,6 +156,8 @@ export default function DefectsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<DefectForm>(emptyForm);
   const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [
@@ -313,16 +312,15 @@ export default function DefectsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await apiUpload<ImportSummary>(
+      const result = await apiUpload<ImportResult>(
         "/api/excel/defects/import",
         file
       );
+      setImportResult(result);
+      setImportDialogOpen(true);
       toast.success(
-        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati, ${result.errors.length} gagal.`
       );
-      if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} baris bermasalah.`);
-      }
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal import.");
@@ -366,6 +364,15 @@ export default function DefectsPage() {
               >
                 <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
+              {importResult && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportDialogOpen(true)}
+                >
+                  <History className="size-4" /> {t("import.lastResult")}
+                </Button>
+              )}
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
@@ -1019,6 +1026,12 @@ export default function DefectsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportResultDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        result={importResult}
+      />
     </div>
   );
 }

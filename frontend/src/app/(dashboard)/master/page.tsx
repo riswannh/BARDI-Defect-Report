@@ -5,24 +5,21 @@ import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
-import type { Problem, Product, Status } from "@/lib/types";
+import type { ImportResult, Problem, Product, Status } from "@/lib/types";
+import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Download, FileDown, Upload } from "lucide-react";
-
-interface ImportSummary {
-  inserted: number;
-  skipped: number;
-  errors: { row: number; reason: string }[];
-}
+import { Download, FileDown, History, Upload } from "lucide-react";
 
 export default function MasterPage() {
   const { t } = useLanguage();
   const [tab, setTab] = useState("products");
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: productData, reload: reloadProducts } =
@@ -88,16 +85,15 @@ export default function MasterPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await apiUpload<ImportSummary>(
+      const result = await apiUpload<ImportResult>(
         `/api/excel/${tab}/import`,
         file
       );
+      setImportResult(result);
+      setImportDialogOpen(true);
       toast.success(
-        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati, ${result.errors.length} gagal.`
       );
-      if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} baris bermasalah.`);
-      }
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
       if (tab === "statuses") reloadStatuses();
@@ -142,6 +138,15 @@ export default function MasterPage() {
             >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
+            {importResult && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <History className="size-4" /> {t("import.lastResult")}
+              </Button>
+            )}
           </>
         }
       />
@@ -239,6 +244,12 @@ export default function MasterPage() {
           </CardContent>
         </Card>
       </Tabs>
+
+      <ImportResultDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        result={importResult}
+      />
     </div>
   );
 }

@@ -17,13 +17,53 @@ import { normalizeTimestamp } from "@/lib/api/validation";
 import { createUserAccount } from "@/lib/api/users";
 import { listDefectRows, listSaleRows } from "@/lib/api/records";
 import { MONTHS } from "@/lib/format";
+import type { ImportResult } from "@/lib/types";
 
 type SheetRow = Record<string, unknown>;
 
-interface ImportResult {
-  inserted: number;
-  skipped: number;
-  errors: { row: number; reason: string }[];
+const MAX_LOGGED_ISSUES = 200;
+
+function newImportResult(module: string, totalRows: number): ImportResult {
+  return {
+    module,
+    totalRows,
+    inserted: 0,
+    skipped: 0,
+    errors: [],
+    skippedDetails: [],
+  };
+}
+
+function logImport(result: ImportResult) {
+  console.log(
+    `[import:${result.module}] total=${result.totalRows} inserted=${result.inserted} skipped=${result.skipped} errors=${result.errors.length}`
+  );
+  for (const issue of result.errors.slice(0, MAX_LOGGED_ISSUES)) {
+    console.log(
+      `[import:${result.module}] ERROR baris ${issue.row}${
+        issue.key ? ` (${issue.key})` : ""
+      }: ${issue.reason}`
+    );
+  }
+  if (result.errors.length > MAX_LOGGED_ISSUES) {
+    console.log(
+      `[import:${result.module}] ... ${result.errors.length - MAX_LOGGED_ISSUES} error lain tidak ditampilkan`
+    );
+  }
+  for (const issue of result.skippedDetails.slice(0, MAX_LOGGED_ISSUES)) {
+    console.log(
+      `[import:${result.module}] SKIP baris ${issue.row}${
+        issue.key ? ` (${issue.key})` : ""
+      }: ${issue.reason}`
+    );
+  }
+  if (result.skippedDetails.length > MAX_LOGGED_ISSUES) {
+    console.log(
+      `[import:${result.module}] ... ${
+        result.skippedDetails.length - MAX_LOGGED_ISSUES
+      } skip lain tidak ditampilkan`
+    );
+  }
 }
 
 /* ------------------------------ helpers ------------------------------ */
@@ -222,21 +262,36 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
   const existingRows = await db.select().from(table);
   const existing = new Set(existingRows.map((row) => row.name.toLowerCase()));
 
-  const result: ImportResult = { inserted: 0, skipped: 0, errors: [] };
+  const result = newImportResult(moduleName, sheet.length);
   for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
     const name = cellString(sheet[i].Nama ?? sheet[i].Name);
     if (!name) {
-      result.errors.push({ row: i + 2, reason: "Nama kosong" });
+      result.errors.push({ row: rowNumber, key: "", reason: "Nama kosong" });
       continue;
     }
     if (existing.has(name.toLowerCase())) {
       result.skipped++;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: name,
+        reason: "Nama sudah ada di database",
+      });
       continue;
     }
-    await db.insert(table).values({ name });
-    existing.add(name.toLowerCase());
-    result.inserted++;
+    try {
+      await db.insert(table).values({ name });
+      existing.add(name.toLowerCase());
+      result.inserted++;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan",
+      });
+    }
   }
+  logImport(result);
   return jsonOk(result);
 }
 
@@ -264,53 +319,88 @@ async function importDefects(sheet: SheetRow[]) {
   );
   const existing = new Set(defectRows.map((row) => row.codeGaransi));
 
-  const result: ImportResult = { inserted: 0, skipped: 0, errors: [] };
+  const result = newImportResult("defects", sheet.length);
   for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
     const row = sheet[i];
     const code = cellString(row["Code Garansi"]);
     if (!code) {
-      result.errors.push({ row: i + 2, reason: "Code Garansi kosong" });
+      result.errors.push({
+        row: rowNumber,
+        key: "",
+        reason: "Code Garansi kosong",
+      });
       continue;
     }
     if (existing.has(code)) {
       result.skipped++;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: code,
+        reason: "Code Garansi sudah ada di database",
+      });
       continue;
     }
 
-    const productId = productMap.get(cellString(row.Produk).toLowerCase());
-    const problemId = problemMap.get(cellString(row.Problem).toLowerCase());
-    const statusId = statusMap.get(cellString(row.Status).toLowerCase());
-    const factoryId = factoryMap.get(cellString(row.Pabrik).toLowerCase());
-    if (!productId || !problemId || !statusId || !factoryId) {
+    const productName = cellString(row.Produk);
+    const problemName = cellString(row.Problem);
+    const statusName = cellString(row.Status);
+    const factoryName = cellString(row.Pabrik);
+
+    const productId = productMap.get(productName.toLowerCase());
+    const problemId = problemMap.get(problemName.toLowerCase());
+    const statusId = statusMap.get(statusName.toLowerCase());
+    const factoryId = factoryMap.get(factoryName.toLowerCase());
+
+    const missing: string[] = [];
+    if (!productId) missing.push(`Produk "${productName || "(kosong)"}"`);
+    if (!problemId) missing.push(`Problem "${problemName || "(kosong)"}"`);
+    if (!statusId) missing.push(`Status "${statusName || "(kosong)"}"`);
+    if (!factoryId) missing.push(`Pabrik "${factoryName || "(kosong)"}"`);
+    if (missing.length > 0) {
       result.errors.push({
-        row: i + 2,
-        reason: "Produk/Problem/Status/Pabrik tidak ditemukan di master",
+        row: rowNumber,
+        key: code,
+        reason: `${missing.join(", ")} tidak ada di Data Master`,
       });
       continue;
     }
 
     const rawTimestamp = cellString(row.Timestamp);
     if (!rawTimestamp) {
-      result.errors.push({ row: i + 2, reason: "Timestamp kosong" });
+      result.errors.push({
+        row: rowNumber,
+        key: code,
+        reason: "Timestamp kosong",
+      });
       continue;
     }
 
-    await db.insert(defects).values({
-      codeGaransi: code,
-      timeStamp: normalizeTimestamp(rawTimestamp),
-      photosLink: cellString(row["Link Foto"]),
-      videosLink: cellString(row["Link Video"]),
-      problemId,
-      problemDetail: cellString(row["Problem Detail"]),
-      productId,
-      quantity: cellNumber(row.Quantity),
-      statusId,
-      factoryId,
-      value: cellNumber(row.Value),
-    });
-    existing.add(code);
-    result.inserted++;
+    try {
+      await db.insert(defects).values({
+        codeGaransi: code,
+        timeStamp: normalizeTimestamp(rawTimestamp),
+        photosLink: cellString(row["Link Foto"]),
+        videosLink: cellString(row["Link Video"]),
+        problemId: problemId as number,
+        problemDetail: cellString(row["Problem Detail"]),
+        productId: productId as number,
+        quantity: cellNumber(row.Quantity),
+        statusId: statusId as number,
+        factoryId: factoryId as number,
+        value: cellNumber(row.Value),
+      });
+      existing.add(code);
+      result.inserted++;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: code,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan",
+      });
+    }
   }
+  logImport(result);
   return jsonOk(result);
 }
 
@@ -331,40 +421,75 @@ async function importSales(sheet: SheetRow[]) {
     saleRows.map((row) => `${row.productId}|${row.factoryId}|${row.month}`)
   );
 
-  const result: ImportResult = { inserted: 0, skipped: 0, errors: [] };
+  const result = newImportResult("sales", sheet.length);
   for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
     const row = sheet[i];
-    const productId = productMap.get(cellString(row.Produk).toLowerCase());
-    const factoryId = factoryMap.get(cellString(row.Pabrik).toLowerCase());
+    const productName = cellString(row.Produk);
+    const factoryName = cellString(row.Pabrik);
     const month = cellString(row.Bulan);
-    if (!productId || !factoryId || !month) {
+
+    const productId = productMap.get(productName.toLowerCase());
+    const factoryId = factoryMap.get(factoryName.toLowerCase());
+
+    const missing: string[] = [];
+    if (!productId) missing.push(`Produk "${productName || "(kosong)"}"`);
+    if (!factoryId) missing.push(`Pabrik "${factoryName || "(kosong)"}"`);
+    if (missing.length > 0) {
       result.errors.push({
-        row: i + 2,
-        reason: "Produk/Pabrik/Bulan tidak valid",
+        row: rowNumber,
+        key: `${productName} / ${factoryName} / ${month}`,
+        reason: `${missing.join(", ")} tidak ada di Data Master`,
+      });
+      continue;
+    }
+    if (!month) {
+      result.errors.push({
+        row: rowNumber,
+        key: `${productName} / ${factoryName}`,
+        reason: "Bulan kosong",
       });
       continue;
     }
     if (!(MONTHS as readonly string[]).includes(month)) {
-      result.errors.push({ row: i + 2, reason: `Bulan tidak dikenal: ${month}` });
+      result.errors.push({
+        row: rowNumber,
+        key: `${productName} / ${factoryName} / ${month}`,
+        reason: `Bulan tidak dikenal: "${month}" (harus salah satu dari ${MONTHS.join(", ")})`,
+      });
       continue;
     }
 
     const key = `${productId}|${factoryId}|${month}`;
     if (existing.has(key)) {
       result.skipped++;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: `${productName} / ${factoryName} / ${month}`,
+        reason: "Kombinasi Produk + Pabrik + Bulan sudah ada di database",
+      });
       continue;
     }
 
-    await db.insert(sales).values({
-      productId,
-      factoryId,
-      month,
-      quantity: cellNumber(row.Quantity),
-      value: cellNumber(row.Value),
-    });
-    existing.add(key);
-    result.inserted++;
+    try {
+      await db.insert(sales).values({
+        productId: productId as number,
+        factoryId: factoryId as number,
+        month,
+        quantity: cellNumber(row.Quantity),
+        value: cellNumber(row.Value),
+      });
+      existing.add(key);
+      result.inserted++;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: `${productName} / ${factoryName} / ${month}`,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan",
+      });
+    }
   }
+  logImport(result);
   return jsonOk(result);
 }
 
@@ -380,21 +505,36 @@ async function importUsers(sheet: SheetRow[]) {
     userRows.map((row) => (row.username ?? "").toLowerCase())
   );
 
-  const result: ImportResult = { inserted: 0, skipped: 0, errors: [] };
+  const result = newImportResult("users", sheet.length);
   for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
     const row = sheet[i];
     const username = cellString(row.Username);
     const password = cellString(row.Password);
     const isAdmin = cellBool(row.Admin);
-    if (!username || password.length < 6) {
+    if (!username) {
       result.errors.push({
-        row: i + 2,
-        reason: "Username kosong atau password kurang dari 6 karakter",
+        row: rowNumber,
+        key: "",
+        reason: "Username kosong",
+      });
+      continue;
+    }
+    if (password.length < 6) {
+      result.errors.push({
+        row: rowNumber,
+        key: username,
+        reason: "Password kurang dari 6 karakter",
       });
       continue;
     }
     if (existing.has(username.toLowerCase())) {
       result.skipped++;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: username,
+        reason: "Username sudah ada di database",
+      });
       continue;
     }
 
@@ -403,7 +543,8 @@ async function importUsers(sheet: SheetRow[]) {
       const factoryName = cellString(row.Pabrik);
       if (!factoryName) {
         result.errors.push({
-          row: i + 2,
+          row: rowNumber,
+          key: username,
           reason: "Pabrik kosong untuk user non-admin",
         });
         continue;
@@ -427,11 +568,13 @@ async function importUsers(sheet: SheetRow[]) {
       result.inserted++;
     } catch (err) {
       result.errors.push({
-        row: i + 2,
+        row: rowNumber,
+        key: username,
         reason: err instanceof Error ? err.message : "Gagal membuat user",
       });
     }
   }
+  logImport(result);
   return jsonOk(result);
 }
 

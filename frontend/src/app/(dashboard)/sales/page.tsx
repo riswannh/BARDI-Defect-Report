@@ -13,8 +13,9 @@ import {
   downloadUrl,
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
-import type { Factory, Product, Sale } from "@/lib/types";
+import type { Factory, ImportResult, Product, Sale } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
@@ -47,6 +48,7 @@ import {
 import {
   Download,
   FileDown,
+  History,
   Pencil,
   Plus,
   ShoppingCart,
@@ -59,12 +61,6 @@ interface SaleRow extends Omit<Sale, "value"> {
   value?: number;
   productName?: string | null;
   factoryName?: string | null;
-}
-
-interface ImportSummary {
-  inserted: number;
-  skipped: number;
-  errors: { row: number; reason: string }[];
 }
 
 interface SaleForm {
@@ -111,6 +107,8 @@ export default function SalesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<SaleForm>(emptyForm);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [filterProduct, filterFactory, filterMonth, search].join(
@@ -224,16 +222,15 @@ export default function SalesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await apiUpload<ImportSummary>(
+      const result = await apiUpload<ImportResult>(
         "/api/excel/sales/import",
         file
       );
+      setImportResult(result);
+      setImportDialogOpen(true);
       toast.success(
-        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati, ${result.errors.length} gagal.`
       );
-      if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} baris bermasalah.`);
-      }
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal import.");
@@ -277,6 +274,15 @@ export default function SalesPage() {
               >
                 <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
+              {importResult && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setImportDialogOpen(true)}
+                >
+                  <History className="size-4" /> {t("import.lastResult")}
+                </Button>
+              )}
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
@@ -576,6 +582,12 @@ export default function SalesPage() {
           </div>
         )}
       </Card>
+
+      <ImportResultDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        result={importResult}
+      />
     </div>
   );
 }

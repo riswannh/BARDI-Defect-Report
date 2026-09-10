@@ -52,3 +52,18 @@ export interface Sale {
 }
 
 export type PeriodType = "daily" | "weekly" | "monthly" | "custom";
+
+export interface ImportIssue {
+  row: number;
+  key: string;
+  reason: string;
+}
+
+export interface ImportResult {
+  module: string;
+  totalRows: number;
+  inserted: number;
+  skipped: number;
+  errors: ImportIssue[];
+  skippedDetails: ImportIssue[];
+}

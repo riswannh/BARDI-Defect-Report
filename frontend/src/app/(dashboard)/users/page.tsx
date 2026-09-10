@@ -11,7 +11,8 @@ import {
   downloadUrl,
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
-import type { Factory } from "@/lib/types";
+import type { Factory, ImportResult } from "@/lib/types";
+import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -43,7 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Download, FileDown, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Download, FileDown, History, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
 interface UserRow {
   id: string;
@@ -52,12 +53,6 @@ interface UserRow {
   isAdmin: boolean;
   factoryId: number | null;
   factoryName: string | null;
-}
-
-interface ImportSummary {
-  inserted: number;
-  skipped: number;
-  errors: { row: number; reason: string }[];
 }
 
 interface UserForm {
@@ -77,6 +72,8 @@ const emptyUserForm: UserForm = {
 export default function UsersPage() {
   const { t } = useLanguage();
   const [tab, setTab] = useState("users");
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: userData, reload: reloadUsers } =
@@ -199,16 +196,15 @@ export default function UsersPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const result = await apiUpload<ImportSummary>(
+      const result = await apiUpload<ImportResult>(
         "/api/excel/users/import",
         file
       );
+      setImportResult(result);
+      setImportDialogOpen(true);
       toast.success(
-        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati, ${result.errors.length} gagal.`
       );
-      if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} baris bermasalah.`);
-      }
       reloadUsers();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal import.");
@@ -251,6 +247,15 @@ export default function UsersPage() {
             >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
+            {importResult && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <History className="size-4" /> {t("import.lastResult")}
+              </Button>
+            )}
           </>
         }
       />
@@ -446,6 +451,12 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ImportResultDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        result={importResult}
+      />
     </div>
   );
 }

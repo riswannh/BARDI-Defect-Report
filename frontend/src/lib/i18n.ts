@@ -400,6 +400,55 @@ const translations = {
     en: "New factory name",
     zh: "新工厂名称",
   },
+
+  // Import result
+  "import.title": {
+    id: "Hasil Import",
+    en: "Import Result",
+    zh: "导入结果",
+  },
+  "import.description": {
+    id: "Total {total} baris dibaca dari file.",
+    en: "{total} rows read from the file.",
+    zh: "从文件读取了 {total} 行。",
+  },
+  "import.totalRows": { id: "Total Baris", en: "Total Rows", zh: "总行数" },
+  "import.inserted": { id: "Masuk", en: "Inserted", zh: "已导入" },
+  "import.skipped": { id: "Dilewati", en: "Skipped", zh: "已跳过" },
+  "import.errors": { id: "Gagal", en: "Failed", zh: "失败" },
+  "import.row": { id: "Baris", en: "Row", zh: "行" },
+  "import.key": { id: "Data", en: "Data", zh: "数据" },
+  "import.reason": { id: "Alasan", en: "Reason", zh: "原因" },
+  "import.errorSection": {
+    id: "Baris yang gagal masuk",
+    en: "Failed rows",
+    zh: "失败的行",
+  },
+  "import.noErrors": {
+    id: "Tidak ada baris yang gagal.",
+    en: "No failed rows.",
+    zh: "没有失败的行。",
+  },
+  "import.skippedSection": {
+    id: "Baris dilewati (duplikat)",
+    en: "Skipped rows (duplicates)",
+    zh: "跳过的行（重复）",
+  },
+  "import.downloadReport": {
+    id: "Download laporan (CSV)",
+    en: "Download report (CSV)",
+    zh: "下载报告 (CSV)",
+  },
+  "import.serverLogHint": {
+    id: "Detail lengkap juga tercatat di log server",
+    en: "Full details are also written to the server log",
+    zh: "完整详情也会记录在服务器日志中",
+  },
+  "import.lastResult": {
+    id: "Hasil import terakhir",
+    en: "Last import result",
+    zh: "上次导入结果",
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
