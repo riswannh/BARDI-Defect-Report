@@ -27,12 +27,16 @@ export function Header() {
     : t("header.allFactories");
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-6">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-background/70 px-6 shadow-[0_1px_0_0_oklch(0.731_0.104_203.2/0.06)] backdrop-blur-md">
       <div className="flex items-center gap-2">
         {isAdmin ? (
-          <ShieldCheck className="size-4 text-primary" />
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <ShieldCheck className="size-4" />
+          </span>
         ) : (
-          <ShieldAlert className="size-4 text-muted-foreground" />
+          <span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground ring-1 ring-border">
+            <ShieldAlert className="size-4" />
+          </span>
         )}
         <span className="text-sm font-medium">{factoryName}</span>
       </div>
@@ -40,11 +44,21 @@ export function Header() {
       <div className="flex items-center gap-1">
         <LanguageSwitcher />
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-            <User className="size-4" />
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full ring-1 ring-border/60 hover:ring-primary/30"
+              />
+            }
+          >
+            <span className="flex size-5 items-center justify-center rounded-full bg-primary/12 text-primary">
+              <User className="size-3.5" />
+            </span>
             {user.username}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-48 rounded-xl">
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 {isAdmin
