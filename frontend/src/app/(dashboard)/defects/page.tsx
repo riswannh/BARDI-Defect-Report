@@ -1,22 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
 import { formatDateTime, formatIDR, formatNumber, MONTHS } from "@/lib/format";
 import { matchesDefectPeriod, type PeriodFilter } from "@/lib/period";
 import {
-  defects as initialDefects,
-  factories,
-  factoryOptions,
-  problems,
-  problemOptions,
-  products,
-  productOptions,
-  statuses,
-  statusOptions,
-} from "@/lib/mock-data";
-import type { Defect, PeriodType } from "@/lib/types";
+  apiDelete,
+  apiPatch,
+  apiPost,
+  apiUpload,
+  downloadUrl,
+} from "@/lib/api-client";
+import { useApi } from "@/lib/use-api";
+import type {
+  Defect,
+  Factory,
+  PeriodType,
+  Problem,
+  Product,
+  Status,
+} from "@/lib/types";
 import { productName } from "@/lib/analytics";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -54,6 +59,7 @@ import {
   AlertTriangle,
   Camera,
   Download,
+  FileDown,
   Pencil,
   Plus,
   Trash2,
@@ -61,6 +67,20 @@ import {
   Video,
   Wallet,
 } from "lucide-react";
+
+interface DefectRow extends Omit<Defect, "value"> {
+  value?: number;
+  productName?: string | null;
+  factoryName?: string | null;
+  problemName?: string | null;
+  statusName?: string | null;
+}
+
+interface ImportSummary {
+  inserted: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
 
 interface DefectForm {
   codeGaransi: string;
@@ -91,9 +111,38 @@ const emptyForm: DefectForm = {
 };
 
 export default function DefectsPage() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const { t } = useLanguage();
-  const [defects, setDefects] = useState<Defect[]>(initialDefects);
+
+  const { data: defectData, loading, reload } =
+    useApi<DefectRow[]>("/api/defects");
+  const { data: productData } = useApi<Product[]>("/api/products");
+  const { data: problemData } = useApi<Problem[]>("/api/problems");
+  const { data: statusData } = useApi<Status[]>("/api/statuses");
+  const { data: factoryData } = useApi<Factory[]>("/api/factories");
+
+  const products = productData ?? [];
+  const problems = problemData ?? [];
+  const statuses = statusData ?? [];
+  const factories = factoryData ?? [];
+
+  const productOptions = products.map((p) => ({
+    value: String(p.id),
+    label: p.name,
+  }));
+  const problemOptions = problems.map((p) => ({
+    value: String(p.id),
+    label: p.name,
+  }));
+  const statusOptions = statuses.map((s) => ({
+    value: String(s.id),
+    label: s.name,
+  }));
+  const factoryOptions = factories.map((f) => ({
+    value: String(f.id),
+    label: f.name,
+  }));
+
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -109,7 +158,8 @@ export default function DefectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<DefectForm>(emptyForm);
-  const [detailDefect, setDetailDefect] = useState<Defect | null>(null);
+  const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [
     filterProduct,
@@ -134,16 +184,15 @@ export default function DefectsPage() {
     setPageState({ signature: filterSignature, page: next });
   const [pageSize, setPageSize] = useState(10);
 
-  const scopedDefects = useMemo(() => {
-    return defects.filter((d) =>
-      user?.isAdmin ? true : d.factoryId === user?.factoryId
-    );
-  }, [defects, user]);
-
   const visibleDefects = useMemo(() => {
+    const defects = defectData ?? [];
+    const products = productData ?? [];
+    const problems = problemData ?? [];
+    const statuses = statusData ?? [];
+    const factories = factoryData ?? [];
     const f: PeriodFilter = { period, month, day, weekEnd, from, to };
     const q = search.trim().toLowerCase();
-    return scopedDefects.filter((d) => {
+    return defects.filter((d) => {
       if (filterProduct !== "all" && d.productId !== Number(filterProduct))
         return false;
       if (filterFactory !== "all" && d.factoryId !== Number(filterFactory))
@@ -169,7 +218,11 @@ export default function DefectsPage() {
       return true;
     });
   }, [
-    scopedDefects,
+    defectData,
+    productData,
+    problemData,
+    statusData,
+    factoryData,
     filterProduct,
     filterFactory,
     filterStatus,
@@ -191,7 +244,7 @@ export default function DefectsPage() {
   );
 
   const totalQty = visibleDefects.reduce((sum, d) => sum + d.quantity, 0);
-  const totalVal = visibleDefects.reduce((sum, d) => sum + d.value, 0);
+  const totalVal = visibleDefects.reduce((sum, d) => sum + (d.value ?? 0), 0);
 
   function openCreate() {
     setEditingId(null);
@@ -199,7 +252,7 @@ export default function DefectsPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(d: Defect) {
+  function openEdit(d: DefectRow) {
     setEditingId(d.id);
     setForm({
       codeGaransi: d.codeGaransi,
@@ -212,12 +265,12 @@ export default function DefectsPage() {
       quantity: String(d.quantity),
       statusId: String(d.statusId),
       factoryId: String(d.factoryId),
-      value: String(d.value),
+      value: String(d.value ?? 0),
     });
     setDialogOpen(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = {
       codeGaransi: form.codeGaransi.trim(),
@@ -234,19 +287,47 @@ export default function DefectsPage() {
     };
     if (!payload.codeGaransi || !payload.productId || !payload.factoryId) return;
 
-    if (editingId === null) {
-      const id = Math.max(0, ...defects.map((d) => d.id)) + 1;
-      setDefects((prev) => [...prev, { id, ...payload }]);
-    } else {
-      setDefects((prev) =>
-        prev.map((d) => (d.id === editingId ? { ...d, ...payload } : d))
-      );
+    try {
+      if (editingId === null) {
+        await apiPost("/api/defects", payload);
+      } else {
+        await apiPatch(`/api/defects/${editingId}`, payload);
+      }
+      setDialogOpen(false);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan.");
     }
-    setDialogOpen(false);
   }
 
-  function handleDelete(id: number) {
-    setDefects((prev) => prev.filter((d) => d.id !== id));
+  async function handleDelete(id: number) {
+    try {
+      await apiDelete(`/api/defects/${id}`);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await apiUpload<ImportSummary>(
+        "/api/excel/defects/import",
+        file
+      );
+      toast.success(
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`${result.errors.length} baris bermasalah.`);
+      }
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal import.");
+    }
+    e.target.value = "";
   }
 
   return (
@@ -257,10 +338,32 @@ export default function DefectsPage() {
         actions={
           isAdmin && (
             <>
-              <Button variant="outline" size="sm">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadUrl("/api/excel/defects/template")}
+              >
+                <FileDown className="size-4" /> {t("common.template")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Upload className="size-4" /> {t("common.importExcel")}
               </Button>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadUrl("/api/excel/defects/export")}
+              >
                 <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
               <Button size="sm" onClick={openCreate}>
@@ -714,7 +817,7 @@ export default function DefectsPage() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      {formatIDR(d.value)}
+                      {formatIDR(d.value ?? 0)}
                     </TableCell>
                   )}
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -772,7 +875,7 @@ export default function DefectsPage() {
                     colSpan={isAdmin ? 10 : 8}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    {t("common.noData")}
+                    {loading ? t("common.loading") : t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}
@@ -871,7 +974,7 @@ export default function DefectsPage() {
                   <dt className="text-xs text-muted-foreground">
                     {t("common.value")}
                   </dt>
-                  <dd>{formatIDR(detailDefect.value)}</dd>
+                  <dd>{formatIDR(detailDefect.value ?? 0)}</dd>
                 </div>
               )}
               <div className="flex flex-col gap-0.5 sm:col-span-2">

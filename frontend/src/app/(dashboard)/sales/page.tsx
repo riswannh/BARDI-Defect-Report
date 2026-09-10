@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
 import { formatIDR, formatNumber, MONTHS } from "@/lib/format";
 import {
-  factories,
-  factoryOptions,
-  products,
-  productOptions,
-  sales as initialSales,
-} from "@/lib/mock-data";
-import type { Sale } from "@/lib/types";
+  apiDelete,
+  apiPatch,
+  apiPost,
+  apiUpload,
+  downloadUrl,
+} from "@/lib/api-client";
+import { useApi } from "@/lib/use-api";
+import type { Factory, Product, Sale } from "@/lib/types";
 import { productName } from "@/lib/analytics";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -44,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Download,
+  FileDown,
   Pencil,
   Plus,
   ShoppingCart,
@@ -51,6 +54,18 @@ import {
   Upload,
   Wallet,
 } from "lucide-react";
+
+interface SaleRow extends Omit<Sale, "value"> {
+  value?: number;
+  productName?: string | null;
+  factoryName?: string | null;
+}
+
+interface ImportSummary {
+  inserted: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
 
 interface SaleForm {
   productId: string;
@@ -69,9 +84,25 @@ const emptyForm: SaleForm = {
 };
 
 export default function SalesPage() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const { t } = useLanguage();
-  const [sales, setSales] = useState<Sale[]>(initialSales);
+
+  const { data: saleData, loading, reload } = useApi<SaleRow[]>("/api/sales");
+  const { data: productData } = useApi<Product[]>("/api/products");
+  const { data: factoryData } = useApi<Factory[]>("/api/factories");
+
+  const products = productData ?? [];
+  const factories = factoryData ?? [];
+
+  const productOptions = products.map((p) => ({
+    value: String(p.id),
+    label: p.name,
+  }));
+  const factoryOptions = factories.map((f) => ({
+    value: String(f.id),
+    label: f.name,
+  }));
+
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
@@ -80,6 +111,7 @@ export default function SalesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<SaleForm>(emptyForm);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterSignature = [filterProduct, filterFactory, filterMonth, search].join(
     "|"
@@ -94,15 +126,12 @@ export default function SalesPage() {
     setPageState({ signature: filterSignature, page: next });
   const [pageSize, setPageSize] = useState(10);
 
-  const scopedSales = useMemo(() => {
-    return sales.filter((s) =>
-      user?.isAdmin ? true : s.factoryId === user?.factoryId
-    );
-  }, [sales, user]);
-
   const visibleSales = useMemo(() => {
+    const sales = saleData ?? [];
+    const products = productData ?? [];
+    const factories = factoryData ?? [];
     const q = search.trim().toLowerCase();
-    return scopedSales.filter((s) => {
+    return sales.filter((s) => {
       if (filterProduct !== "all" && s.productId !== Number(filterProduct))
         return false;
       if (filterFactory !== "all" && s.factoryId !== Number(filterFactory))
@@ -120,7 +149,15 @@ export default function SalesPage() {
       }
       return true;
     });
-  }, [scopedSales, filterProduct, filterFactory, filterMonth, search]);
+  }, [
+    saleData,
+    productData,
+    factoryData,
+    filterProduct,
+    filterFactory,
+    filterMonth,
+    search,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(visibleSales.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -130,7 +167,7 @@ export default function SalesPage() {
   );
 
   const totalQty = visibleSales.reduce((sum, s) => sum + s.quantity, 0);
-  const totalVal = visibleSales.reduce((sum, s) => sum + s.value, 0);
+  const totalVal = visibleSales.reduce((sum, s) => sum + (s.value ?? 0), 0);
 
   function openCreate() {
     setEditingId(null);
@@ -138,19 +175,19 @@ export default function SalesPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(s: Sale) {
+  function openEdit(s: SaleRow) {
     setEditingId(s.id);
     setForm({
       productId: String(s.productId),
       factoryId: String(s.factoryId),
       month: s.month,
       quantity: String(s.quantity),
-      value: String(s.value),
+      value: String(s.value ?? 0),
     });
     setDialogOpen(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = {
       productId: Number(form.productId),
@@ -161,19 +198,47 @@ export default function SalesPage() {
     };
     if (!payload.productId || !payload.factoryId) return;
 
-    if (editingId === null) {
-      const id = Math.max(0, ...sales.map((s) => s.id)) + 1;
-      setSales((prev) => [...prev, { id, ...payload }]);
-    } else {
-      setSales((prev) =>
-        prev.map((s) => (s.id === editingId ? { ...s, ...payload } : s))
-      );
+    try {
+      if (editingId === null) {
+        await apiPost("/api/sales", payload);
+      } else {
+        await apiPatch(`/api/sales/${editingId}`, payload);
+      }
+      setDialogOpen(false);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan.");
     }
-    setDialogOpen(false);
   }
 
-  function handleDelete(id: number) {
-    setSales((prev) => prev.filter((s) => s.id !== id));
+  async function handleDelete(id: number) {
+    try {
+      await apiDelete(`/api/sales/${id}`);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await apiUpload<ImportSummary>(
+        "/api/excel/sales/import",
+        file
+      );
+      toast.success(
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`${result.errors.length} baris bermasalah.`);
+      }
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal import.");
+    }
+    e.target.value = "";
   }
 
   return (
@@ -184,10 +249,32 @@ export default function SalesPage() {
         actions={
           isAdmin && (
             <>
-              <Button variant="outline" size="sm">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadUrl("/api/excel/sales/template")}
+              >
+                <FileDown className="size-4" /> {t("common.template")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Upload className="size-4" /> {t("common.importExcel")}
               </Button>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadUrl("/api/excel/sales/export")}
+              >
                 <Download className="size-4" /> {t("common.exportExcel")}
               </Button>
               <Button size="sm" onClick={openCreate}>
@@ -435,7 +522,7 @@ export default function SalesPage() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      {formatIDR(s.value)}
+                      {formatIDR(s.value ?? 0)}
                     </TableCell>
                   )}
                   {isAdmin && (
@@ -466,7 +553,7 @@ export default function SalesPage() {
                     colSpan={isAdmin ? 6 : 4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    {t("common.noData")}
+                    {loading ? t("common.loading") : t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}

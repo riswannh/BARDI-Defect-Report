@@ -1,7 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import {
+  apiDelete,
+  apiPatch,
+  apiPost,
+  apiUpload,
+  downloadUrl,
+} from "@/lib/api-client";
+import { useApi } from "@/lib/use-api";
+import type { Factory } from "@/lib/types";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -32,9 +42,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { factories as initialFactories, factoryOptions, users as initialUsers } from "@/lib/mock-data";
-import type { Factory, User } from "@/lib/types";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, FileDown, Pencil, Plus, Trash2, Upload } from "lucide-react";
+
+interface UserRow {
+  id: string;
+  username: string | null;
+  name: string;
+  isAdmin: boolean;
+  factoryId: number | null;
+  factoryName: string | null;
+}
+
+interface ImportSummary {
+  inserted: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
 
 interface UserForm {
   username: string;
@@ -52,17 +75,28 @@ const emptyUserForm: UserForm = {
 
 export default function UsersPage() {
   const { t } = useLanguage();
-  const [factories, setFactories] = useState<Factory[]>(initialFactories);
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [tab, setTab] = useState("users");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: userData, reload: reloadUsers } =
+    useApi<UserRow[]>("/api/users");
+  const { data: factoryData, reload: reloadFactories } =
+    useApi<Factory[]>("/api/factories");
+
+  const factories = factoryData ?? [];
+  const factoryOptions = factories.map((f) => ({
+    value: String(f.id),
+    label: f.name,
+  }));
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyUserForm);
 
-  const sortedUsers = useMemo(
-    () => [...users].sort((a, b) => a.id - b.id),
-    [users]
-  );
+  const sortedUsers = useMemo(() => {
+    const users = userData ?? [];
+    return [...users].sort((a, b) => a.name.localeCompare(b.name));
+  }, [userData]);
 
   function openCreate() {
     setEditingId(null);
@@ -70,10 +104,10 @@ export default function UsersPage() {
     setDialogOpen(true);
   }
 
-  function openEdit(u: User) {
+  function openEdit(u: UserRow) {
     setEditingId(u.id);
     setForm({
-      username: u.username,
+      username: u.username ?? u.name,
       password: "",
       factoryId: u.factoryId ? String(u.factoryId) : "",
       isAdmin: u.isAdmin ? "true" : "false",
@@ -81,37 +115,90 @@ export default function UsersPage() {
     setDialogOpen(true);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const isAdmin = form.isAdmin === "true";
     const factoryId = isAdmin ? null : Number(form.factoryId) || null;
     if (!form.username.trim()) return;
 
-    if (editingId === null) {
-      const id = Math.max(0, ...users.map((u) => u.id)) + 1;
-      setUsers((prev) => [
-        ...prev,
-        {
-          id,
+    try {
+      if (editingId === null) {
+        await apiPost("/api/users", {
           username: form.username.trim(),
+          password: form.password,
           factoryId,
           isAdmin,
-        },
-      ]);
-    } else {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingId
-            ? { ...u, username: form.username.trim(), factoryId, isAdmin }
-            : u
-        )
-      );
+        });
+      } else {
+        await apiPatch(`/api/users/${editingId}`, {
+          username: form.username.trim(),
+          ...(form.password ? { password: form.password } : {}),
+          factoryId,
+          isAdmin,
+        });
+      }
+      setDialogOpen(false);
+      reloadUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan.");
     }
-    setDialogOpen(false);
   }
 
-  function handleDeleteUser(id: number) {
-    setUsers((prev) => prev.filter((u) => u.id !== id));
+  async function handleDeleteUser(id: string) {
+    try {
+      await apiDelete(`/api/users/${id}`);
+      reloadUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
+  async function addFactory(name: string) {
+    try {
+      await apiPost("/api/factories", { name });
+      reloadFactories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menambah.");
+    }
+  }
+
+  async function renameFactory(id: number, name: string) {
+    try {
+      await apiPatch(`/api/factories/${id}`, { name });
+      reloadFactories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengubah.");
+    }
+  }
+
+  async function deleteFactory(id: number) {
+    try {
+      await apiDelete(`/api/factories/${id}`);
+      reloadFactories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await apiUpload<ImportSummary>(
+        "/api/excel/users/import",
+        file
+      );
+      toast.success(
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`${result.errors.length} baris bermasalah.`);
+      }
+      reloadUsers();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal import.");
+    }
+    e.target.value = "";
   }
 
   return (
@@ -119,9 +206,41 @@ export default function UsersPage() {
       <PageHeader
         title={t("users.title")}
         description={t("users.description")}
+        actions={
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadUrl("/api/excel/users/template")}
+            >
+              <FileDown className="size-4" /> {t("common.template")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="size-4" /> {t("common.importExcel")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadUrl("/api/excel/users/export")}
+            >
+              <Download className="size-4" /> {t("common.exportExcel")}
+            </Button>
+          </>
+        }
       />
 
-      <Tabs defaultValue="users" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
           <TabsTrigger value="users">{t("users.tabAccounts")}</TabsTrigger>
           <TabsTrigger value="factories">{t("users.tabFactories")}</TabsTrigger>
@@ -147,12 +266,9 @@ export default function UsersPage() {
                 <TableBody>
                   {sortedUsers.map((u) => (
                     <TableRow key={u.id}>
-                      <TableCell className="font-medium">{u.username}</TableCell>
+                      <TableCell className="font-medium">{u.name}</TableCell>
                       <TableCell>
-                        {u.isAdmin
-                          ? "-"
-                          : factories.find((f) => f.id === u.factoryId)?.name ??
-                            "-"}
+                        {u.isAdmin ? "-" : u.factoryName ?? "-"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={u.isAdmin ? "default" : "secondary"}>
@@ -191,20 +307,9 @@ export default function UsersPage() {
               <MasterList
                 items={factories}
                 addPlaceholder={t("users.newFactory")}
-                onAdd={(name) =>
-                  setFactories((prev) => [
-                    ...prev,
-                    { id: Math.max(0, ...prev.map((f) => f.id)) + 1, name },
-                  ])
-                }
-                onRename={(id, name) =>
-                  setFactories((prev) =>
-                    prev.map((f) => (f.id === id ? { ...f, name } : f))
-                  )
-                }
-                onDelete={(id) =>
-                  setFactories((prev) => prev.filter((f) => f.id !== id))
-                }
+                onAdd={addFactory}
+                onRename={renameFactory}
+                onDelete={deleteFactory}
               />
             </CardContent>
           </Card>

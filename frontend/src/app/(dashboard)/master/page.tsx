@@ -1,28 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
+import { useApi } from "@/lib/use-api";
+import type { Problem, Product, Status } from "@/lib/types";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  problems as initialProblems,
-  products as initialProducts,
-  statuses as initialStatuses,
-} from "@/lib/mock-data";
-import type { Problem, Product, Status } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Download, Upload } from "lucide-react";
+import { Download, FileDown, Upload } from "lucide-react";
+
+interface ImportSummary {
+  inserted: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
 
 export default function MasterPage() {
   const { t } = useLanguage();
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [problems, setProblems] = useState<Problem[]>(initialProblems);
-  const [statuses, setStatuses] = useState<Status[]>(initialStatuses);
+  const [tab, setTab] = useState("products");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function nextId(list: { id: number }[]): number {
-    return Math.max(0, ...list.map((i) => i.id)) + 1;
+  const { data: productData, reload: reloadProducts } =
+    useApi<Product[]>("/api/products");
+  const { data: problemData, reload: reloadProblems } =
+    useApi<Problem[]>("/api/problems");
+  const { data: statusData, reload: reloadStatuses } =
+    useApi<Status[]>("/api/statuses");
+
+  const products = productData ?? [];
+  const problems = problemData ?? [];
+  const statuses = statusData ?? [];
+
+  async function addItem(endpoint: string, name: string, reload: () => void) {
+    try {
+      await apiPost(endpoint, { name });
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menambah.");
+    }
+  }
+
+  async function renameItem(
+    endpoint: string,
+    id: number,
+    name: string,
+    reload: () => void
+  ) {
+    try {
+      await apiPatch(`${endpoint}/${id}`, { name });
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal mengubah.");
+    }
+  }
+
+  async function deleteItem(endpoint: string, id: number, reload: () => void) {
+    try {
+      await apiDelete(`${endpoint}/${id}`);
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await apiUpload<ImportSummary>(
+        `/api/excel/${tab}/import`,
+        file
+      );
+      toast.success(
+        `Import selesai: ${result.inserted} masuk, ${result.skipped} dilewati.`
+      );
+      if (result.errors.length > 0) {
+        toast.warning(`${result.errors.length} baris bermasalah.`);
+      }
+      if (tab === "products") reloadProducts();
+      if (tab === "problems") reloadProblems();
+      if (tab === "statuses") reloadStatuses();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal import.");
+    }
+    e.target.value = "";
   }
 
   return (
@@ -32,17 +97,39 @@ export default function MasterPage() {
         description={t("master.description")}
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadUrl(`/api/excel/${tab}/template`)}
+            >
+              <FileDown className="size-4" /> {t("common.template")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Upload className="size-4" /> {t("common.importExcel")}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadUrl(`/api/excel/${tab}/export`)}
+            >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
           </>
         }
       />
 
-      <Tabs defaultValue="products" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
           <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
@@ -55,16 +142,12 @@ export default function MasterPage() {
               <MasterList
                 items={products}
                 addPlaceholder={t("master.newProduct")}
-                onAdd={(name) =>
-                  setProducts((prev) => [...prev, { id: nextId(prev), name }])
-                }
+                onAdd={(name) => addItem("/api/products", name, reloadProducts)}
                 onRename={(id, name) =>
-                  setProducts((prev) =>
-                    prev.map((p) => (p.id === id ? { ...p, name } : p))
-                  )
+                  renameItem("/api/products", id, name, reloadProducts)
                 }
                 onDelete={(id) =>
-                  setProducts((prev) => prev.filter((p) => p.id !== id))
+                  deleteItem("/api/products", id, reloadProducts)
                 }
               />
             </TabsContent>
@@ -72,16 +155,12 @@ export default function MasterPage() {
               <MasterList
                 items={problems}
                 addPlaceholder={t("master.newProblem")}
-                onAdd={(name) =>
-                  setProblems((prev) => [...prev, { id: nextId(prev), name }])
-                }
+                onAdd={(name) => addItem("/api/problems", name, reloadProblems)}
                 onRename={(id, name) =>
-                  setProblems((prev) =>
-                    prev.map((p) => (p.id === id ? { ...p, name } : p))
-                  )
+                  renameItem("/api/problems", id, name, reloadProblems)
                 }
                 onDelete={(id) =>
-                  setProblems((prev) => prev.filter((p) => p.id !== id))
+                  deleteItem("/api/problems", id, reloadProblems)
                 }
               />
             </TabsContent>
@@ -89,16 +168,12 @@ export default function MasterPage() {
               <MasterList
                 items={statuses}
                 addPlaceholder={t("master.newStatus")}
-                onAdd={(name) =>
-                  setStatuses((prev) => [...prev, { id: nextId(prev), name }])
-                }
+                onAdd={(name) => addItem("/api/statuses", name, reloadStatuses)}
                 onRename={(id, name) =>
-                  setStatuses((prev) =>
-                    prev.map((p) => (p.id === id ? { ...p, name } : p))
-                  )
+                  renameItem("/api/statuses", id, name, reloadStatuses)
                 }
                 onDelete={(id) =>
-                  setStatuses((prev) => prev.filter((p) => p.id !== id))
+                  deleteItem("/api/statuses", id, reloadStatuses)
                 }
               />
             </TabsContent>

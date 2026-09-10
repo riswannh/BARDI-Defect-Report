@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { authClient } from "@/lib/auth-client";
 import { useLanguage } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
@@ -18,23 +18,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
-  const { login, user } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!isPending && session?.user) {
       router.replace("/report");
     }
-  }, [user, router]);
+  }, [isPending, session, router]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = login(username, password);
-    if (!ok) {
+    setSubmitting(true);
+    setError(false);
+    const { error: signInError } = await authClient.signIn.username({
+      username,
+      password,
+    });
+    setSubmitting(false);
+    if (signInError) {
       setError(true);
       return;
     }
@@ -105,8 +112,8 @@ export default function LoginPage() {
                 {t("login.error")}
               </p>
             )}
-            <Button type="submit" className="w-full">
-              {t("login.submit")}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? t("common.loading") : t("login.submit")}
             </Button>
           </form>
 

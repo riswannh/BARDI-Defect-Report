@@ -14,7 +14,7 @@ import {
   type PeriodFilter,
 } from "@/lib/period";
 import { db } from "@/lib/db";
-import { defects, products, sales } from "@/lib/db/schema";
+import { defects, factories, problems, products, sales, statuses } from "@/lib/db/schema";
 import {
   requireUser,
   scopedFactoryId,
@@ -71,11 +71,15 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows] = await Promise.all([
-    db.select().from(defects).where(defectWhere),
-    db.select().from(sales).where(saleWhere),
-    db.select().from(products),
-  ]);
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows] =
+    await Promise.all([
+      db.select().from(defects).where(defectWhere),
+      db.select().from(sales).where(saleWhere),
+      db.select().from(products),
+      db.select().from(problems),
+      db.select().from(statuses),
+      db.select().from(factories),
+    ]);
 
   const appDefects = defectRows.map((row) => ({
     id: row.id,
@@ -126,5 +130,9 @@ export async function reportGET(req: NextRequest) {
     totals: user.isAdmin
       ? totals
       : { defectQty: totals.defectQty, salesQty: totals.salesQty },
+    products: productRows.map((row) => ({ id: row.id, name: row.name })),
+    problems: problemRows.map((row) => ({ id: row.id, name: row.name })),
+    statuses: statusRows.map((row) => ({ id: row.id, name: row.name })),
+    factories: factoryRows.map((row) => ({ id: row.id, name: row.name })),
   });
 }

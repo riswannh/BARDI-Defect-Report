@@ -1,34 +1,25 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-
-const emptySubscribe = () => () => {};
-
-function useMounted(): boolean {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
-}
+import { useLanguage } from "@/lib/i18n";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const mounted = useMounted();
+  const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (!loading && !user) {
       router.replace("/login");
     }
-  }, [mounted, user, router]);
+  }, [loading, user, router]);
 
-  if (!mounted || !user) {
+  if (loading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Memuat…
+        {t("common.loading")}
       </div>
     );
   }

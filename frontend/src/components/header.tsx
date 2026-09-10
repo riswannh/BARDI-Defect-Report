@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import { factories } from "@/lib/mock-data";
+import { useApi } from "@/lib/use-api";
+import type { Factory } from "@/lib/types";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +20,12 @@ import { LogOut, ShieldCheck, ShieldAlert, User } from "lucide-react";
 export function Header() {
   const { user, logout, isAdmin } = useAuth();
   const { t } = useLanguage();
+  const { data: factories } = useApi<Factory[]>("/api/factories");
 
   if (!user) return null;
 
   const factoryName = user.factoryId
-    ? factories.find((f) => f.id === user.factoryId)?.name ?? "-"
+    ? factories?.find((f) => f.id === user.factoryId)?.name ?? "-"
     : t("header.allFactories");
 
   return (

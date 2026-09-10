@@ -14,23 +14,19 @@ import {
 } from "recharts";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import {
-  buildChartBuckets,
-  summarizeByProduct,
-  totalDefectQty,
-  totalDefectValue,
-  totalSalesQty,
-  totalSalesValue,
-  type ChartBucket,
-} from "@/lib/analytics";
+import { buildChartBuckets, type ChartBucket } from "@/lib/analytics";
 import { formatDateTime, formatIDR, formatNumber, MONTHS } from "@/lib/format";
-import {
-  matchesDefectPeriod,
-  matchesSalePeriod,
-  type PeriodFilter,
-} from "@/lib/period";
-import { defects as allDefects, factories, factoryOptions, problems, products, sales as allSales, statuses } from "@/lib/mock-data";
-import type { PeriodType } from "@/lib/types";
+import type { PeriodFilter } from "@/lib/period";
+import { useApi } from "@/lib/use-api";
+import type {
+  Defect,
+  Factory,
+  PeriodType,
+  Problem,
+  Product,
+  Sale,
+  Status,
+} from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
@@ -154,8 +150,36 @@ type RecapSortKey =
   | "salesValue"
   | "ratio";
 
+interface RecapRow {
+  productId: number;
+  productName: string;
+  defectQty: number;
+  defectValue?: number;
+  salesQty: number;
+  salesValue?: number;
+  ratio: number | null;
+}
+
+interface ReportResponse {
+  period: PeriodFilter;
+  defects: Defect[];
+  sales: Sale[];
+  recap: RecapRow[];
+  buckets: ChartBucket[];
+  totals: {
+    defectQty: number;
+    defectValue?: number;
+    salesQty: number;
+    salesValue?: number;
+  };
+  products: Product[];
+  problems: Problem[];
+  statuses: Status[];
+  factories: Factory[];
+}
+
 export default function ReportPage() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const { t } = useLanguage();
 
   const [period, setPeriod] = useState<PeriodType>("monthly");
@@ -173,42 +197,27 @@ export default function ReportPage() {
   const [recapPageSize, setRecapPageSize] = useState(10);
   const [detailProductId, setDetailProductId] = useState<number | null>(null);
 
-  const filtered = useMemo(() => {
-    const f: PeriodFilter = { period, month, day, weekEnd, from, to };
-    const factoryFilter = (factoryIdValue: number) =>
-      user?.isAdmin
-        ? factoryId === "all" || factoryId === String(factoryIdValue)
-        : user?.factoryId === factoryIdValue;
+  const reportParams = new URLSearchParams({
+    period,
+    month,
+    day,
+    weekEnd,
+    from,
+    to,
+  });
+  if (isAdmin && factoryId !== "all") reportParams.set("factoryId", factoryId);
+  const reportUrl = `/api/report?${reportParams.toString()}`;
+  const { data: report, loading: reportLoading } =
+    useApi<ReportResponse>(reportUrl);
 
-    const defects = allDefects.filter(
-      (d) =>
-        factoryFilter(d.factoryId) && matchesDefectPeriod(d.timestamp, f)
-    );
-    const sales = allSales.filter(
-      (s) => factoryFilter(s.factoryId) && matchesSalePeriod(s.month, f)
-    );
-
-    return { defects, sales };
-  }, [period, month, day, weekEnd, from, to, factoryId, user]);
-
-  const buckets = useMemo(
-    () =>
-      buildChartBuckets(filtered.defects, filtered.sales, {
-        period,
-        month,
-        day,
-        weekEnd,
-        from,
-        to,
-      }),
-    [filtered, period, month, day, weekEnd, from, to]
-  );
-  const recap = useMemo(
-    () => summarizeByProduct(filtered.defects, filtered.sales, products),
-    [filtered]
-  );
+  const buckets = report?.buckets ?? [];
+  const products = report?.products ?? [];
+  const problems = report?.problems ?? [];
+  const statuses = report?.statuses ?? [];
+  const factories = report?.factories ?? [];
 
   const visibleRecap = useMemo(() => {
+    const recap = report?.recap ?? [];
     const q = recapSearch.trim().toLowerCase();
     const rows = q
       ? recap.filter((r) => r.productName.toLowerCase().includes(q))
@@ -222,7 +231,7 @@ export default function ReportPage() {
       const bv = b[sortKey] ?? -1;
       return (av - bv) * dir;
     });
-  }, [recap, recapSearch, sortKey, sortDir]);
+  }, [report, recapSearch, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRecap.length / recapPageSize));
   const currentPage = Math.min(page, totalPages);
@@ -235,21 +244,19 @@ export default function ReportPage() {
     detailProductId === null
       ? null
       : products.find((p) => p.id === detailProductId) ?? null;
-  const detailDefects = useMemo(
-    () =>
-      detailProductId === null
-        ? []
-        : filtered.defects.filter((d) => d.productId === detailProductId),
-    [filtered.defects, detailProductId]
-  );
+  const detailDefects = useMemo(() => {
+    const filteredDefects = report?.defects ?? [];
+    return detailProductId === null
+      ? []
+      : filteredDefects.filter((d) => d.productId === detailProductId);
+  }, [report, detailProductId]);
 
-  const detailSales = useMemo(
-    () =>
-      detailProductId === null
-        ? []
-        : filtered.sales.filter((s) => s.productId === detailProductId),
-    [filtered.sales, detailProductId]
-  );
+  const detailSales = useMemo(() => {
+    const filteredSales = report?.sales ?? [];
+    return detailProductId === null
+      ? []
+      : filteredSales.filter((s) => s.productId === detailProductId);
+  }, [report, detailProductId]);
 
   const detailBuckets = useMemo(
     () =>
@@ -286,10 +293,10 @@ export default function ReportPage() {
     );
   }
 
-  const dQty = totalDefectQty(filtered.defects);
-  const dVal = totalDefectValue(filtered.defects);
-  const sQty = totalSalesQty(filtered.sales);
-  const sVal = totalSalesValue(filtered.sales);
+  const dQty = report?.totals.defectQty ?? 0;
+  const dVal = report?.totals.defectValue ?? 0;
+  const sQty = report?.totals.salesQty ?? 0;
+  const sVal = report?.totals.salesValue ?? 0;
 
   return (
     <div>
@@ -378,7 +385,10 @@ export default function ReportPage() {
               <Label>{t("common.factory")}</Label>
               <Select value={factoryId} onValueChange={(v) => setFactoryId(String(v))} items={[
                 { value: "all", label: t("header.allFactories") },
-                ...factoryOptions,
+                ...factories.map((f) => ({
+                  value: String(f.id),
+                  label: f.name,
+                })),
               ]}>
                 <SelectTrigger className="w-44">
                   <SelectValue />
@@ -596,7 +606,7 @@ export default function ReportPage() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      {formatIDR(row.defectValue)}
+                      {formatIDR(row.defectValue ?? 0)}
                     </TableCell>
                   )}
                   <TableCell className="text-right">
@@ -604,7 +614,7 @@ export default function ReportPage() {
                   </TableCell>
                   {isAdmin && (
                     <TableCell className="text-right">
-                      {formatIDR(row.salesValue)}
+                      {formatIDR(row.salesValue ?? 0)}
                     </TableCell>
                   )}
                   <TableCell className="text-right">
@@ -618,7 +628,7 @@ export default function ReportPage() {
                     colSpan={isAdmin ? 6 : 4}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    {t("common.noData")}
+                    {reportLoading ? t("common.loading") : t("common.noData")}
                   </TableCell>
                 </TableRow>
               )}

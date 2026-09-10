@@ -46,7 +46,9 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 
 ## Konvensi Aplikasi
 
-- Bahasa UI: Indonesia
-- Auth masih mock/client-side (localStorage), user admin: `admin`, user pabrik: `pabrik_jkt`, `pabrik_sby`, `pabrik_bdg`
-- Value (IDR) hanya tampil untuk role admin
+- Bahasa UI: Indonesia (i18n: Indonesia/English/中文)
+- Auth: Better Auth session cookie via `src/lib/auth-client.ts`; frontend fetch API di `src/lib/api-client.ts` + hook `src/lib/use-api.ts`
+- Kredensial seed: `admin/admin123`, `pabrik_jkt/pabrik123`, `pabrik_sby/pabrik123`, `pabrik_bdg/pabrik123`
+- Value (IDR) hanya tampil untuk role admin (dihapus dari respons API untuk role pabrik)
 - Data defect pakai timestamp lengkap (tanggal + jam); data sales per bulan (avg per hari untuk chart harian/mingguan/rentang)
+- Halaman Report mengambil data dari `GET /api/report` (recap + buckets + totals dihitung di server)
