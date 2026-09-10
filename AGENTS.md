@@ -27,6 +27,23 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - `PRD.md` — dokumen kebutuhan produk (Web Analisa Defect dan Sales Produk)
 - `frontend/` — aplikasi Next.js 16 (App Router, Tailwind v4, Base UI, Recharts)
 
+## Backend (di `frontend/`)
+
+- **Stack**: Next.js Route Handlers + Drizzle ORM + SQLite (better-sqlite3) + Better Auth + SheetJS (xlsx)
+- **Env** (`.env`, tidak di-commit): `DB_FILE_NAME`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+- **Perintah**:
+  - `npm run db:push` — sinkronkan schema ke SQLite
+  - `npm run db:seed` — isi data awal (idempotent, skip jika sudah ada data)
+- **Kredensial seed**: `admin/admin123`, `pabrik_jkt/pabrik123`, `pabrik_sby/pabrik123`, `pabrik_bdg/pabrik123`
+- **Struktur**:
+  - `src/lib/db/schema.ts` — tabel (auth + factories/products/problems/statuses/defects/sales)
+  - `src/lib/db/index.ts` — koneksi Drizzle
+  - `src/lib/auth.ts` — konfigurasi Better Auth (username plugin, field `isAdmin` & `factoryId`)
+  - `src/lib/api/*` — guard role, validasi zod, CRUD, report, Excel
+  - `src/app/api/*` — route handlers
+- **Aturan akses**: Admin bisa semua; role Pabrik hanya data pabriknya & field `value` dihapus dari respons
+- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, defects, sales, users)
+
 ## Konvensi Aplikasi
 
 - Bahasa UI: Indonesia
