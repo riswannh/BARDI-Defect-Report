@@ -86,6 +86,31 @@ interface ChartTooltipProps {
   metric?: "qty" | "value";
 }
 
+function ratioClass(ratio: number | null): string {
+  if (ratio === null) return "text-muted-foreground";
+  const pct = ratio * 100;
+  if (pct < 1)
+    return "bg-emerald-500/12 text-emerald-700 ring-emerald-500/30 dark:text-emerald-400";
+  if (pct <= 2)
+    return "bg-amber-500/15 text-amber-700 ring-amber-500/30 dark:text-amber-400";
+  return "bg-red-500/12 text-red-700 ring-red-500/30 dark:text-red-400";
+}
+
+function RatioBadge({ ratio }: { ratio: number | null }) {
+  if (ratio === null) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 tabular-nums ${ratioClass(
+        ratio
+      )}`}
+    >
+      {(ratio * 100).toFixed(2)}%
+    </span>
+  );
+}
+
 function ChartTooltip({
   active,
   label,
@@ -114,7 +139,7 @@ function ChartTooltip({
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground">{t("report.ratio")}</span>
-          <span>{ratio === null ? "-" : `${(ratio * 100).toFixed(2)}%`}</span>
+          <RatioBadge ratio={ratio} />
         </div>
       </div>
     </div>
@@ -583,9 +608,7 @@ export default function ReportPage() {
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    {row.ratio === null
-                      ? "-"
-                      : `${(row.ratio * 100).toFixed(2)}%`}
+                    <RatioBadge ratio={row.ratio} />
                   </TableCell>
                 </TableRow>
               ))}
