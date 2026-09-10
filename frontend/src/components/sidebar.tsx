@@ -48,13 +48,13 @@ export function Sidebar() {
       />
 
       <div className="relative flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
-        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/95 shadow-lg shadow-black/20 ring-1 ring-white/40">
+        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden bg-white shadow-lg shadow-black/20 ring-1 ring-white/40">
           <Image
             src="/logo.png"
             alt="Logo"
             width={36}
             height={36}
-            className="size-8 object-contain"
+            className="size-9 object-cover"
             priority
           />
         </span>

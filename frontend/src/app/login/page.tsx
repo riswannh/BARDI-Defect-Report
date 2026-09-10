@@ -62,13 +62,13 @@ export default function LoginPage() {
 
       <Card className="animate-fade-in-up relative w-full max-w-sm gap-5 rounded-2xl shadow-2xl shadow-[oklch(0.648_0.1_209.8/0.18)] ring-1 ring-foreground/8 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto flex size-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg shadow-[oklch(0.648_0.1_209.8/0.25)] ring-1 ring-primary/15">
+          <div className="mx-auto flex size-16 items-center justify-center overflow-hidden bg-white shadow-lg shadow-[oklch(0.648_0.1_209.8/0.25)] ring-1 ring-primary/15">
             <Image
               src="/logo.png"
               alt="Logo"
               width={64}
               height={64}
-              className="size-14 object-contain"
+              className="size-16 object-cover"
               priority
             />
           </div>
