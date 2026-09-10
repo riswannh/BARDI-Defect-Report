@@ -22,6 +22,13 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - Git: `C:\Program Files\Git\cmd\git.exe`
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe`
 
+## Alur Kerja: Development vs Docker (PENTING)
+
+- **Development (default)**: jalankan `npm run dev` di folder `frontend/`. **JANGAN** build image Docker setiap ada perubahan — build memakan waktu lama.
+- **Docker**: hanya build/up saat semua fitur sudah final atau siap deploy: `docker compose up -d --build`.
+- Development memakai database yang sama dengan Docker: `frontend/.env` → `DB_FILE_NAME=../data/sqlite.db`
+- Jangan jalankan dev server dan container Docker bersamaan (port 3000 bentrok) — stop salah satu.
+
 ## Docker
 
 - `docker compose up -d --build` — build & jalankan app di http://localhost:3000
