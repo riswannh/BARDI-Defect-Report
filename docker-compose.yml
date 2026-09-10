@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: ./frontend
+    image: bardi-defect-report:latest
+    container_name: bardi-defect-report
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DB_FILE_NAME: /data/sqlite.db
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-ubah-secret-ini-minimal-32-karakter}
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s

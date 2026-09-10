@@ -1,0 +1,18 @@
+node_modules
+.next
+.env
+.env.*
+!.env.example
+
+# database lokal
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# misc
+npm-debug.log*
+.git
+.gitignore
+.DS_Store
+*.md

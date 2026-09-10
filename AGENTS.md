@@ -22,6 +22,15 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - Git: `C:\Program Files\Git\cmd\git.exe`
 - GitHub CLI: `C:\Program Files\GitHub CLI\gh.exe`
 
+## Docker
+
+- `docker compose up -d --build` — build & jalankan app di http://localhost:3000
+- `docker compose logs -f` — lihat log; `docker compose down` — stop
+- Data SQLite tersimpan di `./data/sqlite.db` (bind mount, tidak di-commit)
+- Env root `.env` (contoh: `.env.example`): `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+- Saat start container menjalankan `drizzle-kit push --force` + seed (idempotent) lalu `next start`
+- Dockerfile di `frontend/Dockerfile` (image `bardi-defect-report:latest`)
+
 ## Struktur Project
 
 - `PRD.md` — dokumen kebutuhan produk (Web Analisa Defect dan Sales Produk)

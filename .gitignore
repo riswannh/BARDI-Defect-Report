@@ -10,3 +10,6 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Data SQLite (Docker volume)
+data/
