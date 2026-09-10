@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tool settings
+.claude/settings.local.json
+.claude/*.lock
+
+# Env
+.env
+.env.local
+.env.*.local
