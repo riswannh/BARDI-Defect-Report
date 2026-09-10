@@ -398,23 +398,38 @@ async function importUsers(sheet: SheetRow[]) {
       continue;
     }
 
-    const factoryId = isAdmin
-      ? null
-      : factoryMap.get(cellString(row.Pabrik).toLowerCase()) ?? null;
-    if (!isAdmin && !factoryId) {
-      result.errors.push({
-        row: i + 2,
-        reason: "Pabrik tidak ditemukan untuk user non-admin",
-      });
-      continue;
+    let factoryId: number | null = null;
+    if (!isAdmin) {
+      const factoryName = cellString(row.Pabrik);
+      if (!factoryName) {
+        result.errors.push({
+          row: i + 2,
+          reason: "Pabrik kosong untuk user non-admin",
+        });
+        continue;
+      }
+      const known = factoryMap.get(factoryName.toLowerCase());
+      if (known) {
+        factoryId = known;
+      } else {
+        const [created] = await db
+          .insert(factories)
+          .values({ name: factoryName })
+          .returning();
+        factoryId = created.id;
+        factoryMap.set(factoryName.toLowerCase(), created.id);
+      }
     }
 
     try {
       await createUserAccount({ username, password, isAdmin, factoryId });
       existing.add(username.toLowerCase());
       result.inserted++;
-    } catch {
-      result.errors.push({ row: i + 2, reason: "Gagal membuat user" });
+    } catch (err) {
+      result.errors.push({
+        row: i + 2,
+        reason: err instanceof Error ? err.message : "Gagal membuat user",
+      });
     }
   }
   return jsonOk(result);

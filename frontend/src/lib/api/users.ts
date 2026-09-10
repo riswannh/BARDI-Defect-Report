@@ -8,7 +8,11 @@ import { jsonError, jsonOk } from "@/lib/api/response";
 import { userCreateSchema, userUpdateSchema } from "@/lib/api/validation";
 
 function syntheticEmail(username: string) {
-  return `${username.toLowerCase()}@pabrik.local`;
+  const local = username
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, ".")
+    .replace(/^[._-]+|[._-]+$/g, "");
+  return `${local || "user"}@pabrik.local`;
 }
 
 export async function createUserAccount(input: {
@@ -80,8 +84,11 @@ export async function usersPOST(req: NextRequest) {
       factoryId,
     });
     return jsonOk({ id, username, isAdmin, factoryId }, 201);
-  } catch {
-    return jsonError("Gagal membuat user.", 500);
+  } catch (err) {
+    return jsonError(
+      err instanceof Error ? err.message : "Gagal membuat user.",
+      400
+    );
   }
 }
 

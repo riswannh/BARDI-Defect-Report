@@ -33,7 +33,12 @@ export const auth = betterAuth({
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
   },
-  plugins: [username()],
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      usernameValidator: (value) => /^[a-zA-Z0-9 _.-]+$/.test(value),
+    }),
+  ],
 });
 
 export type AuthSession = typeof auth.$Infer.Session;
