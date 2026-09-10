@@ -8,6 +8,7 @@ import { useApi } from "@/lib/use-api";
 import type { Problem, Product, Status } from "@/lib/types";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,22 @@ export default function MasterPage() {
   const products = productData ?? [];
   const problems = problemData ?? [];
   const statuses = statusData ?? [];
+
+  const [pageSize, setPageSize] = useState(10);
+  const [pageState, setPageState] = useState({ signature: tab, page: 1 });
+  const page = pageState.signature === tab ? pageState.page : 1;
+  const setPage = (next: number) =>
+    setPageState({ signature: tab, page: next });
+
+  const activeItems =
+    tab === "products" ? products : tab === "problems" ? problems : statuses;
+  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pagedProducts = products.slice(start, end);
+  const pagedProblems = problems.slice(start, end);
+  const pagedStatuses = statuses.slice(start, end);
 
   async function addItem(endpoint: string, name: string, reload: () => void) {
     try {
@@ -140,7 +157,7 @@ export default function MasterPage() {
           <CardContent className="pt-4">
             <TabsContent value="products">
               <MasterList
-                items={products}
+                items={pagedProducts}
                 addPlaceholder={t("master.newProduct")}
                 onAdd={(name) => addItem("/api/products", name, reloadProducts)}
                 onRename={(id, name) =>
@@ -150,10 +167,24 @@ export default function MasterPage() {
                   deleteItem("/api/products", id, reloadProducts)
                 }
               />
+              {products.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={products.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="problems">
               <MasterList
-                items={problems}
+                items={pagedProblems}
                 addPlaceholder={t("master.newProblem")}
                 onAdd={(name) => addItem("/api/problems", name, reloadProblems)}
                 onRename={(id, name) =>
@@ -163,10 +194,24 @@ export default function MasterPage() {
                   deleteItem("/api/problems", id, reloadProblems)
                 }
               />
+              {problems.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={problems.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="statuses">
               <MasterList
-                items={statuses}
+                items={pagedStatuses}
                 addPlaceholder={t("master.newStatus")}
                 onAdd={(name) => addItem("/api/statuses", name, reloadStatuses)}
                 onRename={(id, name) =>
@@ -176,6 +221,20 @@ export default function MasterPage() {
                   deleteItem("/api/statuses", id, reloadStatuses)
                 }
               />
+              {statuses.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={statuses.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </TabsContent>
           </CardContent>
         </Card>

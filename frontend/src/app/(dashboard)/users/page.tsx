@@ -14,6 +14,7 @@ import { useApi } from "@/lib/use-api";
 import type { Factory } from "@/lib/types";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,6 +98,20 @@ export default function UsersPage() {
     const users = userData ?? [];
     return [...users].sort((a, b) => a.name.localeCompare(b.name));
   }, [userData]);
+
+  const [pageSize, setPageSize] = useState(10);
+  const [pageState, setPageState] = useState({ signature: tab, page: 1 });
+  const page = pageState.signature === tab ? pageState.page : 1;
+  const setPage = (next: number) =>
+    setPageState({ signature: tab, page: next });
+
+  const activeItems = tab === "users" ? sortedUsers : factories;
+  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pagedUsers = sortedUsers.slice(start, end);
+  const pagedFactories = factories.slice(start, end);
 
   function openCreate() {
     setEditingId(null);
@@ -264,7 +279,7 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedUsers.map((u) => (
+                  {pagedUsers.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.name}</TableCell>
                       <TableCell>
@@ -297,6 +312,20 @@ export default function UsersPage() {
                   ))}
                 </TableBody>
               </Table>
+              {sortedUsers.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={sortedUsers.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -305,12 +334,26 @@ export default function UsersPage() {
           <Card size="sm">
             <CardContent className="pt-4">
               <MasterList
-                items={factories}
+                items={pagedFactories}
                 addPlaceholder={t("users.newFactory")}
                 onAdd={addFactory}
                 onRename={renameFactory}
                 onDelete={deleteFactory}
               />
+              {factories.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={factories.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
