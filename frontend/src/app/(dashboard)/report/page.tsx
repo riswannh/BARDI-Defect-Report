@@ -311,6 +311,16 @@ export default function ReportPage() {
   const [page, setPage] = useState(1);
   const [recapPageSize, setRecapPageSize] = useState(10);
   const [detailProductId, setDetailProductId] = useState<number | null>(null);
+  const [detailPageState, setDetailPageState] = useState({
+    signature: "",
+    page: 1,
+  });
+  const detailSignature = String(detailProductId ?? "");
+  const detailPage =
+    detailPageState.signature === detailSignature ? detailPageState.page : 1;
+  const setDetailPage = (next: number) =>
+    setDetailPageState({ signature: detailSignature, page: next });
+  const [detailPageSize, setDetailPageSize] = useState(10);
 
   const reportParams = new URLSearchParams({
     period,
@@ -430,6 +440,16 @@ export default function ReportPage() {
 
   const detailDefectQty = detailDefects.reduce((sum, d) => sum + d.quantity, 0);
   const detailDefectValue = detailDefects.reduce((sum, d) => sum + d.value, 0);
+
+  const detailTotalPages = Math.max(
+    1,
+    Math.ceil(detailDefects.length / detailPageSize)
+  );
+  const detailCurrentPage = Math.min(detailPage, detailTotalPages);
+  const pagedDetailDefects = detailDefects.slice(
+    (detailCurrentPage - 1) * detailPageSize,
+    detailCurrentPage * detailPageSize
+  );
 
   function toggleSort(key: RecapSortKey) {
     if (sortKey === key) {
@@ -823,7 +843,13 @@ export default function ReportPage() {
                 <TableRow
                   key={row.productId}
                   className="cursor-pointer"
-                  onClick={() => setDetailProductId(row.productId)}
+                  onClick={() => {
+                    setDetailProductId(row.productId);
+                    setDetailPageState({
+                      signature: String(row.productId),
+                      page: 1,
+                    });
+                  }}
                 >
                   <TableCell className="font-medium">{row.productName}</TableCell>
                   <TableCell className="text-right">
@@ -1082,7 +1108,7 @@ export default function ReportPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {detailDefects.map((d) => (
+                {pagedDetailDefects.map((d) => (
                   <TableRow key={d.id}>
                     <TableCell className="font-mono text-xs">
                       {d.codeGaransi}
@@ -1145,6 +1171,20 @@ export default function ReportPage() {
                 )}
               </TableBody>
             </Table>
+            {detailDefects.length > 0 && (
+              <div className="mt-3">
+                <Pagination
+                  totalItems={detailDefects.length}
+                  page={detailCurrentPage}
+                  pageSize={detailPageSize}
+                  onPageChange={setDetailPage}
+                  onPageSizeChange={(size) => {
+                    setDetailPageSize(size);
+                    setDetailPage(1);
+                  }}
+                />
+              </div>
+            )}
             </div>
           </div>
         </DialogContent>
