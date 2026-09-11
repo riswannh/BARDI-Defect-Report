@@ -187,6 +187,44 @@ function legendFormatter(value: string) {
   return value.length > 22 ? `${value.slice(0, 21)}…` : value;
 }
 
+interface PieLegendContentProps {
+  payload?: Array<{
+    value?: string | number;
+    color?: string;
+    payload?: { value?: number; name?: string };
+  }>;
+}
+
+function PieLegendContent({ payload }: PieLegendContentProps) {
+  const items = (payload ?? [])
+    .map((item) => ({
+      name: String(item.payload?.name ?? item.value ?? ""),
+      color: item.color ?? "var(--muted-foreground)",
+      value: Number(item.payload?.value ?? 0),
+    }))
+    .sort((a, b) => b.value - a.value);
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div className="flex w-full flex-col gap-1">
+      {items.map((item) => (
+        <div key={item.name} className="flex items-center gap-1.5">
+          <span
+            className="size-2.5 shrink-0 rounded-[3px]"
+            style={{ backgroundColor: item.color }}
+          />
+          <span className="truncate" title={item.name}>
+            {legendFormatter(item.name)}
+          </span>
+          <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
+            {total > 0 ? `${((item.value / total) * 100).toFixed(1)}%` : "-"}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ChartTooltip({
   active,
   label,
@@ -581,7 +619,7 @@ export default function ReportPage() {
                 <div className="mb-2 text-xs font-medium text-muted-foreground">
                   {t("report.trendTitle")}
                 </div>
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={buckets}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
@@ -607,15 +645,15 @@ export default function ReportPage() {
                 <div className="mb-2 text-xs font-medium text-muted-foreground">
                   {t("report.pieProductTitle")}
                 </div>
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
                       data={productPieQty}
                       dataKey="value"
                       nameKey="name"
-                      cx="38%"
+                      cx="36%"
                       cy="50%"
-                      outerRadius={78}
+                      outerRadius={70}
                       label={renderPieLabel}
                       labelLine={false}
                     >
@@ -631,12 +669,11 @@ export default function ReportPage() {
                       layout="vertical"
                       align="right"
                       verticalAlign="middle"
-                      iconSize={10}
-                      formatter={legendFormatter}
+                      content={<PieLegendContent />}
                       wrapperStyle={{
+                        width: "46%",
                         fontSize: 11,
-                        lineHeight: "15px",
-                        maxWidth: "48%",
+                        lineHeight: "16px",
                       }}
                     />
                   </PieChart>
@@ -657,7 +694,7 @@ export default function ReportPage() {
                   <div className="mb-2 text-xs font-medium text-muted-foreground">
                     {t("report.trendTitle")}
                   </div>
-                  <ResponsiveContainer width="100%" height={260}>
+                  <ResponsiveContainer width="100%" height={240}>
                     <BarChart data={buckets}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
@@ -685,15 +722,15 @@ export default function ReportPage() {
                   <div className="mb-2 text-xs font-medium text-muted-foreground">
                     {t("report.pieProductTitle")}
                   </div>
-                  <ResponsiveContainer width="100%" height={280}>
+                  <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
                       <Pie
                         data={productPieValue}
                         dataKey="value"
                         nameKey="name"
-                        cx="38%"
+                        cx="36%"
                         cy="50%"
-                        outerRadius={78}
+                        outerRadius={70}
                         label={renderPieLabel}
                         labelLine={false}
                       >
@@ -709,12 +746,11 @@ export default function ReportPage() {
                         layout="vertical"
                         align="right"
                         verticalAlign="middle"
-                        iconSize={10}
-                        formatter={legendFormatter}
+                        content={<PieLegendContent />}
                         wrapperStyle={{
+                          width: "46%",
                           fontSize: 11,
-                          lineHeight: "15px",
-                          maxWidth: "48%",
+                          lineHeight: "16px",
                         }}
                       />
                     </PieChart>
@@ -879,7 +915,7 @@ export default function ReportPage() {
               {t("report.detailDesc", { count: detailDefects.length })}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto">
+          <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">
@@ -937,15 +973,15 @@ export default function ReportPage() {
                     <div className="mb-2 text-xs font-medium text-muted-foreground">
                       {t("report.pieProblemTitle")}
                     </div>
-                    <ResponsiveContainer width="100%" height={220}>
+                    <ResponsiveContainer width="100%" height={180}>
                       <PieChart>
                         <Pie
                           data={detailPieQty}
                           dataKey="value"
                           nameKey="name"
-                          cx="38%"
+                          cx="36%"
                           cy="50%"
-                          outerRadius={62}
+                          outerRadius={55}
                           label={renderPieLabel}
                           labelLine={false}
                         >
@@ -961,12 +997,11 @@ export default function ReportPage() {
                           layout="vertical"
                           align="right"
                           verticalAlign="middle"
-                          iconSize={9}
-                          formatter={legendFormatter}
+                          content={<PieLegendContent />}
                           wrapperStyle={{
+                            width: "44%",
                             fontSize: 10,
                             lineHeight: "14px",
-                            maxWidth: "48%",
                           }}
                         />
                       </PieChart>
@@ -1013,15 +1048,15 @@ export default function ReportPage() {
                       <div className="mb-2 text-xs font-medium text-muted-foreground">
                         {t("report.pieProblemTitle")}
                       </div>
-                      <ResponsiveContainer width="100%" height={220}>
+                      <ResponsiveContainer width="100%" height={180}>
                         <PieChart>
                           <Pie
                             data={detailPieValue}
                             dataKey="value"
                             nameKey="name"
-                            cx="38%"
+                            cx="36%"
                             cy="50%"
-                            outerRadius={62}
+                            outerRadius={55}
                             label={renderPieLabel}
                             labelLine={false}
                           >
@@ -1037,12 +1072,11 @@ export default function ReportPage() {
                             layout="vertical"
                             align="right"
                             verticalAlign="middle"
-                            iconSize={9}
-                            formatter={legendFormatter}
+                            content={<PieLegendContent />}
                             wrapperStyle={{
+                              width: "44%",
                               fontSize: 10,
                               lineHeight: "14px",
-                              maxWidth: "48%",
                             }}
                           />
                         </PieChart>
