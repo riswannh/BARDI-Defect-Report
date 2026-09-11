@@ -15,6 +15,7 @@ import {
 import { useApi } from "@/lib/use-api";
 import type { Factory, ImportResult, Product, Sale } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -269,7 +270,8 @@ export default function SalesPage() {
   }
 
   return (
-    <div>
+    <AdminGuard>
+      <div>
       <PageHeader
         title={t("sales.title")}
         description={t("sales.description")}
@@ -632,6 +634,7 @@ export default function SalesPage() {
         label={t("sales.title")}
         onConfirm={handleDeleteAll}
       />
-    </div>
+      </div>
+    </AdminGuard>
   );
 }

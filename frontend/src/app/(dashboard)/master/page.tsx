@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/i18n";
 import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type { ImportResult, Problem, Product, Status } from "@/lib/types";
+import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
@@ -126,7 +127,8 @@ export default function MasterPage() {
   }
 
   return (
-    <div>
+    <AdminGuard>
+      <div>
       <PageHeader
         title={t("master.title")}
         description={t("master.description")}
@@ -286,6 +288,7 @@ export default function MasterPage() {
         label={tabLabel}
         onConfirm={handleDeleteAll}
       />
-    </div>
+      </div>
+    </AdminGuard>
   );
 }

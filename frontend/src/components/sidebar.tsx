@@ -23,8 +23,18 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/report", labelKey: "nav.report", icon: LayoutDashboard },
-  { href: "/sales", labelKey: "nav.sales", icon: ShoppingCart },
-  { href: "/defects", labelKey: "nav.defects", icon: AlertTriangle },
+  {
+    href: "/sales",
+    labelKey: "nav.sales",
+    icon: ShoppingCart,
+    adminOnly: true,
+  },
+  {
+    href: "/defects",
+    labelKey: "nav.defects",
+    icon: AlertTriangle,
+    adminOnly: true,
+  },
   { href: "/master", labelKey: "nav.master", icon: Database, adminOnly: true },
   { href: "/users", labelKey: "nav.users", icon: Users, adminOnly: true },
 ];

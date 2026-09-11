@@ -24,6 +24,7 @@ import type {
   Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
+import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -367,7 +368,8 @@ export default function DefectsPage() {
   }
 
   return (
-    <div>
+    <AdminGuard>
+      <div>
       <PageHeader
         title={t("defects.title")}
         description={t("defects.description")}
@@ -1084,6 +1086,7 @@ export default function DefectsPage() {
         label={t("defects.title")}
         onConfirm={handleDeleteAll}
       />
-    </div>
+      </div>
+    </AdminGuard>
   );
 }

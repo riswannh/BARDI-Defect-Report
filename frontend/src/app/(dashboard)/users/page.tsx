@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type { Factory, ImportResult } from "@/lib/types";
+import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
@@ -231,7 +232,8 @@ export default function UsersPage() {
   }
 
   return (
-    <div>
+    <AdminGuard>
+      <div>
       <PageHeader
         title={t("users.title")}
         description={t("users.description")}
@@ -490,6 +492,7 @@ export default function UsersPage() {
         note={tab === "users" ? t("deleteAll.usersNote") : undefined}
         onConfirm={handleDeleteAll}
       />
-    </div>
+      </div>
+    </AdminGuard>
   );
 }
