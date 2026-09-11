@@ -111,7 +111,14 @@ export async function reportGET(req: NextRequest) {
   const filteredSales = appSales.filter((s) => matchesSalePeriod(s.month, f));
 
   const productList = productRows.map((p) => ({ id: p.id, name: p.name }));
-  const recap = summarizeByProduct(filteredDefects, filteredSales, productList);
+  let recap = summarizeByProduct(filteredDefects, filteredSales, productList);
+
+  // Role Pabrik hanya melihat produk yang punya data (defect/sales) di pabriknya.
+  // Admin melihat semua produk.
+  if (!user.isAdmin) {
+    recap = recap.filter((row) => row.defectQty > 0 || row.salesQty > 0);
+  }
+
   const buckets = buildChartBuckets(filteredDefects, filteredSales, f);
 
   const totals = {
