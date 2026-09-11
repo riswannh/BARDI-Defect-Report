@@ -189,17 +189,17 @@ function legendFormatter(value: string) {
 function PieLegend({ data }: { data: PieSlice[] }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   return (
-    <div className="flex w-full flex-col gap-1 text-[11px] leading-4">
+    <div className="flex flex-col items-start gap-1 text-[11px] leading-4">
       {data.map((item, index) => (
         <div key={`${item.name}-${index}`} className="flex items-center gap-1.5">
           <span
             className="size-2.5 shrink-0 rounded-[3px]"
             style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
           />
-          <span className="truncate" title={item.name}>
+          <span className="shrink-0" title={item.name}>
             {legendFormatter(item.name)}
           </span>
-          <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
+          <span className="shrink-0 tabular-nums text-muted-foreground">
             {total > 0 ? `${((item.value / total) * 100).toFixed(1)}%` : "-"}
           </span>
         </div>
@@ -653,7 +653,7 @@ export default function ReportPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="w-[46%] shrink-0">
+                  <div className="max-w-[50%] shrink-0">
                     <PieLegend data={productPieQty} />
                   </div>
                 </div>
@@ -726,7 +726,7 @@ export default function ReportPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="w-[46%] shrink-0">
+                  <div className="max-w-[50%] shrink-0">
                     <PieLegend data={productPieValue} />
                   </div>
                 </div>
@@ -973,7 +973,7 @@ export default function ReportPage() {
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="w-[44%] shrink-0">
+                      <div className="max-w-[50%] shrink-0">
                         <PieLegend data={detailPieQty} />
                       </div>
                     </div>
@@ -1048,7 +1048,7 @@ export default function ReportPage() {
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        <div className="w-[44%] shrink-0">
+                        <div className="max-w-[50%] shrink-0">
                           <PieLegend data={detailPieValue} />
                         </div>
                       </div>
