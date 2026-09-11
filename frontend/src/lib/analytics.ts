@@ -169,7 +169,7 @@ function monthIndexOf(month: string): number {
   return MONTHS.indexOf(month as (typeof MONTHS)[number]);
 }
 
-function buildYearlyBuckets(
+export function buildYearlyBuckets(
   defects: Defect[],
   sales: Sale[],
   year: string

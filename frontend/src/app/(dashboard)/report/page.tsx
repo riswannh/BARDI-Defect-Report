@@ -250,6 +250,34 @@ interface PieTooltipProps {
   metric?: "qty" | "value";
 }
 
+function SalesTooltip({
+  active,
+  label,
+  payload,
+  metric = "qty",
+}: {
+  active?: boolean;
+  label?: string;
+  payload?: Array<{ payload: ChartBucket }>;
+  metric?: "qty" | "value";
+}) {
+  const { t } = useLanguage();
+  if (!active || !payload || payload.length === 0) return null;
+  const bucket = payload[0].payload;
+  const isValue = metric === "value";
+  const value = isValue ? bucket.salesValue : bucket.salesQty;
+  const format = isValue ? formatIDR : formatNumber;
+  return (
+    <div className="rounded-lg border bg-popover p-3 text-xs shadow-md">
+      <div className="mb-1.5 font-medium">{label}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-muted-foreground">{t("report.sales")}</span>
+        <span>{format(value)}</span>
+      </div>
+    </div>
+  );
+}
+
 function PieTooltip({ active, payload, metric = "qty" }: PieTooltipProps) {
   const { t } = useLanguage();
   if (!active || !payload || payload.length === 0) return null;
@@ -290,6 +318,7 @@ interface ReportResponse {
   sales: Sale[];
   recap: RecapRow[];
   buckets: ChartBucket[];
+  salesYearly: ChartBucket[];
   totals: {
     defectQty: number;
     defectValue?: number;
@@ -348,6 +377,7 @@ export default function ReportPage() {
     useApi<ReportResponse>(reportUrl);
 
   const buckets = report?.buckets ?? [];
+  const salesYearly = report?.salesYearly ?? [];
   const products = report?.products ?? [];
   const problems = report?.problems ?? [];
   const statuses = report?.statuses ?? [];
@@ -825,6 +855,62 @@ export default function ReportPage() {
                 </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>{t("report.chartSalesQtyTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={salesYearly}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="label"
+                  interval={0}
+                  tick={{ fontSize: 10 }}
+                />
+                <YAxis />
+                <Tooltip content={<SalesTooltip metric="qty" />} />
+                <Bar
+                  dataKey="salesQty"
+                  name={t("report.sales")}
+                  fill="var(--chart-2)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {isAdmin && (
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>{t("report.chartSalesValueTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={salesYearly}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="label"
+                    interval={0}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis
+                    tickFormatter={(v) => compactIDR.format(Number(v))}
+                  />
+                  <Tooltip content={<SalesTooltip metric="value" />} />
+                  <Bar
+                    dataKey="salesValue"
+                    name={t("report.sales")}
+                    fill="var(--chart-2)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         )}

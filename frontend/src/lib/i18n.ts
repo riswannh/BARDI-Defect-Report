@@ -192,6 +192,16 @@ const translations = {
     en: "Total Defect — Value (IDR)",
     zh: "缺陷总数 — 金额 (IDR)",
   },
+  "report.chartSalesQtyTitle": {
+    id: "Total Sales — Quantity",
+    en: "Total Sales — Quantity",
+    zh: "销售总额 — 数量",
+  },
+  "report.chartSalesValueTitle": {
+    id: "Total Sales — Value (IDR)",
+    en: "Total Sales — Value (IDR)",
+    zh: "销售总额 — 金额 (IDR)",
+  },
   "report.trendTitle": {
     id: "Tren Defect per Periode",
     en: "Defect Trend by Period",

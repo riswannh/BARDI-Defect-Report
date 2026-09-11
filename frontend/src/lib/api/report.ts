@@ -2,6 +2,7 @@ import { eq, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import {
   buildChartBuckets,
+  buildYearlyBuckets,
   summarizeByProduct,
   totalDefectQty,
   totalDefectValue,
@@ -122,6 +123,9 @@ export async function reportGET(req: NextRequest) {
 
   const buckets = buildChartBuckets(filteredDefects, filteredSales, f);
 
+  // Sales selalu ditampilkan tahunan (12 bulan) sesuai tahun terpilih
+  const salesYearly = buildYearlyBuckets([], appSales, f.year);
+
   const totals = {
     defectQty: totalDefectQty(filteredDefects),
     defectValue: totalDefectValue(filteredDefects),
@@ -143,6 +147,7 @@ export async function reportGET(req: NextRequest) {
     sales: filteredSales.map((row) => stripValue(row, user)),
     recap: recap.map((row) => stripRecapValues(row, user)),
     buckets: buckets.map((row) => stripRecapValues(row, user)),
+    salesYearly: salesYearly.map((row) => stripRecapValues(row, user)),
     totals: user.isAdmin
       ? totals
       : { defectQty: totals.defectQty, salesQty: totals.salesQty },
