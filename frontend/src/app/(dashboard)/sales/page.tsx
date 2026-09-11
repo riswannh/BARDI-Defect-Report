@@ -100,6 +100,23 @@ export default function SalesPage() {
     label: f.name,
   }));
 
+  // Role Pabrik: filter produk hanya berisi produk yang punya data sales di pabriknya
+  const scopedProductOptions = useMemo(() => {
+    const allProducts = productData ?? [];
+    if (isAdmin) {
+      return allProducts.map((p) => ({ value: String(p.id), label: p.name }));
+    }
+    const seen = new Map<number, string>();
+    for (const s of saleData ?? []) {
+      const name =
+        s.productName ?? allProducts.find((p) => p.id === s.productId)?.name;
+      if (name) seen.set(s.productId, name);
+    }
+    return Array.from(seen.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([id, name]) => ({ value: String(id), label: name }));
+  }, [isAdmin, saleData, productData]);
+
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
   const [filterMonth, setFilterMonth] = useState("all");
@@ -440,17 +457,17 @@ export default function SalesPage() {
               onValueChange={(v) => setFilterProduct(String(v))}
               items={[
                 { value: "all", label: t("sales.allProducts") },
-                ...productOptions,
+                ...scopedProductOptions,
               ]}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-80">
                 <SelectItem value="all">{t("sales.allProducts")}</SelectItem>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
+                {scopedProductOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

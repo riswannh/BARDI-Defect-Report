@@ -141,6 +141,23 @@ export default function DefectsPage() {
     label: f.name,
   }));
 
+  // Role Pabrik: filter produk hanya berisi produk yang punya data defect di pabriknya
+  const scopedProductOptions = useMemo(() => {
+    const allProducts = productData ?? [];
+    if (isAdmin) {
+      return allProducts.map((p) => ({ value: String(p.id), label: p.name }));
+    }
+    const seen = new Map<number, string>();
+    for (const d of defectData ?? []) {
+      const name =
+        d.productName ?? allProducts.find((p) => p.id === d.productId)?.name;
+      if (name) seen.set(d.productId, name);
+    }
+    return Array.from(seen.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([id, name]) => ({ value: String(id), label: name }));
+  }, [isAdmin, defectData, productData]);
+
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -703,17 +720,17 @@ export default function DefectsPage() {
               onValueChange={(v) => setFilterProduct(String(v))}
               items={[
                 { value: "all", label: t("defects.allProducts") },
-                ...productOptions,
+                ...scopedProductOptions,
               ]}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-80">
                 <SelectItem value="all">{t("defects.allProducts")}</SelectItem>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.name}
+                {scopedProductOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
