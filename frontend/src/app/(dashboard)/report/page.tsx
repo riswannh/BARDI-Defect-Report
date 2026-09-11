@@ -548,7 +548,8 @@ export default function ReportPage() {
   const dVal = report?.totals.defectValue ?? 0;
   const sQty = report?.totals.salesQty ?? 0;
   const sVal = report?.totals.salesValue ?? 0;
-  const ratioQty = sQty > 0 ? dQty / sQty : null;
+  const ratioQty =
+    sQty > 0 ? dQty / sQty : dQty > 0 ? 1 : null;
 
   return (
     <div>

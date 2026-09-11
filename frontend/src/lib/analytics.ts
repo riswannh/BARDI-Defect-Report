@@ -60,7 +60,13 @@ export function summarizeByProduct(
   }
 
   for (const row of rows.values()) {
-    row.ratio = row.salesQty > 0 ? row.defectQty / row.salesQty : null;
+    // Sales 0 tapi ada defect → rasio 100%; keduanya 0 → tidak ada rasio
+    row.ratio =
+      row.salesQty > 0
+        ? row.defectQty / row.salesQty
+        : row.defectQty > 0
+          ? 1
+          : null;
   }
 
   return Array.from(rows.values());
