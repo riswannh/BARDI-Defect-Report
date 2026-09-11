@@ -3,9 +3,20 @@
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "cn"
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
+import { ChevronDownIcon, CheckIcon, ChevronUpIcon, SearchIcon } from "lucide-react"
+import { useLanguage } from "@/lib/i18n"
 
 const Select = SelectPrimitive.Root
+
+function nodeText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(nodeText).join(" ")
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode }
+    return nodeText(props.children)
+  }
+  return ""
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -69,6 +80,16 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
+  const { t } = useLanguage()
+  const [query, setQuery] = React.useState("")
+
+  const filtered = React.useMemo(() => {
+    const items = React.Children.toArray(children)
+    const q = query.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((child) => nodeText(child).toLowerCase().includes(q))
+  }, [children, query])
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -85,8 +106,29 @@ function SelectContent({
           className={cn("relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
           {...props}
         >
+          <div className="sticky top-0 z-10 -mt-1 border-b border-border/60 bg-popover px-1 pt-1 pb-1.5">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={t("common.search")}
+                autoFocus
+                className="h-7 w-full rounded-md border border-input bg-transparent pr-2 pl-7 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring"
+              />
+            </div>
+          </div>
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectPrimitive.List>
+            {filtered.length > 0 ? (
+              filtered
+            ) : (
+              <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                {t("common.noResults")}
+              </div>
+            )}
+          </SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>

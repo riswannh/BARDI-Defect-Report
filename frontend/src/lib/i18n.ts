@@ -19,6 +19,11 @@ const translations = {
   "common.all": { id: "Semua", en: "All", zh: "全部" },
   "common.noData": { id: "Tidak ada data.", en: "No data.", zh: "暂无数据。" },
   "common.loading": { id: "Memuat…", en: "Loading…", zh: "加载中…" },
+  "common.noResults": {
+    id: "Tidak ditemukan",
+    en: "No results",
+    zh: "未找到",
+  },
   "common.product": { id: "Produk", en: "Product", zh: "产品" },
   "common.factory": { id: "Pabrik", en: "Factory", zh: "工厂" },
   "common.month": { id: "Bulan", en: "Month", zh: "月份" },
