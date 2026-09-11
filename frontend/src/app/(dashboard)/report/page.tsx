@@ -701,12 +701,6 @@ export default function ReportPage() {
           description={t("common.quantity")}
           icon={AlertTriangle}
         />
-        <SummaryCard
-          title={t("report.totalSales")}
-          value={formatNumber(sQty)}
-          description={t("common.quantity")}
-          icon={ShoppingCart}
-        />
         {isAdmin && (
           <SummaryCard
             title={t("report.defectValue")}
@@ -715,6 +709,12 @@ export default function ReportPage() {
             icon={Wallet}
           />
         )}
+        <SummaryCard
+          title={t("report.totalSales")}
+          value={formatNumber(sQty)}
+          description={t("common.quantity")}
+          icon={ShoppingCart}
+        />
         {isAdmin && (
           <SummaryCard
             title={t("report.salesValue")}
