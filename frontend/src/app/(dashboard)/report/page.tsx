@@ -64,6 +64,7 @@ import {
   ArrowUpDown,
   Banknote,
   Camera,
+  Percent,
   ShoppingCart,
   Video,
   Wallet,
@@ -91,6 +92,14 @@ function ratioClass(ratio: number | null): string {
   if (pct <= 2)
     return "bg-amber-500/15 text-amber-700 ring-amber-500/30 dark:text-amber-400";
   return "bg-red-500/12 text-red-700 ring-red-500/30 dark:text-red-400";
+}
+
+function ratioTextClass(ratio: number | null): string {
+  if (ratio === null) return "text-muted-foreground";
+  const pct = ratio * 100;
+  if (pct < 1) return "text-emerald-600 dark:text-emerald-400";
+  if (pct <= 2) return "text-amber-600 dark:text-amber-400";
+  return "text-red-600 dark:text-red-400";
 }
 
 function RatioBadge({ ratio }: { ratio: number | null }) {
@@ -474,6 +483,7 @@ export default function ReportPage() {
   const dVal = report?.totals.defectValue ?? 0;
   const sQty = report?.totals.salesQty ?? 0;
   const sVal = report?.totals.salesValue ?? 0;
+  const ratioQty = sQty > 0 ? dQty / sQty : null;
 
   return (
     <div>
@@ -584,7 +594,7 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <SummaryCard
           title={t("report.totalDefect")}
           value={formatNumber(dQty)}
@@ -613,6 +623,20 @@ export default function ReportPage() {
             icon={Banknote}
           />
         )}
+        <SummaryCard
+          title={t("report.ratio")}
+          value={
+            ratioQty === null ? (
+              "-"
+            ) : (
+              <span className={ratioTextClass(ratioQty)}>
+                {(ratioQty * 100).toFixed(2)}%
+              </span>
+            )
+          }
+          description={t("report.ratioDesc")}
+          icon={Percent}
+        />
       </div>
 
       <div className="mb-6 flex flex-col gap-4">

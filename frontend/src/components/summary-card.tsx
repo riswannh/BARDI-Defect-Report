@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface SummaryCardProps {
   title: string;
-  value: string;
+  value: React.ReactNode;
   description?: string;
   icon?: React.ComponentType<{ className?: string }>;
 }

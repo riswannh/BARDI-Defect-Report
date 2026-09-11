@@ -229,6 +229,11 @@ const translations = {
     en: "Defect/Sales Ratio",
     zh: "缺陷/销售比率",
   },
+  "report.ratioDesc": {
+    id: "Qty Defect ÷ Qty Sales",
+    en: "Defect Qty ÷ Sales Qty",
+    zh: "缺陷数量 ÷ 销售数量",
+  },
   "report.detailTitle": {
     id: "Detail Defect — {product}",
     en: "Defect Detail — {product}",
