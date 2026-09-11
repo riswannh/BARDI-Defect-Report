@@ -208,7 +208,15 @@ export default function DefectsPage() {
     const problems = problemData ?? [];
     const statuses = statusData ?? [];
     const factories = factoryData ?? [];
-    const f: PeriodFilter = { period, month, day, weekEnd, from, to };
+    const f: PeriodFilter = {
+      period,
+      month,
+      year: "",
+      day,
+      weekEnd,
+      from,
+      to,
+    };
     const q = search.trim().toLowerCase();
     return defects.filter((d) => {
       if (filterProduct !== "all" && d.productId !== Number(filterProduct))

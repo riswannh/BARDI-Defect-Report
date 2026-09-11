@@ -158,6 +158,8 @@ const translations = {
   "report.daily": { id: "Harian", en: "Daily", zh: "每日" },
   "report.weekly": { id: "Mingguan", en: "Weekly", zh: "每周" },
   "report.monthly": { id: "Bulanan", en: "Monthly", zh: "每月" },
+  "report.yearly": { id: "Tahunan", en: "Yearly", zh: "年度" },
+  "report.year": { id: "Tahun", en: "Year", zh: "年份" },
   "report.custom": { id: "Rentang Tanggal", en: "Date Range", zh: "日期范围" },
   "report.allMonths": {
     id: "Semua Bulan",

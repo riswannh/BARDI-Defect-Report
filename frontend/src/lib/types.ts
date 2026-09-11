@@ -51,7 +51,7 @@ export interface Sale {
   value: number;
 }
 
-export type PeriodType = "daily" | "weekly" | "monthly" | "custom";
+export type PeriodType = "daily" | "weekly" | "monthly" | "yearly" | "custom";
 
 export interface ImportIssue {
   row: number;

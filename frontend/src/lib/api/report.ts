@@ -60,6 +60,7 @@ export async function reportGET(req: NextRequest) {
   const f: PeriodFilter = {
     period: (params.get("period") ?? "monthly") as PeriodType,
     month: params.get("month") ?? "all",
+    year: params.get("year") ?? "",
     day: params.get("day") ?? "",
     weekEnd: params.get("weekEnd") ?? "",
     from: params.get("from") ?? "",
@@ -128,6 +129,14 @@ export async function reportGET(req: NextRequest) {
     salesValue: totalSalesValue(filteredSales),
   };
 
+  const years = Array.from(
+    new Set(
+      defectRows
+        .map((row) => Number(row.timeStamp.slice(0, 4)))
+        .filter((value) => Number.isInteger(value) && value > 0)
+    )
+  ).sort((a, b) => b - a);
+
   return jsonOk({
     period: f,
     defects: filteredDefects.map((row) => stripValue(row, user)),
@@ -137,6 +146,7 @@ export async function reportGET(req: NextRequest) {
     totals: user.isAdmin
       ? totals
       : { defectQty: totals.defectQty, salesQty: totals.salesQty },
+    years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),
     problems: problemRows.map((row) => ({ id: row.id, name: row.name })),
     statuses: statusRows.map((row) => ({ id: row.id, name: row.name })),

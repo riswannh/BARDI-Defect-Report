@@ -296,6 +296,7 @@ interface ReportResponse {
     salesQty: number;
     salesValue?: number;
   };
+  years: number[];
   products: Product[];
   problems: Problem[];
   statuses: Status[];
@@ -306,8 +307,9 @@ export default function ReportPage() {
   const { isAdmin } = useAuth();
   const { t } = useLanguage();
 
-  const [period, setPeriod] = useState<PeriodType>("monthly");
-  const [month, setMonth] = useState<string>("all");
+  const [period, setPeriod] = useState<PeriodType>("yearly");
+  const [month, setMonth] = useState<string>(MONTHS[0]);
+  const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [day, setDay] = useState("2026-04-07");
   const [weekEnd, setWeekEnd] = useState("2026-04-07");
   const [from, setFrom] = useState("2026-01-01");
@@ -334,6 +336,7 @@ export default function ReportPage() {
   const reportParams = new URLSearchParams({
     period,
     month,
+    year,
     day,
     weekEnd,
     from,
@@ -349,6 +352,12 @@ export default function ReportPage() {
   const problems = report?.problems ?? [];
   const statuses = report?.statuses ?? [];
   const factories = report?.factories ?? [];
+
+  const yearOptions = useMemo(() => {
+    const list = (report?.years ?? []).map((value) => String(value));
+    if (year && !list.includes(year)) list.unshift(year);
+    return list.map((value) => ({ value, label: value }));
+  }, [report, year]);
 
   const visibleRecap = useMemo(() => {
     const recap = report?.recap ?? [];
@@ -413,12 +422,13 @@ export default function ReportPage() {
       buildChartBuckets(detailDefects, detailSales, {
         period,
         month,
+        year,
         day,
         weekEnd,
         from,
         to,
       }),
-    [detailDefects, detailSales, period, month, day, weekEnd, from, to]
+    [detailDefects, detailSales, period, month, year, day, weekEnd, from, to]
   );
 
   const detailPieQty = useMemo(() => {
@@ -500,6 +510,7 @@ export default function ReportPage() {
               { value: "daily", label: t("report.daily") },
               { value: "weekly", label: t("report.weekly") },
               { value: "monthly", label: t("report.monthly") },
+              { value: "yearly", label: t("report.yearly") },
               { value: "custom", label: t("report.custom") },
             ]}>
               <SelectTrigger className="w-40">
@@ -509,26 +520,60 @@ export default function ReportPage() {
                 <SelectItem value="daily">{t("report.daily")}</SelectItem>
                 <SelectItem value="weekly">{t("report.weekly")}</SelectItem>
                 <SelectItem value="monthly">{t("report.monthly")}</SelectItem>
+                <SelectItem value="yearly">{t("report.yearly")}</SelectItem>
                 <SelectItem value="custom">{t("report.custom")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {period === "monthly" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("common.month")}</Label>
+                <Select value={month} onValueChange={(v) => setMonth(String(v))} items={[
+                  ...MONTHS.map((m) => ({ value: m, label: m })),
+                ]}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("report.year")}</Label>
+                <Select value={year} onValueChange={(v) => setYear(String(v))} items={yearOptions}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {period === "yearly" && (
             <div className="flex flex-col gap-1.5">
-              <Label>{t("common.month")}</Label>
-              <Select value={month} onValueChange={(v) => setMonth(String(v))} items={[
-                { value: "all", label: t("report.allMonths") },
-                ...MONTHS.map((m) => ({ value: m, label: m })),
-              ]}>
-                <SelectTrigger className="w-40">
+              <Label>{t("report.year")}</Label>
+              <Select value={year} onValueChange={(v) => setYear(String(v))} items={yearOptions}>
+                <SelectTrigger className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("report.allMonths")}</SelectItem>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
+                  {yearOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -207,6 +207,43 @@ function buildHourlyBuckets(
   }));
 }
 
+function monthIndexOf(month: string): number {
+  return MONTHS.indexOf(month as (typeof MONTHS)[number]);
+}
+
+function buildYearlyBuckets(
+  defects: Defect[],
+  sales: Sale[],
+  year: string
+): ChartBucket[] {
+  const buckets = MONTHS.map((month) => ({
+    label: month,
+    defectQty: 0,
+    defectValue: 0,
+    salesQty: 0,
+    salesValue: 0,
+  }));
+
+  for (const d of defects) {
+    if (year && d.timestamp.slice(0, 4) !== year) continue;
+    const idx = monthIndexOf(monthOf(d.timestamp));
+    if (idx >= 0) {
+      buckets[idx].defectQty += d.quantity;
+      buckets[idx].defectValue += d.value;
+    }
+  }
+
+  for (const s of sales) {
+    const idx = monthIndexOf(s.month);
+    if (idx >= 0) {
+      buckets[idx].salesQty += s.quantity;
+      buckets[idx].salesValue += s.value;
+    }
+  }
+
+  return buckets;
+}
+
 export function buildChartBuckets(
   defects: Defect[],
   sales: Sale[],
@@ -214,6 +251,10 @@ export function buildChartBuckets(
 ): ChartBucket[] {
   if (f.period === "monthly") {
     return buildMonthlyBuckets(defects, sales);
+  }
+
+  if (f.period === "yearly") {
+    return buildYearlyBuckets(defects, sales, f.year);
   }
 
   if (f.period === "daily") {

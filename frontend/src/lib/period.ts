@@ -4,6 +4,7 @@ import type { PeriodType } from "@/lib/types";
 export interface PeriodFilter {
   period: PeriodType;
   month: string;
+  year: string;
   day: string;
   weekEnd: string;
   from: string;
@@ -40,9 +41,15 @@ export function matchesDefectPeriod(
   f: PeriodFilter
 ): boolean {
   const date = timestamp.slice(0, 10);
+  const year = timestamp.slice(0, 4);
   switch (f.period) {
     case "monthly":
-      return f.month === "all" || monthOf(timestamp) === f.month;
+      return (
+        (f.month === "all" || monthOf(timestamp) === f.month) &&
+        (!f.year || year === f.year)
+      );
+    case "yearly":
+      return !f.year || year === f.year;
     case "daily":
       return !f.day || date === f.day;
     case "weekly": {
@@ -61,6 +68,9 @@ export function matchesSalePeriod(month: string, f: PeriodFilter): boolean {
   switch (f.period) {
     case "monthly":
       return f.month === "all" || month === f.month;
+    case "yearly":
+      // Data sales tidak punya tahun — semua sales bulan tsb ditampilkan
+      return true;
     case "daily":
       return !f.day || month === monthOf(f.day);
     case "weekly": {
