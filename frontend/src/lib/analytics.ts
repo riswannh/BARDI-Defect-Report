@@ -74,48 +74,6 @@ export function totalDefectValue(defects: Defect[]): number {
   return defects.reduce((sum, d) => sum + d.value, 0);
 }
 
-export function buildMonthlyBuckets(
-  defects: Defect[],
-  sales: Sale[]
-): ChartBucket[] {
-  const buckets = MONTHS.map((month) => ({
-    label: month,
-    defectQty: 0,
-    defectValue: 0,
-    salesQty: 0,
-    salesValue: 0,
-  }));
-
-  const indexOf = new Map<string, number>(
-    MONTHS.map((m, i) => [m, i] as const)
-  );
-
-  for (const d of defects) {
-    const month = d.timestamp.slice(5, 7);
-    const idx = Number(month) - 1;
-    if (idx >= 0 && idx < buckets.length) {
-      buckets[idx].defectQty += d.quantity;
-      buckets[idx].defectValue += d.value;
-    }
-  }
-
-  for (const s of sales) {
-    const idx = indexOf.get(s.month);
-    if (idx !== undefined) {
-      buckets[idx].salesQty += s.quantity;
-      buckets[idx].salesValue += s.value;
-    }
-  }
-
-  return buckets.filter(
-    (b) =>
-      b.defectQty > 0 ||
-      b.defectValue > 0 ||
-      b.salesQty > 0 ||
-      b.salesValue > 0
-  );
-}
-
 export function totalSalesQty(sales: Sale[]): number {
   return sales.reduce((sum, s) => sum + s.quantity, 0);
 }
@@ -244,48 +202,33 @@ function buildYearlyBuckets(
   return buckets;
 }
 
-export function buildChartBuckets(
+function buildDayRanges(
+  from: string,
+  to: string
+): { label: string; start: string; end: string }[] {
+  const total = dayCount(from, to);
+  if (total <= 0) return [];
+  const bucketCount = Math.min(total, MAX_CHART_BUCKETS);
+  const base = Math.floor(total / bucketCount);
+  const extra = total % bucketCount;
+  const ranges: { label: string; start: string; end: string }[] = [];
+  let cursor = 0;
+  for (let i = 0; i < bucketCount; i++) {
+    const size = base + (i < extra ? 1 : 0);
+    const start = addDays(from, cursor);
+    const end = addDays(from, cursor + size - 1);
+    ranges.push({ label: rangeLabel(start, end), start, end });
+    cursor += size;
+  }
+  return ranges;
+}
+
+function buildRangeBuckets(
   defects: Defect[],
   sales: Sale[],
-  f: PeriodFilter
+  ranges: { label: string; start: string; end: string }[],
+  targetMonth: string
 ): ChartBucket[] {
-  if (f.period === "monthly") {
-    return buildMonthlyBuckets(defects, sales);
-  }
-
-  if (f.period === "yearly") {
-    return buildYearlyBuckets(defects, sales, f.year);
-  }
-
-  if (f.period === "daily") {
-    return buildHourlyBuckets(defects, sales, f.day);
-  }
-
-  const ranges: { label: string; start: string; end: string }[] = [];
-
-  if (f.period === "weekly") {
-    const range = weekRange(f.weekEnd);
-    if (!range) return [];
-    for (let d = range.start; d <= range.end; d = addDays(d, 1)) {
-      ranges.push({ label: dayLabel(d), start: d, end: d });
-    }
-  } else {
-    if (!f.from || !f.to) return [];
-    const total = dayCount(f.from, f.to);
-    if (total <= 0) return [];
-    const bucketCount = Math.min(total, MAX_CHART_BUCKETS);
-    const base = Math.floor(total / bucketCount);
-    const extra = total % bucketCount;
-    let cursor = 0;
-    for (let i = 0; i < bucketCount; i++) {
-      const size = base + (i < extra ? 1 : 0);
-      const start = addDays(f.from, cursor);
-      const end = addDays(f.from, cursor + size - 1);
-      ranges.push({ label: rangeLabel(start, end), start, end });
-      cursor += size;
-    }
-  }
-
   const buckets = ranges.map((r) => ({
     label: r.label,
     start: r.start,
@@ -305,21 +248,17 @@ export function buildChartBuckets(
     }
   }
 
-  if (buckets.length > 0) {
-    const targetMonth =
-      f.period === "weekly" ? monthOf(f.weekEnd) : monthOf(f.to);
-    let monthQty = 0;
-    let monthValue = 0;
-    for (const s of sales) {
-      if (s.month === targetMonth) {
-        monthQty += s.quantity;
-        monthValue += s.value;
-      }
+  let monthQty = 0;
+  let monthValue = 0;
+  for (const s of sales) {
+    if (s.month === targetMonth) {
+      monthQty += s.quantity;
+      monthValue += s.value;
     }
-    for (const b of buckets) {
-      b.salesQty = monthQty;
-      b.salesValue = monthValue;
-    }
+  }
+  for (const b of buckets) {
+    b.salesQty = monthQty;
+    b.salesValue = monthValue;
   }
 
   return buckets.map((b) => ({
@@ -329,4 +268,52 @@ export function buildChartBuckets(
     salesQty: b.salesQty,
     salesValue: b.salesValue,
   }));
+}
+
+export function buildChartBuckets(
+  defects: Defect[],
+  sales: Sale[],
+  f: PeriodFilter
+): ChartBucket[] {
+  if (f.period === "yearly") {
+    return buildYearlyBuckets(defects, sales, f.year);
+  }
+
+  if (f.period === "daily") {
+    return buildHourlyBuckets(defects, sales, f.day);
+  }
+
+  if (f.period === "weekly") {
+    const range = weekRange(f.weekEnd);
+    if (!range) return [];
+    const ranges: { label: string; start: string; end: string }[] = [];
+    for (let d = range.start; d <= range.end; d = addDays(d, 1)) {
+      ranges.push({ label: dayLabel(d), start: d, end: d });
+    }
+    return buildRangeBuckets(defects, sales, ranges, monthOf(f.weekEnd));
+  }
+
+  if (f.period === "monthly") {
+    const monthIdx = monthIndexOf(f.month);
+    if (monthIdx < 0) return [];
+    const y = Number(f.year) || new Date().getFullYear();
+    const daysInMonth = new Date(Date.UTC(y, monthIdx + 1, 0)).getUTCDate();
+    const from = `${y}-${pad2(monthIdx + 1)}-01`;
+    const to = `${y}-${pad2(monthIdx + 1)}-${pad2(daysInMonth)}`;
+    return buildRangeBuckets(
+      defects,
+      sales,
+      buildDayRanges(from, to),
+      f.month
+    );
+  }
+
+  // custom (rentang tanggal)
+  if (!f.from || !f.to) return [];
+  return buildRangeBuckets(
+    defects,
+    sales,
+    buildDayRanges(f.from, f.to),
+    monthOf(f.to)
+  );
 }
