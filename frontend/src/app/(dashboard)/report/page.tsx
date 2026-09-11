@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import {
   Bar,
+  BarChart,
   CartesianGrid,
-  ComposedChart,
+  Cell,
   Legend,
-  Line,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -107,6 +109,45 @@ function RatioBadge({ ratio }: { ratio: number | null }) {
   );
 }
 
+const PIE_COLORS = [
+  "oklch(0.648 0.1 209.8)",
+  "oklch(0.731 0.104 203.2)",
+  "oklch(0.816 0.084 204.3)",
+  "oklch(0.76 0.15 82)",
+  "oklch(0.637 0.19 25)",
+  "oklch(0.62 0.15 295)",
+  "oklch(0.7 0.14 150)",
+  "oklch(0.68 0.12 250)",
+  "oklch(0.72 0.13 330)",
+  "oklch(0.65 0.1 180)",
+];
+
+interface PieSlice {
+  name: string;
+  value: number;
+}
+
+function buildPieData(
+  rows: PieSlice[],
+  othersLabel: string,
+  maxSlices = 7
+): PieSlice[] {
+  const sorted = rows
+    .filter((row) => row.value > 0)
+    .sort((a, b) => b.value - a.value);
+  if (sorted.length <= maxSlices) return sorted;
+  const top = sorted.slice(0, maxSlices);
+  const rest = sorted
+    .slice(maxSlices)
+    .reduce((sum, row) => sum + row.value, 0);
+  return [...top, { name: othersLabel, value: rest }];
+}
+
+function renderPieLabel(props: { percent?: number }) {
+  const pct = (props.percent ?? 0) * 100;
+  return pct >= 5 ? `${Math.round(pct)}%` : "";
+}
+
 function ChartTooltip({
   active,
   label,
@@ -118,25 +159,35 @@ function ChartTooltip({
   const bucket = payload[0].payload;
   const isValue = metric === "value";
   const defect = isValue ? bucket.defectValue : bucket.defectQty;
-  const sales = isValue ? bucket.salesValue : bucket.salesQty;
-  const ratio = sales > 0 ? defect / sales : null;
   const format = isValue ? formatIDR : formatNumber;
   return (
     <div className="rounded-lg border bg-popover p-3 text-xs shadow-md">
       <div className="mb-1.5 font-medium">{label}</div>
-      <div className="grid gap-1">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">{t("report.defect")}</span>
-          <span>{format(defect)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">{t("report.sales")}</span>
-          <span>{format(sales)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-muted-foreground">{t("report.ratio")}</span>
-          <RatioBadge ratio={ratio} />
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-muted-foreground">{t("report.defect")}</span>
+        <span>{format(defect)}</span>
+      </div>
+    </div>
+  );
+}
+
+interface PieTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number }>;
+  metric?: "qty" | "value";
+}
+
+function PieTooltip({ active, payload, metric = "qty" }: PieTooltipProps) {
+  const { t } = useLanguage();
+  if (!active || !payload || payload.length === 0) return null;
+  const item = payload[0];
+  const format = metric === "value" ? formatIDR : formatNumber;
+  return (
+    <div className="rounded-lg border bg-popover p-3 text-xs shadow-md">
+      <div className="mb-1.5 font-medium">{item.name}</div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-muted-foreground">{t("report.defect")}</span>
+        <span>{format(Number(item.value ?? 0))}</span>
       </div>
     </div>
   );
@@ -240,6 +291,22 @@ export default function ReportPage() {
     currentPage * recapPageSize
   );
 
+  const productPieQty = useMemo(() => {
+    const rows = (report?.recap ?? []).map((row) => ({
+      name: row.productName,
+      value: row.defectQty,
+    }));
+    return buildPieData(rows, t("report.others"));
+  }, [report, t]);
+
+  const productPieValue = useMemo(() => {
+    const rows = (report?.recap ?? []).map((row) => ({
+      name: row.productName,
+      value: row.defectValue ?? 0,
+    }));
+    return buildPieData(rows, t("report.others"));
+  }, [report, t]);
+
   const detailProduct =
     detailProductId === null
       ? null
@@ -270,6 +337,32 @@ export default function ReportPage() {
       }),
     [detailDefects, detailSales, period, month, day, weekEnd, from, to]
   );
+
+  const detailPieQty = useMemo(() => {
+    const problems = report?.problems ?? [];
+    const map = new Map<string, number>();
+    for (const d of detailDefects) {
+      const name = problems.find((p) => p.id === d.problemId)?.name ?? "-";
+      map.set(name, (map.get(name) ?? 0) + d.quantity);
+    }
+    return buildPieData(
+      Array.from(map.entries()).map(([name, value]) => ({ name, value })),
+      t("report.others")
+    );
+  }, [detailDefects, report, t]);
+
+  const detailPieValue = useMemo(() => {
+    const problems = report?.problems ?? [];
+    const map = new Map<string, number>();
+    for (const d of detailDefects) {
+      const name = problems.find((p) => p.id === d.problemId)?.name ?? "-";
+      map.set(name, (map.get(name) ?? 0) + (d.value ?? 0));
+    }
+    return buildPieData(
+      Array.from(map.entries()).map(([name, value]) => ({ name, value })),
+      t("report.others")
+    );
+  }, [detailDefects, report, t]);
 
   const detailDefectQty = detailDefects.reduce((sum, d) => sum + d.quantity, 0);
   const detailDefectValue = detailDefects.reduce((sum, d) => sum + d.value, 0);
@@ -438,41 +531,68 @@ export default function ReportPage() {
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mb-6 flex flex-col gap-4">
         <Card size="sm">
           <CardHeader>
             <CardTitle>{t("report.chartQtyTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={buckets}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="label"
-                  interval={0}
-                  angle={-35}
-                  textAnchor="end"
-                  height={70}
-                  tick={{ fontSize: 10 }}
-                />
-                <YAxis />
-                <Tooltip content={<ChartTooltip metric="qty" />} />
-                <Legend />
-                <Bar
-                  dataKey="defectQty"
-                  name={t("report.defect")}
-                  fill="var(--chart-4)"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="salesQty"
-                  name={t("report.sales")}
-                  stroke="var(--chart-2)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div>
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  {t("report.trendTitle")}
+                </div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={buckets}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="label"
+                      interval={0}
+                      angle={-35}
+                      textAnchor="end"
+                      height={70}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip content={<ChartTooltip metric="qty" />} />
+                    <Bar
+                      dataKey="defectQty"
+                      name={t("report.defect")}
+                      fill="var(--chart-4)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  {t("report.pieProductTitle")}
+                </div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={productPieQty}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={85}
+                      label={renderPieLabel}
+                      labelLine={false}
+                    >
+                      {productPieQty.map((entry, index) => (
+                        <Cell
+                          key={entry.name}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<PieTooltip metric="qty" />} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -482,35 +602,64 @@ export default function ReportPage() {
               <CardTitle>{t("report.chartValueTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <ComposedChart data={buckets}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    interval={0}
-                    angle={-35}
-                    textAnchor="end"
-                    height={70}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis tickFormatter={(v) => compactIDR.format(Number(v))} />
-                  <Tooltip content={<ChartTooltip metric="value" />} />
-                  <Legend />
-                  <Bar
-                    dataKey="defectValue"
-                    name={t("report.defect")}
-                    fill="var(--chart-4)"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="salesValue"
-                    name={t("report.sales")}
-                    stroke="var(--chart-2)"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t("report.trendTitle")}
+                  </div>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={buckets}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="label"
+                        interval={0}
+                        angle={-35}
+                        textAnchor="end"
+                        height={70}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis
+                        tickFormatter={(v) => compactIDR.format(Number(v))}
+                      />
+                      <Tooltip content={<ChartTooltip metric="value" />} />
+                      <Bar
+                        dataKey="defectValue"
+                        name={t("report.defect")}
+                        fill="var(--chart-4)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div>
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t("report.pieProductTitle")}
+                  </div>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={productPieValue}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={85}
+                        label={renderPieLabel}
+                        labelLine={false}
+                      >
+                        {productPieValue.map((entry, index) => (
+                          <Cell
+                            key={entry.name}
+                            fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<PieTooltip metric="value" />} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -691,83 +840,132 @@ export default function ReportPage() {
               )}
             </div>
 
-            <div
-              className={
-                isAdmin
-                  ? "grid grid-cols-1 gap-4 lg:grid-cols-2"
-                  : "grid grid-cols-1 gap-4"
-              }
-            >
+            <div className="flex flex-col gap-5">
               <div>
                 <div className="mb-2 text-sm font-medium">
                   {t("report.chartQtyTitle")}
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <ComposedChart data={detailBuckets}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="label"
-                      interval={0}
-                      angle={-35}
-                      textAnchor="end"
-                      height={60}
-                      tick={{ fontSize: 9 }}
-                    />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltip metric="qty" />} />
-                    <Legend />
-                    <Bar
-                      dataKey="defectQty"
-                      name={t("report.defect")}
-                      fill="var(--chart-4)"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="salesQty"
-                      name={t("report.sales")}
-                      stroke="var(--chart-2)"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div>
+                    <div className="mb-2 text-xs font-medium text-muted-foreground">
+                      {t("report.trendTitle")}
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={detailBuckets}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="label"
+                          interval={0}
+                          angle={-35}
+                          textAnchor="end"
+                          height={55}
+                          tick={{ fontSize: 9 }}
+                        />
+                        <YAxis />
+                        <Tooltip content={<ChartTooltip metric="qty" />} />
+                        <Bar
+                          dataKey="defectQty"
+                          name={t("report.defect")}
+                          fill="var(--chart-4)"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-xs font-medium text-muted-foreground">
+                      {t("report.pieProblemTitle")}
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={detailPieQty}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          label={renderPieLabel}
+                          labelLine={false}
+                        >
+                          {detailPieQty.map((entry, index) => (
+                            <Cell
+                              key={entry.name}
+                              fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PieTooltip metric="qty" />} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
+
               {isAdmin && (
                 <div>
                   <div className="mb-2 text-sm font-medium">
                     {t("report.chartValueTitle")}
                   </div>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <ComposedChart data={detailBuckets}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="label"
-                        interval={0}
-                        angle={-35}
-                        textAnchor="end"
-                        height={60}
-                        tick={{ fontSize: 9 }}
-                      />
-                      <YAxis
-                        tickFormatter={(v) => compactIDR.format(Number(v))}
-                      />
-                      <Tooltip content={<ChartTooltip metric="value" />} />
-                      <Legend />
-                      <Bar
-                        dataKey="defectValue"
-                        name={t("report.defect")}
-                        fill="var(--chart-4)"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="salesValue"
-                        name={t("report.sales")}
-                        stroke="var(--chart-2)"
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div>
+                      <div className="mb-2 text-xs font-medium text-muted-foreground">
+                        {t("report.trendTitle")}
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={detailBuckets}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="label"
+                            interval={0}
+                            angle={-35}
+                            textAnchor="end"
+                            height={55}
+                            tick={{ fontSize: 9 }}
+                          />
+                          <YAxis
+                            tickFormatter={(v) => compactIDR.format(Number(v))}
+                          />
+                          <Tooltip content={<ChartTooltip metric="value" />} />
+                          <Bar
+                            dataKey="defectValue"
+                            name={t("report.defect")}
+                            fill="var(--chart-4)"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div>
+                      <div className="mb-2 text-xs font-medium text-muted-foreground">
+                        {t("report.pieProblemTitle")}
+                      </div>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={detailPieValue}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={70}
+                            label={renderPieLabel}
+                            labelLine={false}
+                          >
+                            {detailPieValue.map((entry, index) => (
+                              <Cell
+                                key={entry.name}
+                                fill={PIE_COLORS[index % PIE_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<PieTooltip metric="value" />} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

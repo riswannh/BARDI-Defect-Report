@@ -181,15 +181,31 @@ const translations = {
   },
   "report.salesValue": { id: "Nilai Sales", en: "Sales Value", zh: "销售金额" },
   "report.chartQtyTitle": {
-    id: "Total Defect & Sales — Quantity",
-    en: "Total Defect & Sales — Quantity",
-    zh: "缺陷与销售总额 — 数量",
+    id: "Total Defect — Quantity",
+    en: "Total Defect — Quantity",
+    zh: "缺陷总数 — 数量",
   },
   "report.chartValueTitle": {
-    id: "Total Defect & Sales — Value (IDR)",
-    en: "Total Defect & Sales — Value (IDR)",
-    zh: "缺陷与销售总额 — 金额 (IDR)",
+    id: "Total Defect — Value (IDR)",
+    en: "Total Defect — Value (IDR)",
+    zh: "缺陷总数 — 金额 (IDR)",
   },
+  "report.trendTitle": {
+    id: "Tren Defect per Periode",
+    en: "Defect Trend by Period",
+    zh: "按期间缺陷趋势",
+  },
+  "report.pieProductTitle": {
+    id: "Proporsi Defect per Produk",
+    en: "Defect Share by Product",
+    zh: "按产品缺陷占比",
+  },
+  "report.pieProblemTitle": {
+    id: "Proporsi Defect per Problem",
+    en: "Defect Share by Problem",
+    zh: "按问题缺陷占比",
+  },
+  "report.others": { id: "Lainnya", en: "Others", zh: "其他" },
   "report.recapTitle": {
     id: "Rekap Per Produk",
     en: "Recap by Product",
