@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -187,31 +186,15 @@ function legendFormatter(value: string) {
   return value.length > 22 ? `${value.slice(0, 21)}…` : value;
 }
 
-interface PieLegendContentProps {
-  payload?: Array<{
-    value?: string | number;
-    color?: string;
-    payload?: { value?: number; name?: string };
-  }>;
-}
-
-function PieLegendContent({ payload }: PieLegendContentProps) {
-  const items = (payload ?? [])
-    .map((item) => ({
-      name: String(item.payload?.name ?? item.value ?? ""),
-      color: item.color ?? "var(--muted-foreground)",
-      value: Number(item.payload?.value ?? 0),
-    }))
-    .sort((a, b) => b.value - a.value);
-  const total = items.reduce((sum, item) => sum + item.value, 0);
-
+function PieLegend({ data }: { data: PieSlice[] }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
   return (
-    <div className="flex w-full flex-col gap-1">
-      {items.map((item) => (
-        <div key={item.name} className="flex items-center gap-1.5">
+    <div className="flex w-full flex-col gap-1 text-[11px] leading-4">
+      {data.map((item, index) => (
+        <div key={`${item.name}-${index}`} className="flex items-center gap-1.5">
           <span
             className="size-2.5 shrink-0 rounded-[3px]"
-            style={{ backgroundColor: item.color }}
+            style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
           />
           <span className="truncate" title={item.name}>
             {legendFormatter(item.name)}
@@ -645,39 +628,35 @@ export default function ReportPage() {
                 <div className="mb-2 text-xs font-medium text-muted-foreground">
                   {t("report.pieProductTitle")}
                 </div>
-                <ResponsiveContainer width="100%" height={240}>
-                  <PieChart>
-                    <Pie
-                      data={productPieQty}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="36%"
-                      cy="50%"
-                      outerRadius={70}
-                      label={renderPieLabel}
-                      labelLine={false}
-                    >
-                      {productPieQty.map((entry, index) => (
-                        <Cell
-                          key={entry.name}
-                          fill={PIE_COLORS[index % PIE_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip metric="qty" />} />
-                    <Legend
-                      layout="vertical"
-                      align="right"
-                      verticalAlign="middle"
-                      content={<PieLegendContent />}
-                      wrapperStyle={{
-                        width: "46%",
-                        fontSize: 11,
-                        lineHeight: "16px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-3">
+                  <div className="h-[240px] min-w-0 flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={productPieQty}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          label={renderPieLabel}
+                          labelLine={false}
+                        >
+                          {productPieQty.map((entry, index) => (
+                            <Cell
+                              key={`${entry.name}-${index}`}
+                              fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PieTooltip metric="qty" />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-[46%] shrink-0">
+                    <PieLegend data={productPieQty} />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -722,39 +701,35 @@ export default function ReportPage() {
                   <div className="mb-2 text-xs font-medium text-muted-foreground">
                     {t("report.pieProductTitle")}
                   </div>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={productPieValue}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="36%"
-                        cy="50%"
-                        outerRadius={70}
-                        label={renderPieLabel}
-                        labelLine={false}
-                      >
-                        {productPieValue.map((entry, index) => (
-                          <Cell
-                            key={entry.name}
-                            fill={PIE_COLORS[index % PIE_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<PieTooltip metric="value" />} />
-                      <Legend
-                        layout="vertical"
-                        align="right"
-                        verticalAlign="middle"
-                        content={<PieLegendContent />}
-                        wrapperStyle={{
-                          width: "46%",
-                          fontSize: 11,
-                          lineHeight: "16px",
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center gap-3">
+                  <div className="h-[240px] min-w-0 flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={productPieValue}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          label={renderPieLabel}
+                          labelLine={false}
+                        >
+                          {productPieValue.map((entry, index) => (
+                            <Cell
+                              key={`${entry.name}-${index}`}
+                              fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PieTooltip metric="value" />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-[46%] shrink-0">
+                    <PieLegend data={productPieValue} />
+                  </div>
+                </div>
                 </div>
               </div>
             </CardContent>
@@ -973,39 +948,35 @@ export default function ReportPage() {
                     <div className="mb-2 text-xs font-medium text-muted-foreground">
                       {t("report.pieProblemTitle")}
                     </div>
-                    <ResponsiveContainer width="100%" height={180}>
-                      <PieChart>
-                        <Pie
-                          data={detailPieQty}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="36%"
-                          cy="50%"
-                          outerRadius={55}
-                          label={renderPieLabel}
-                          labelLine={false}
-                        >
-                          {detailPieQty.map((entry, index) => (
-                            <Cell
-                              key={entry.name}
-                              fill={PIE_COLORS[index % PIE_COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<PieTooltip metric="qty" />} />
-                        <Legend
-                          layout="vertical"
-                          align="right"
-                          verticalAlign="middle"
-                          content={<PieLegendContent />}
-                          wrapperStyle={{
-                            width: "44%",
-                            fontSize: 10,
-                            lineHeight: "14px",
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                    <div className="flex items-center gap-3">
+                      <div className="h-[180px] min-w-0 flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={detailPieQty}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={55}
+                              label={renderPieLabel}
+                              labelLine={false}
+                            >
+                              {detailPieQty.map((entry, index) => (
+                                <Cell
+                                  key={`${entry.name}-${index}`}
+                                  fill={PIE_COLORS[index % PIE_COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<PieTooltip metric="qty" />} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="w-[44%] shrink-0">
+                        <PieLegend data={detailPieQty} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1048,39 +1019,39 @@ export default function ReportPage() {
                       <div className="mb-2 text-xs font-medium text-muted-foreground">
                         {t("report.pieProblemTitle")}
                       </div>
-                      <ResponsiveContainer width="100%" height={180}>
-                        <PieChart>
-                          <Pie
-                            data={detailPieValue}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="36%"
-                            cy="50%"
-                            outerRadius={55}
-                            label={renderPieLabel}
-                            labelLine={false}
-                          >
-                            {detailPieValue.map((entry, index) => (
-                              <Cell
-                                key={entry.name}
-                                fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      <div className="flex items-center gap-3">
+                        <div className="h-[180px] min-w-0 flex-1">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={detailPieValue}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={55}
+                                label={renderPieLabel}
+                                labelLine={false}
+                              >
+                                {detailPieValue.map((entry, index) => (
+                                  <Cell
+                                    key={`${entry.name}-${index}`}
+                                    fill={
+                                      PIE_COLORS[index % PIE_COLORS.length]
+                                    }
+                                  />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                content={<PieTooltip metric="value" />}
                               />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<PieTooltip metric="value" />} />
-                          <Legend
-                            layout="vertical"
-                            align="right"
-                            verticalAlign="middle"
-                            content={<PieLegendContent />}
-                            wrapperStyle={{
-                              width: "44%",
-                              fontSize: 10,
-                              lineHeight: "14px",
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="w-[44%] shrink-0">
+                          <PieLegend data={detailPieValue} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
