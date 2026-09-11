@@ -143,9 +143,48 @@ function buildPieData(
   return [...top, { name: othersLabel, value: rest }];
 }
 
-function renderPieLabel(props: { percent?: number }) {
-  const pct = (props.percent ?? 0) * 100;
-  return pct >= 5 ? `${Math.round(pct)}%` : "";
+function renderPieLabel(props: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  percent?: number;
+}) {
+  const {
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    percent = 0,
+  } = props;
+  if (percent < 0.05) return null;
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.62;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#ffffff"
+      stroke="rgba(0,0,0,0.45)"
+      strokeWidth={2.5}
+      paintOrder="stroke"
+      strokeLinejoin="round"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {`${Math.round(percent * 100)}%`}
+    </text>
+  );
+}
+
+function legendFormatter(value: string) {
+  return value.length > 22 ? `${value.slice(0, 21)}…` : value;
 }
 
 function ChartTooltip({
@@ -568,15 +607,15 @@ export default function ReportPage() {
                 <div className="mb-2 text-xs font-medium text-muted-foreground">
                   {t("report.pieProductTitle")}
                 </div>
-                <ResponsiveContainer width="100%" height={260}>
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
                       data={productPieQty}
                       dataKey="value"
                       nameKey="name"
-                      cx="50%"
+                      cx="38%"
                       cy="50%"
-                      outerRadius={85}
+                      outerRadius={78}
                       label={renderPieLabel}
                       labelLine={false}
                     >
@@ -588,7 +627,18 @@ export default function ReportPage() {
                       ))}
                     </Pie>
                     <Tooltip content={<PieTooltip metric="qty" />} />
-                    <Legend />
+                    <Legend
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
+                      iconSize={10}
+                      formatter={legendFormatter}
+                      wrapperStyle={{
+                        fontSize: 11,
+                        lineHeight: "15px",
+                        maxWidth: "48%",
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -635,15 +685,15 @@ export default function ReportPage() {
                   <div className="mb-2 text-xs font-medium text-muted-foreground">
                     {t("report.pieProductTitle")}
                   </div>
-                  <ResponsiveContainer width="100%" height={260}>
+                  <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
                         data={productPieValue}
                         dataKey="value"
                         nameKey="name"
-                        cx="50%"
+                        cx="38%"
                         cy="50%"
-                        outerRadius={85}
+                        outerRadius={78}
                         label={renderPieLabel}
                         labelLine={false}
                       >
@@ -655,7 +705,18 @@ export default function ReportPage() {
                         ))}
                       </Pie>
                       <Tooltip content={<PieTooltip metric="value" />} />
-                      <Legend />
+                      <Legend
+                        layout="vertical"
+                        align="right"
+                        verticalAlign="middle"
+                        iconSize={10}
+                        formatter={legendFormatter}
+                        wrapperStyle={{
+                          fontSize: 11,
+                          lineHeight: "15px",
+                          maxWidth: "48%",
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -876,15 +937,15 @@ export default function ReportPage() {
                     <div className="mb-2 text-xs font-medium text-muted-foreground">
                       {t("report.pieProblemTitle")}
                     </div>
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
                         <Pie
                           data={detailPieQty}
                           dataKey="value"
                           nameKey="name"
-                          cx="50%"
+                          cx="38%"
                           cy="50%"
-                          outerRadius={70}
+                          outerRadius={62}
                           label={renderPieLabel}
                           labelLine={false}
                         >
@@ -896,7 +957,18 @@ export default function ReportPage() {
                           ))}
                         </Pie>
                         <Tooltip content={<PieTooltip metric="qty" />} />
-                        <Legend />
+                        <Legend
+                          layout="vertical"
+                          align="right"
+                          verticalAlign="middle"
+                          iconSize={9}
+                          formatter={legendFormatter}
+                          wrapperStyle={{
+                            fontSize: 10,
+                            lineHeight: "14px",
+                            maxWidth: "48%",
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -941,15 +1013,15 @@ export default function ReportPage() {
                       <div className="mb-2 text-xs font-medium text-muted-foreground">
                         {t("report.pieProblemTitle")}
                       </div>
-                      <ResponsiveContainer width="100%" height={200}>
+                      <ResponsiveContainer width="100%" height={220}>
                         <PieChart>
                           <Pie
                             data={detailPieValue}
                             dataKey="value"
                             nameKey="name"
-                            cx="50%"
+                            cx="38%"
                             cy="50%"
-                            outerRadius={70}
+                            outerRadius={62}
                             label={renderPieLabel}
                             labelLine={false}
                           >
@@ -961,7 +1033,18 @@ export default function ReportPage() {
                             ))}
                           </Pie>
                           <Tooltip content={<PieTooltip metric="value" />} />
-                          <Legend />
+                          <Legend
+                            layout="vertical"
+                            align="right"
+                            verticalAlign="middle"
+                            iconSize={9}
+                            formatter={legendFormatter}
+                            wrapperStyle={{
+                              fontSize: 10,
+                              lineHeight: "14px",
+                              maxWidth: "48%",
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
