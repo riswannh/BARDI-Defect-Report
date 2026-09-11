@@ -317,8 +317,8 @@ export default function ReportPage() {
   const [factoryId, setFactoryId] = useState<string>("all");
 
   const [recapSearch, setRecapSearch] = useState("");
-  const [sortKey, setSortKey] = useState<RecapSortKey>("productName");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<RecapSortKey>("defectQty");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [recapPageSize, setRecapPageSize] = useState(10);
   const [detailProductId, setDetailProductId] = useState<number | null>(null);
