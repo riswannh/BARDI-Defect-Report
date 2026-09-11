@@ -212,6 +212,11 @@ const translations = {
     en: "Defect Share by Product",
     zh: "按产品缺陷占比",
   },
+  "report.pieSalesProductTitle": {
+    id: "Proporsi Sales per Produk",
+    en: "Sales Share by Product",
+    zh: "按产品销售占比",
+  },
   "report.pieProblemTitle": {
     id: "Proporsi Defect per Problem",
     en: "Defect Share by Problem",

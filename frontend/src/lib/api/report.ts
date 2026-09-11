@@ -125,6 +125,9 @@ export async function reportGET(req: NextRequest) {
 
   // Sales selalu ditampilkan tahunan (12 bulan) sesuai tahun terpilih
   const salesYearly = buildYearlyBuckets([], appSales, f.year);
+  const salesYearlyRecap = summarizeByProduct([], appSales, productList).filter(
+    (row) => row.salesQty > 0 || row.salesValue > 0
+  );
 
   const totals = {
     defectQty: totalDefectQty(filteredDefects),
@@ -148,6 +151,9 @@ export async function reportGET(req: NextRequest) {
     recap: recap.map((row) => stripRecapValues(row, user)),
     buckets: buckets.map((row) => stripRecapValues(row, user)),
     salesYearly: salesYearly.map((row) => stripRecapValues(row, user)),
+    salesYearlyRecap: salesYearlyRecap.map((row) =>
+      stripRecapValues(row, user)
+    ),
     totals: user.isAdmin
       ? totals
       : { defectQty: totals.defectQty, salesQty: totals.salesQty },

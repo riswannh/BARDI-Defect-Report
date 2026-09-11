@@ -244,12 +244,6 @@ function ChartTooltip({
   );
 }
 
-interface PieTooltipProps {
-  active?: boolean;
-  payload?: Array<{ name?: string; value?: number }>;
-  metric?: "qty" | "value";
-}
-
 function SalesTooltip({
   active,
   label,
@@ -278,7 +272,19 @@ function SalesTooltip({
   );
 }
 
-function PieTooltip({ active, payload, metric = "qty" }: PieTooltipProps) {
+interface PieTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number }>;
+  metric?: "qty" | "value";
+  kind?: "defect" | "sales";
+}
+
+function PieTooltip({
+  active,
+  payload,
+  metric = "qty",
+  kind = "defect",
+}: PieTooltipProps) {
   const { t } = useLanguage();
   if (!active || !payload || payload.length === 0) return null;
   const item = payload[0];
@@ -287,7 +293,9 @@ function PieTooltip({ active, payload, metric = "qty" }: PieTooltipProps) {
     <div className="rounded-lg border bg-popover p-3 text-xs shadow-md">
       <div className="mb-1.5 font-medium">{item.name}</div>
       <div className="flex items-center justify-between gap-4">
-        <span className="text-muted-foreground">{t("report.defect")}</span>
+        <span className="text-muted-foreground">
+          {kind === "sales" ? t("report.sales") : t("report.defect")}
+        </span>
         <span>{format(Number(item.value ?? 0))}</span>
       </div>
     </div>
@@ -319,6 +327,7 @@ interface ReportResponse {
   recap: RecapRow[];
   buckets: ChartBucket[];
   salesYearly: ChartBucket[];
+  salesYearlyRecap: RecapRow[];
   totals: {
     defectQty: number;
     defectValue?: number;
@@ -425,6 +434,22 @@ export default function ReportPage() {
     const rows = (report?.recap ?? []).map((row) => ({
       name: row.productName,
       value: row.defectValue ?? 0,
+    }));
+    return buildPieData(rows, t("report.others"));
+  }, [report, t]);
+
+  const salesPieQty = useMemo(() => {
+    const rows = (report?.salesYearlyRecap ?? []).map((row) => ({
+      name: row.productName,
+      value: row.salesQty,
+    }));
+    return buildPieData(rows, t("report.others"));
+  }, [report, t]);
+
+  const salesPieValue = useMemo(() => {
+    const rows = (report?.salesYearlyRecap ?? []).map((row) => ({
+      name: row.productName,
+      value: row.salesValue ?? 0,
     }));
     return buildPieData(rows, t("report.others"));
   }, [report, t]);
@@ -864,24 +889,67 @@ export default function ReportPage() {
             <CardTitle>{t("report.chartSalesQtyTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={salesYearly}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="label"
-                  interval={0}
-                  tick={{ fontSize: 10 }}
-                />
-                <YAxis />
-                <Tooltip content={<SalesTooltip metric="qty" />} />
-                <Bar
-                  dataKey="salesQty"
-                  name={t("report.sales")}
-                  fill="var(--chart-2)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div>
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  {t("report.trendTitle")}
+                </div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={salesYearly}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="label"
+                      interval={0}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip content={<SalesTooltip metric="qty" />} />
+                    <Bar
+                      dataKey="salesQty"
+                      name={t("report.sales")}
+                      fill="var(--chart-2)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <div className="mb-2 text-xs font-medium text-muted-foreground">
+                  {t("report.pieSalesProductTitle")}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-[240px] min-w-0 flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={salesPieQty}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          label={renderPieLabel}
+                          labelLine={false}
+                        >
+                          {salesPieQty.map((entry, index) => (
+                            <Cell
+                              key={`${entry.name}-${index}`}
+                              fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          content={<PieTooltip metric="qty" kind="sales" />}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="max-w-[50%] shrink-0">
+                    <PieLegend data={salesPieQty} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -891,26 +959,69 @@ export default function ReportPage() {
               <CardTitle>{t("report.chartSalesValueTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={salesYearly}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="label"
-                    interval={0}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis
-                    tickFormatter={(v) => compactIDR.format(Number(v))}
-                  />
-                  <Tooltip content={<SalesTooltip metric="value" />} />
-                  <Bar
-                    dataKey="salesValue"
-                    name={t("report.sales")}
-                    fill="var(--chart-2)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t("report.trendTitle")}
+                  </div>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={salesYearly}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="label"
+                        interval={0}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis
+                        tickFormatter={(v) => compactIDR.format(Number(v))}
+                      />
+                      <Tooltip content={<SalesTooltip metric="value" />} />
+                      <Bar
+                        dataKey="salesValue"
+                        name={t("report.sales")}
+                        fill="var(--chart-2)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div>
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">
+                    {t("report.pieSalesProductTitle")}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-[240px] min-w-0 flex-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={salesPieValue}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={70}
+                            label={renderPieLabel}
+                            labelLine={false}
+                          >
+                            {salesPieValue.map((entry, index) => (
+                              <Cell
+                                key={`${entry.name}-${index}`}
+                                fill={PIE_COLORS[index % PIE_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            content={<PieTooltip metric="value" kind="sales" />}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="max-w-[50%] shrink-0">
+                      <PieLegend data={salesPieValue} />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
