@@ -182,11 +182,13 @@ function renderPieLabel(props: {
   );
 }
 
-function legendFormatter(value: string) {
-  return value.length > 22 ? `${value.slice(0, 21)}…` : value;
-}
-
-function PieLegend({ data }: { data: PieSlice[] }) {
+function PieLegend({
+  data,
+  maxLen = 22,
+}: {
+  data: PieSlice[];
+  maxLen?: number;
+}) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   return (
     <div className="flex flex-col items-start gap-1 text-[11px] leading-4">
@@ -197,7 +199,9 @@ function PieLegend({ data }: { data: PieSlice[] }) {
             style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
           />
           <span className="shrink-0" title={item.name}>
-            {legendFormatter(item.name)}
+            {item.name.length > maxLen
+              ? `${item.name.slice(0, maxLen - 1)}…`
+              : item.name}
           </span>
           <span className="shrink-0 tabular-nums text-muted-foreground">
             {total > 0 ? `${((item.value / total) * 100).toFixed(1)}%` : "-"}
@@ -879,7 +883,7 @@ export default function ReportPage() {
           if (!open) setDetailProductId(null);
         }}
       >
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-7xl">
           <DialogHeader>
             <DialogTitle>
               {t("report.detailTitle", {
@@ -890,7 +894,7 @@ export default function ReportPage() {
               {t("report.detailDesc", { count: detailDefects.length })}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto">
+          <div className="grid max-h-[78vh] grid-cols-1 gap-5 overflow-y-auto lg:grid-cols-2">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-lg border p-3">
                 <div className="text-xs text-muted-foreground">
@@ -912,7 +916,7 @@ export default function ReportPage() {
               )}
             </div>
 
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5 lg:col-start-1">
               <div>
                 <div className="mb-2 text-sm font-medium">
                   {t("report.chartQtyTitle")}
@@ -974,7 +978,7 @@ export default function ReportPage() {
                         </ResponsiveContainer>
                       </div>
                       <div className="max-w-[50%] shrink-0">
-                        <PieLegend data={detailPieQty} />
+                        <PieLegend data={detailPieQty} maxLen={16} />
                       </div>
                     </div>
                   </div>
@@ -1049,7 +1053,7 @@ export default function ReportPage() {
                           </ResponsiveContainer>
                         </div>
                         <div className="max-w-[50%] shrink-0">
-                          <PieLegend data={detailPieValue} />
+                          <PieLegend data={detailPieValue} maxLen={16} />
                         </div>
                       </div>
                     </div>
@@ -1058,10 +1062,11 @@ export default function ReportPage() {
               )}
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("common.codeGaransi")}</TableHead>
+            <div className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("common.codeGaransi")}</TableHead>
                   <TableHead>{t("common.timestamp")}</TableHead>
                   <TableHead>{t("common.problem")}</TableHead>
                   <TableHead>{t("common.status")}</TableHead>
@@ -1140,6 +1145,7 @@ export default function ReportPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
