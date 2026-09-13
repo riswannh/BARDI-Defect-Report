@@ -116,26 +116,6 @@ const translations = {
     en: "Invalid username or password.",
     zh: "用户名或密码错误。",
   },
-  "login.demoAccount": {
-    id: "Demo account:",
-    en: "Demo account:",
-    zh: "演示账号：",
-  },
-  "login.demoAdmin": {
-    id: "Admin — username admin",
-    en: "Admin — username admin",
-    zh: "管理员 — 用户名 admin",
-  },
-  "login.demoFactory": {
-    id: "Pabrik — username pabrik_jkt",
-    en: "Factory — username pabrik_jkt",
-    zh: "工厂 — 用户名 pabrik_jkt",
-  },
-  "login.demoPassword": {
-    id: "Password bebas (tidak kosong).",
-    en: "Any password (non-empty).",
-    zh: "任意密码（非空）。",
-  },
 
   // Pagination
   "pagination.showing": {

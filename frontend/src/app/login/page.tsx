@@ -116,15 +116,6 @@ export default function LoginPage() {
               {submitting ? t("common.loading") : t("login.submit")}
             </Button>
           </form>
-
-          <div className="mt-4 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">
-              {t("login.demoAccount")}
-            </p>
-            <p>{t("login.demoAdmin")}</p>
-            <p>{t("login.demoFactory")}</p>
-            <p className="mt-1">{t("login.demoPassword")}</p>
-          </div>
         </CardContent>
       </Card>
     </div>
