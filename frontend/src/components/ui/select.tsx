@@ -82,6 +82,12 @@ function SelectContent({
   >) {
   const { t } = useLanguage()
   const [query, setQuery] = React.useState("")
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 0)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const filtered = React.useMemo(() => {
     const items = React.Children.toArray(children)
@@ -110,11 +116,18 @@ function SelectContent({
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  // Cegah typeahead Select mem-preventDefault tombol karakter
+                  // sehingga teks bisa diketik di kotak pencarian.
+                  if (event.key.length === 1) {
+                    event.stopPropagation()
+                  }
+                }}
                 placeholder={t("common.search")}
-                autoFocus
                 className="h-7 w-full rounded-md border border-input bg-transparent pr-2 pl-7 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring"
               />
             </div>
