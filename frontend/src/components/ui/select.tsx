@@ -131,8 +131,23 @@ function SelectSearch({ children }: { children: React.ReactNode }) {
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 0)
-    return () => window.clearTimeout(timer)
+    const input = inputRef.current
+    if (!input) return
+    const timer = window.setTimeout(() => input.focus({ preventScroll: true }), 0)
+    // Base UI memfokuskan popup saat pointer meninggalkan item (mis. item
+    // yang sedang di-hover tersembunyi karena filter) — kembalikan fokus ke
+    // kotak pencarian agar pengguna bisa langsung mengetik.
+    const popup = input.closest<HTMLElement>('[data-slot="select-content"]')
+    const onFocusIn = (event: FocusEvent) => {
+      if (event.target === popup) {
+        input.focus({ preventScroll: true })
+      }
+    }
+    popup?.addEventListener("focusin", onFocusIn)
+    return () => {
+      window.clearTimeout(timer)
+      popup?.removeEventListener("focusin", onFocusIn)
+    }
   }, [])
 
   const { rendered, matchCount } = React.useMemo(() => {
