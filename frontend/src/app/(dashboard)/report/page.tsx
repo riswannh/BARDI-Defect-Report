@@ -390,7 +390,10 @@ export default function ReportPage() {
   const products = report?.products ?? [];
   const problems = report?.problems ?? [];
   const statuses = report?.statuses ?? [];
-  const factories = report?.factories ?? [];
+  const { data: factoryData } = useApi<Factory[]>(
+    isAdmin ? "/api/factories" : null
+  );
+  const factories = factoryData ?? [];
 
   const yearOptions = useMemo(() => {
     const list = (report?.years ?? []).map((value) => String(value));
