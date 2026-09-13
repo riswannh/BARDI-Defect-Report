@@ -156,7 +156,8 @@ Open Code Project/
         ├── app/
         │   ├── login/page.tsx
         │   ├── (dashboard)/            # layout dengan sidebar + header + guard
-        │   │   ├── report/page.tsx
+        │   │   ├── report/            # page.tsx + report-charts.tsx
+        │   │   │                      #   + report-data.ts + product-detail-dialog.tsx
         │   │   ├── defects/           # page.tsx + defect-form-dialog.tsx
         │   │   │                      #   + defect-detail-dialog.tsx + defect-form.ts
         │   │   ├── sales/page.tsx

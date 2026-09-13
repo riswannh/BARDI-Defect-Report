@@ -103,7 +103,31 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
 - `defect-detail-dialog.tsx` — dialog detail read-only
 - `defect-form.ts` — tipe, `emptyForm()`, `carryOverForm()`, saran kode garansi
 
-Aturan alur input defect:
+### Struktur halaman Report
+
+`src/app/(dashboard)/report/` juga dipecah:
+
+- `page.tsx` — filter periode, kartu ringkasan, tabel rekap, penyusun grafik
+- `report-charts.tsx` — potongan grafik bersama: `MetricBarChart` (batang defect/sales,
+  qty/value), `PieWithLegend`, `ChartPairCard`, `RatioBadge`, `buildPieData`,
+  `PIE_COLORS`. Empat kartu grafik halaman ini dulu ditulis ulang hampir identik;
+  perubahan grafik cukup dilakukan di sini.
+- `report-data.ts` — tipe `ReportResponse`/`RecapRow`, `sortRecap()`,
+  `defectSalesRatio()`
+- `product-detail-dialog.tsx` — dialog detail per produk; menghitung sendiri data
+  turunannya dari respons `/api/report`
+
+Catatan perilaku Report yang harus dijaga:
+
+- Grafik **sales selalu tahunan** (12 bulan) dan pie-nya memakai `salesYearlyRecap`,
+  terlepas dari periode yang dipilih.
+- Grafik defect memakai `buckets` (mengikuti periode) dan pie-nya memakai `recap`.
+- Ringkasan, bucket, dan total dihitung **di server** (`GET /api/report`) — jangan
+  pindahkan perhitungan itu ke klien.
+- Daftar pabrik diambil dari `/api/factories`, bukan dari respons report, supaya
+  dropdown tidak berkedip kosong setiap periode berganti.
+
+### Aturan alur input defect
 
 - Timestamp entri baru = waktu sekarang (`localDateTimeValue()`), bukan konstanta.
 - **Simpan & tambah lagi**: Produk + Pabrik + Status dibawa ke entri berikutnya,
