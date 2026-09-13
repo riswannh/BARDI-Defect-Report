@@ -510,6 +510,30 @@ const translations = {
     en: "{count} records deleted.",
     zh: "已删除 {count} 条数据。",
   },
+
+  // Bulk select
+  "bulk.selected": {
+    id: "{count} dipilih",
+    en: "{count} selected",
+    zh: "已选 {count} 项",
+  },
+  "bulk.edit": { id: "Edit", en: "Edit", zh: "编辑" },
+  "bulk.delete": { id: "Hapus", en: "Delete", zh: "删除" },
+  "bulk.clear": {
+    id: "Batalkan pilihan",
+    en: "Clear selection",
+    zh: "清除选择",
+  },
+  "bulk.deleteTitle": {
+    id: "Hapus {count} data terpilih?",
+    en: "Delete {count} selected items?",
+    zh: "删除已选的 {count} 条数据？",
+  },
+  "bulk.deleteWarning": {
+    id: "{count} data yang dipilih akan dihapus permanen dan tidak bisa dikembalikan.",
+    en: "The {count} selected items will be permanently deleted and cannot be undone.",
+    zh: "已选的 {count} 条数据将被永久删除，无法恢复。",
+  },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

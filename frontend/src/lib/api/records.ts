@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, like, lte, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, like, lte, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -259,6 +259,23 @@ export async function defectsDELETEALL() {
   return jsonOk({ deleted: rows.length, backup });
 }
 
+export async function defectsBULKDELETE(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const body = (await req.json()) as { ids?: unknown };
+  const ids = Array.isArray(body?.ids)
+    ? body.ids.map((value) => Number(value)).filter((value) => Number.isInteger(value))
+    : [];
+  if (ids.length === 0) return jsonError("Tidak ada data yang dipilih.", 422);
+
+  const rows = await db
+    .delete(defects)
+    .where(inArray(defects.id, ids))
+    .returning({ id: defects.id });
+  return jsonOk({ deleted: rows.length });
+}
+
 /* =============================== Sales =============================== */
 
 export async function salesGET(req: NextRequest) {
@@ -364,4 +381,21 @@ export async function salesDELETEALL() {
   const backup = backupDatabase("sales");
   const rows = await db.delete(sales).returning({ id: sales.id });
   return jsonOk({ deleted: rows.length, backup });
+}
+
+export async function salesBULKDELETE(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const body = (await req.json()) as { ids?: unknown };
+  const ids = Array.isArray(body?.ids)
+    ? body.ids.map((value) => Number(value)).filter((value) => Number.isInteger(value))
+    : [];
+  if (ids.length === 0) return jsonError("Tidak ada data yang dipilih.", 422);
+
+  const rows = await db
+    .delete(sales)
+    .where(inArray(sales.id, ids))
+    .returning({ id: sales.id });
+  return jsonOk({ deleted: rows.length });
 }

@@ -172,8 +172,12 @@ export default function DefectsPage() {
   const [to, setTo] = useState("");
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editQueue, setEditQueue] = useState<number[]>([]);
+  const [editIndex, setEditIndex] = useState(0);
+  const editingId = editQueue.length > 0 ? editQueue[editIndex] : null;
   const [form, setForm] = useState<DefectForm>(emptyForm);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -273,14 +277,9 @@ export default function DefectsPage() {
   const totalQty = visibleDefects.reduce((sum, d) => sum + d.quantity, 0);
   const totalVal = visibleDefects.reduce((sum, d) => sum + (d.value ?? 0), 0);
 
-  function openCreate() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  }
-
-  function openEdit(d: DefectRow) {
-    setEditingId(d.id);
+  function loadForm(id: number) {
+    const d = (defectData ?? []).find((row) => row.id === id);
+    if (!d) return;
     setForm({
       codeGaransi: d.codeGaransi,
       timestamp: d.timestamp,
@@ -294,7 +293,57 @@ export default function DefectsPage() {
       factoryId: String(d.factoryId),
       value: String(d.value ?? 0),
     });
+  }
+
+  function openCreate() {
+    setEditQueue([]);
+    setEditIndex(0);
+    setForm(emptyForm);
     setDialogOpen(true);
+  }
+
+  function openEdit(d: DefectRow) {
+    setEditQueue([d.id]);
+    setEditIndex(0);
+    loadForm(d.id);
+    setDialogOpen(true);
+  }
+
+  function startBulkEdit() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setEditQueue(ids);
+    setEditIndex(0);
+    loadForm(ids[0]);
+    setDialogOpen(true);
+  }
+
+  function finishEditFlow() {
+    setEditQueue([]);
+    setEditIndex(0);
+    setDialogOpen(false);
+    setSelectedIds(new Set());
+    reload();
+  }
+
+  function advanceEdit() {
+    if (editQueue.length === 0) return;
+    const next = editIndex + 1;
+    if (next < editQueue.length) {
+      setEditIndex(next);
+      loadForm(editQueue[next]);
+    } else {
+      finishEditFlow();
+    }
+  }
+
+  function handleDialogOpenChange(open: boolean) {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    // Tombol X / ESC → lanjut ke card berikutnya (atau selesai jika terakhir)
+    advanceEdit();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -317,13 +366,54 @@ export default function DefectsPage() {
     try {
       if (editingId === null) {
         await apiPost("/api/defects", payload);
+        setDialogOpen(false);
+        reload();
       } else {
         await apiPatch(`/api/defects/${editingId}`, payload);
+        advanceEdit();
       }
-      setDialogOpen(false);
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menyimpan.");
+    }
+  }
+
+  const allPageSelected =
+    pagedDefects.length > 0 &&
+    pagedDefects.every((d) => selectedIds.has(d.id));
+
+  function toggleAllPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        for (const d of pagedDefects) next.delete(d.id);
+      } else {
+        for (const d of pagedDefects) next.add(d.id);
+      }
+      return next;
+    });
+  }
+
+  function toggleOne(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    try {
+      const res = await apiPost<{ deleted: number }>(
+        "/api/defects/bulk-delete",
+        { ids: Array.from(selectedIds) }
+      );
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setBulkDeleteOpen(false);
+      setSelectedIds(new Set());
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
   }
 
@@ -428,13 +518,15 @@ export default function DefectsPage() {
         }
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingId === null
                 ? t("defects.addTitle")
-                : t("defects.editTitle")}
+                : editQueue.length > 1
+                  ? `${t("defects.editTitle")} (${editIndex + 1}/${editQueue.length})`
+                  : t("defects.editTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -821,10 +913,44 @@ export default function DefectsPage() {
           )}
         </CardContent>
 
+        {selectedIds.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+            <span className="text-xs font-medium">
+              {t("bulk.selected", { count: selectedIds.size })}
+            </span>
+            <Button size="sm" variant="outline" onClick={startBulkEdit}>
+              <Pencil className="size-4" /> {t("bulk.edit")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="size-4" /> {t("bulk.delete")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              {t("bulk.clear")}
+            </Button>
+          </div>
+        )}
+
         <div className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={allPageSelected}
+                    onChange={toggleAllPage}
+                    aria-label="Pilih semua"
+                  />
+                </TableHead>
                 <TableHead>{t("common.codeGaransi")}</TableHead>
                 <TableHead>{t("common.timestamp")}</TableHead>
                 <TableHead>{t("common.product")}</TableHead>
@@ -850,6 +976,15 @@ export default function DefectsPage() {
                   className="cursor-pointer"
                   onClick={() => setDetailDefect(d)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={selectedIds.has(d.id)}
+                      onChange={() => toggleOne(d.id)}
+                      aria-label={`Pilih ${d.codeGaransi}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">
                     {d.codeGaransi}
                   </TableCell>
@@ -926,7 +1061,7 @@ export default function DefectsPage() {
               {visibleDefects.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 10 : 8}
+                    colSpan={isAdmin ? 11 : 9}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}
@@ -1085,6 +1220,16 @@ export default function DefectsPage() {
         onOpenChange={setDeleteAllOpen}
         label={t("defects.title")}
         onConfirm={handleDeleteAll}
+      />
+
+      <DeleteAllDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        label={t("defects.title")}
+        title={t("bulk.deleteTitle", { count: selectedIds.size })}
+        description={t("bulk.deleteWarning", { count: selectedIds.size })}
+        confirmLabel={t("bulk.delete")}
+        onConfirm={handleBulkDelete}
       />
       </div>
     </AdminGuard>

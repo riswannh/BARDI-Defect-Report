@@ -18,6 +18,9 @@ interface DeleteAllDialogProps {
   onOpenChange: (open: boolean) => void;
   label: string;
   note?: string;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
   onConfirm: () => Promise<void>;
 }
 
@@ -26,6 +29,9 @@ export function DeleteAllDialog({
   onOpenChange,
   label,
   note,
+  title,
+  description,
+  confirmLabel,
   onConfirm,
 }: DeleteAllDialogProps) {
   const { t } = useLanguage();
@@ -48,10 +54,10 @@ export function DeleteAllDialog({
             <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
               <AlertTriangle className="size-4" />
             </span>
-            {t("deleteAll.title", { label })}
+            {title ?? t("deleteAll.title", { label })}
           </DialogTitle>
           <DialogDescription>
-            {t("deleteAll.warning", { label })}
+            {description ?? t("deleteAll.warning", { label })}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-muted-foreground">
@@ -67,7 +73,7 @@ export function DeleteAllDialog({
             {t("deleteAll.cancel")}
           </Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={busy}>
-            {busy ? t("common.loading") : t("deleteAll.confirm")}
+            {busy ? t("common.loading") : (confirmLabel ?? t("deleteAll.confirm"))}
           </Button>
         </DialogFooter>
       </DialogContent>

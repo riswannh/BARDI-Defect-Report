@@ -124,8 +124,12 @@ export default function SalesPage() {
   const [search, setSearch] = useState("");
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editQueue, setEditQueue] = useState<number[]>([]);
+  const [editIndex, setEditIndex] = useState(0);
+  const editingId = editQueue.length > 0 ? editQueue[editIndex] : null;
   const [form, setForm] = useState<SaleForm>(emptyForm);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
@@ -187,14 +191,9 @@ export default function SalesPage() {
   const totalQty = visibleSales.reduce((sum, s) => sum + s.quantity, 0);
   const totalVal = visibleSales.reduce((sum, s) => sum + (s.value ?? 0), 0);
 
-  function openCreate() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  }
-
-  function openEdit(s: SaleRow) {
-    setEditingId(s.id);
+  function loadForm(id: number) {
+    const s = (saleData ?? []).find((row) => row.id === id);
+    if (!s) return;
     setForm({
       productId: String(s.productId),
       factoryId: String(s.factoryId),
@@ -202,7 +201,56 @@ export default function SalesPage() {
       quantity: String(s.quantity),
       value: String(s.value ?? 0),
     });
+  }
+
+  function openCreate() {
+    setEditQueue([]);
+    setEditIndex(0);
+    setForm(emptyForm);
     setDialogOpen(true);
+  }
+
+  function openEdit(s: SaleRow) {
+    setEditQueue([s.id]);
+    setEditIndex(0);
+    loadForm(s.id);
+    setDialogOpen(true);
+  }
+
+  function startBulkEdit() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setEditQueue(ids);
+    setEditIndex(0);
+    loadForm(ids[0]);
+    setDialogOpen(true);
+  }
+
+  function finishEditFlow() {
+    setEditQueue([]);
+    setEditIndex(0);
+    setDialogOpen(false);
+    setSelectedIds(new Set());
+    reload();
+  }
+
+  function advanceEdit() {
+    if (editQueue.length === 0) return;
+    const next = editIndex + 1;
+    if (next < editQueue.length) {
+      setEditIndex(next);
+      loadForm(editQueue[next]);
+    } else {
+      finishEditFlow();
+    }
+  }
+
+  function handleDialogOpenChange(open: boolean) {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    advanceEdit();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -219,13 +267,52 @@ export default function SalesPage() {
     try {
       if (editingId === null) {
         await apiPost("/api/sales", payload);
+        setDialogOpen(false);
+        reload();
       } else {
         await apiPatch(`/api/sales/${editingId}`, payload);
+        advanceEdit();
       }
-      setDialogOpen(false);
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menyimpan.");
+    }
+  }
+
+  const allPageSelected =
+    pagedSales.length > 0 && pagedSales.every((s) => selectedIds.has(s.id));
+
+  function toggleAllPage() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        for (const s of pagedSales) next.delete(s.id);
+      } else {
+        for (const s of pagedSales) next.add(s.id);
+      }
+      return next;
+    });
+  }
+
+  function toggleOne(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    try {
+      const res = await apiPost<{ deleted: number }>("/api/sales/bulk-delete", {
+        ids: Array.from(selectedIds),
+      });
+      toast.success(t("deleteAll.success", { count: res.deleted }));
+      setBulkDeleteOpen(false);
+      setSelectedIds(new Set());
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
   }
 
@@ -330,11 +417,15 @@ export default function SalesPage() {
         }
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingId === null ? t("sales.addTitle") : t("sales.editTitle")}
+              {editingId === null
+                ? t("sales.addTitle")
+                : editQueue.length > 1
+                  ? `${t("sales.editTitle")} (${editIndex + 1}/${editQueue.length})`
+                  : t("sales.editTitle")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -534,10 +625,44 @@ export default function SalesPage() {
           </div>
         </CardContent>
 
+        {selectedIds.size > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
+            <span className="text-xs font-medium">
+              {t("bulk.selected", { count: selectedIds.size })}
+            </span>
+            <Button size="sm" variant="outline" onClick={startBulkEdit}>
+              <Pencil className="size-4" /> {t("bulk.edit")}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="size-4" /> {t("bulk.delete")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              {t("bulk.clear")}
+            </Button>
+          </div>
+        )}
+
         <div className="px-4 pb-4">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={allPageSelected}
+                    onChange={toggleAllPage}
+                    aria-label="Pilih semua"
+                  />
+                </TableHead>
                 <TableHead>{t("common.product")}</TableHead>
                 <TableHead>{t("common.factory")}</TableHead>
                 <TableHead>{t("common.month")}</TableHead>
@@ -555,6 +680,15 @@ export default function SalesPage() {
             <TableBody>
               {pagedSales.map((s) => (
                 <TableRow key={s.id}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={selectedIds.has(s.id)}
+                      onChange={() => toggleOne(s.id)}
+                      aria-label={`Pilih ${productName(products, s.productId)}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">
                     {productName(products, s.productId)}
                   </TableCell>
@@ -595,7 +729,7 @@ export default function SalesPage() {
               {visibleSales.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 6 : 4}
+                    colSpan={isAdmin ? 7 : 5}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}
@@ -633,6 +767,16 @@ export default function SalesPage() {
         onOpenChange={setDeleteAllOpen}
         label={t("sales.title")}
         onConfirm={handleDeleteAll}
+      />
+
+      <DeleteAllDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        label={t("sales.title")}
+        title={t("bulk.deleteTitle", { count: selectedIds.size })}
+        description={t("bulk.deleteWarning", { count: selectedIds.size })}
+        confirmLabel={t("bulk.delete")}
+        onConfirm={handleBulkDelete}
       />
       </div>
     </AdminGuard>
