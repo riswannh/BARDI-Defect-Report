@@ -14,14 +14,7 @@ export function SummaryCard({
   icon: Icon,
 }: SummaryCardProps) {
   return (
-    <Card
-      size="sm"
-      className="hover-lift animate-fade-in-up relative overflow-hidden"
-    >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-10 -right-10 size-28 rounded-full bg-primary/8 blur-2xl"
-      />
+    <Card size="sm" className="relative overflow-hidden">
       <CardHeader>
         <div className="flex items-center gap-2.5">
           {Icon && (
@@ -33,7 +26,7 @@ export function SummaryCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5">
-        <span className="font-heading text-2xl font-semibold tracking-tight">
+        <span className="font-heading text-2xl font-semibold tracking-tight tabular-nums">
           {value}
         </span>
         {description && (

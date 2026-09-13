@@ -5,7 +5,7 @@
 > `PRD.md` adalah dokumen kebutuhan awal; README ini adalah versi terupdate yang sudah disinkronkan dengan implementasi.
 
 - **Repo**: https://github.com/riswannh/BARDI-Defect-Report (private, branch `main`)
-- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker)
+- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile
 
 ---
 
@@ -65,6 +65,9 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Searchable dropdown (semua select) | ✅ Selesai (autofocus + reset saat ditutup) |
 | + | Hapus semua data dengan backup otomatis | ✅ Selesai |
 | + | Bulk edit / bulk delete (Defect & Sales) | ✅ Selesai |
+| + | Alur input defect cepat (timestamp otomatis, simpan & tambah lagi, saran kode garansi, autofocus, konfirmasi buang isian) | ✅ Selesai |
+| + | Navigasi mobile (sidebar jadi sheet di < lg) — semua halaman bebas overflow di 390px | ✅ Selesai |
+| + | Perbaikan bug Select: nilai terpilih tidak lagi direset `null` saat popup ditutup | ✅ Selesai |
 
 ---
 
@@ -154,15 +157,19 @@ Open Code Project/
         │   ├── login/page.tsx
         │   ├── (dashboard)/            # layout dengan sidebar + header + guard
         │   │   ├── report/page.tsx
-        │   │   ├── defects/page.tsx
+        │   │   ├── defects/           # page.tsx + defect-form-dialog.tsx
+        │   │   │                      #   + defect-detail-dialog.tsx + defect-form.ts
         │   │   ├── sales/page.tsx
         │   │   ├── master/page.tsx
         │   │   └── users/page.tsx
         │   └── api/                    # route handlers (lihat API Reference)
         ├── components/
-        │   ├── ui/                     # shadcn/Base UI (select.tsx = searchable dropdown)
+        │   ├── ui/                     # shadcn/Base UI (select.tsx = searchable dropdown,
+        │   │                           #   sheet.tsx = drawer navigasi mobile)
         │   ├── admin-guard.tsx         # redirect role Pabrik dari halaman admin
         │   ├── auth-guard.tsx          # redirect ke /login jika belum login
+        │   ├── confirm-dialog.tsx      # konfirmasi tindakan (mis. buang isian form)
+        │   ├── sidebar-nav.tsx         # isi navigasi (dipakai sidebar tetap & sheet)
         │   ├── delete-all-dialog.tsx
         │   ├── import-result-dialog.tsx
         │   ├── language-switcher.tsx
@@ -396,6 +403,12 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
 - **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, Value).
+- **Alur input cepat** (untuk pengisian beruntun satu shift):
+  - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
+  - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
+  - **Saran kode garansi**: prefiks diambil dari kode yang sudah ada di pabrik tersebut (mis. `WJKT-` untuk Pabrik Jakarta), lalu nomor urut berikutnya disarankan (mis. `WJKT-0004`). Tombol di samping kolom mengisinya sekali klik.
+  - **Fokus otomatis** ke kolom Code Garansi saat dialog dibuka; **Ctrl/Cmd+Enter** menyimpan.
+  - Menutup dialog yang masih berisi isian **meminta konfirmasi** lebih dulu.
 - **Bulk**: checkbox baris → **Ubah massal** (dialog edit berurutan per data, judul `(1/N)`; Perbarui = simpan & lanjut ke data berikutnya) dan **Hapus massal**.
 - **Excel**: import (duplikat `codeGaransi` di-skip), export, template.
 
@@ -586,6 +599,7 @@ Setiap selesai mengerjakan perubahan fitur:
 - `DropdownMenuLabel` harus dibungkus `DropdownMenuGroup`.
 - Saat popup Select terbuka, Base UI menangkap tombol karakter (typeahead) — input pencarian perlu `event.stopPropagation()` untuk `event.key.length === 1` agar bisa mengetik.
 - **Jangan meng-unmount item Select saat filter** — Base UI mendeteksi value terpilih "hilang" dan mereset value ke `null` (bug "null" pada trigger). Gunakan class `hidden`.
+- **Jangan memberi `key` yang berubah mengikuti status buka/tutup pada daftar item Select.** Ini penyebab utama bug `null` di atas: `SelectSearch` pernah memakai `key={open ? "open" : "closed"}` sehingga daftar item di-unmount tepat saat popup ditutup; Base UI lalu melaporkan peta item kosong lewat `SelectPositioner.onMapChange` dan mereset nilai yang baru dipilih. Gejalanya `onValueChange` terpanggil dua kali (`"2"` lalu `null`) dan data tidak pernah tersimpan. Kotak pencarian tetap ter-reset karena di-unmount bersama popup.
 - Base UI memfokuskan popup saat pointer meninggalkan item (mis. item hover tersembunyi karena filter) — kembalikan fokus ke input pencarian via listener `focusin` pada popup.
 - `useApi` mengosongkan data saat URL berubah (loading) — untuk daftar yang harus stabil (mis. pabrik di Report), fetch terpisah dari endpoint master.
 

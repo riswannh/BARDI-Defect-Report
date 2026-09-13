@@ -71,3 +71,51 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - Value (IDR) hanya tampil untuk role admin (dihapus dari respons API untuk role pabrik)
 - Data defect pakai timestamp lengkap (tanggal + jam); data sales per bulan (avg per hari untuk chart harian/mingguan/rentang)
 - Halaman Report mengambil data dari `GET /api/report` (recap + buckets + totals dihitung di server)
+
+## Frontend (Base UI) — JEBAKAN YANG SUDAH TERJADI
+
+Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/` atau form.
+
+- **JANGAN memberi `key` yang berubah mengikuti status buka/tutup pada daftar item
+  Select.** `SelectSearch` di `src/components/ui/select.tsx` pernah memakai
+  `key={open ? "open" : "closed"}`. Saat popup ditutup, daftar item di-unmount,
+  Base UI melaporkan peta item kosong lewat `SelectPositioner.onMapChange`, dan
+  nilai yang baru dipilih **direset ke null**. Gejalanya: `onValueChange` dipanggil
+  dua kali (`"2"` lalu `null`), trigger menampilkan teks `null`, dan data tidak
+  pernah tersimpan. Bug ini membuat semua dropdown di form tidak bisa diisi.
+  Kotak pencarian tetap ter-reset sendiri karena di-unmount bersama popup.
+- **Jangan meng-unmount item Select saat memfilter** — pakai class `hidden`
+  (lihat `SelectSearch`). Meng-unmount item memicu reset nilai yang sama.
+- `Select.Value` menampilkan nilai mentah kecuali `Select.Root` diberi prop
+  `items` (value + label).
+- Saat popup terbuka, Base UI menangkap tombol karakter (typeahead); input
+  pencarian perlu `event.stopPropagation()` untuk `event.key.length === 1`.
+- `DropdownMenuLabel` harus dibungkus `DropdownMenuGroup`.
+- `useApi` mengosongkan data saat URL berubah (loading) — untuk daftar yang harus
+  stabil (mis. pabrik di Report), fetch terpisah dari endpoint master.
+
+### Struktur halaman Defect
+
+`src/app/(dashboard)/defects/` sengaja dipecah; jangan dikembalikan jadi satu file:
+
+- `page.tsx` — data, filter, paging, seleksi, handler API
+- `defect-form-dialog.tsx` — dialog tambah/ubah (autofocus, Ctrl+Enter, simpan & tambah lagi)
+- `defect-detail-dialog.tsx` — dialog detail read-only
+- `defect-form.ts` — tipe, `emptyForm()`, `carryOverForm()`, saran kode garansi
+
+Aturan alur input defect:
+
+- Timestamp entri baru = waktu sekarang (`localDateTimeValue()`), bukan konstanta.
+- **Simpan & tambah lagi**: Produk + Pabrik + Status dibawa ke entri berikutnya,
+  sisanya dikosongkan. Tanpa ini operator mengulang pilihan yang sama tiap entri.
+- Saran kode garansi (`suggestNextCode`) membaca prefiks dari **kode yang sudah ada
+  di pabrik itu** (mis. `WJKT-`), bukan dari nama pabrik — nama "Pabrik Jakarta"
+  akan menghasilkan `WPAB-` yang tidak cocok dengan riwayat data.
+- Menutup dialog yang masih berisi isian harus dikonfirmasi (`ConfirmDialog`).
+
+### Layout responsif
+
+- `Sidebar` tetap (240px) hanya tampil di `lg` ke atas. Di bawah itu navigasi
+  pindah ke `Sheet` (`src/components/ui/sheet.tsx`) yang dibuka tombol menu di
+  header. Sebelumnya sidebar memakan ~61% lebar HP 390px sehingga konten tidak terbaca.
+- Halaman dashboard wajib bebas overflow horizontal di 390px.

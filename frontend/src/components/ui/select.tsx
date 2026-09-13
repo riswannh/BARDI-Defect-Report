@@ -6,26 +6,10 @@ import { cn } from "cn"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon, SearchIcon } from "lucide-react"
 import { useLanguage } from "@/lib/i18n"
 
-const SelectOpenContext = React.createContext(false)
-
 function Select<Value, Multiple extends boolean | undefined = false>({
-  onOpenChange,
-  defaultOpen = false,
   ...props
 }: SelectPrimitive.Root.Props<Value, Multiple>) {
-  const [open, setOpen] = React.useState(defaultOpen)
-  return (
-    <SelectOpenContext.Provider value={open}>
-      <SelectPrimitive.Root
-        defaultOpen={defaultOpen}
-        onOpenChange={(nextOpen, eventDetails) => {
-          setOpen(nextOpen)
-          onOpenChange?.(nextOpen, eventDetails)
-        }}
-        {...props}
-      />
-    </SelectOpenContext.Provider>
-  )
+  return <SelectPrimitive.Root {...props} />
 }
 
 function nodeText(node: React.ReactNode): string {
@@ -100,8 +84,6 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
-  const open = React.useContext(SelectOpenContext)
-
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -118,7 +100,15 @@ function SelectContent({
           className={cn("relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
           {...props}
         >
-          <SelectSearch key={open ? "open" : "closed"}>{children}</SelectSearch>
+          {/*
+            Jangan beri `key` yang berubah mengikuti status buka/tutup di sini.
+            Remount daftar item tepat saat popup ditutup membuat Base UI
+            melaporkan peta item kosong lewat `onMapChange`, dan nilai yang baru
+            saja dipilih langsung direset ke null ("null" muncul di trigger).
+            Kotak pencarian tetap ter-reset karena komponennya di-unmount
+            bersama popup setiap kali Select ditutup.
+          */}
+          <SelectSearch>{children}</SelectSearch>
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
     </SelectPrimitive.Portal>

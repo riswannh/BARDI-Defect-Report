@@ -13,6 +13,7 @@ export const LANGUAGES: { value: Language; label: string; short: string }[] = [
 const translations = {
   // Common
   "common.save": { id: "Simpan", en: "Save", zh: "保存" },
+  "common.cancel": { id: "Batal", en: "Cancel", zh: "取消" },
   "common.update": { id: "Perbarui", en: "Update", zh: "更新" },
   "common.add": { id: "Tambah", en: "Add", zh: "添加" },
   "common.search": { id: "Cari", en: "Search", zh: "搜索" },
@@ -78,6 +79,11 @@ const translations = {
     id: "Pabrik — akses terbatas",
     en: "Factory — limited access",
     zh: "工厂 — 受限访问",
+  },
+  "nav.openMenu": {
+    id: "Buka menu navigasi",
+    en: "Open navigation menu",
+    zh: "打开导航菜单",
   },
 
   // Header
@@ -357,6 +363,61 @@ const translations = {
     id: "Detail Defect",
     en: "Defect Detail",
     zh: "缺陷详情",
+  },
+  "defects.saveAndAddAnother": {
+    id: "Simpan & tambah lagi",
+    en: "Save & add another",
+    zh: "保存并继续添加",
+  },
+  "defects.carryOverHint": {
+    id: "Produk, Pabrik, dan Status dibawa dari entri sebelumnya.",
+    en: "Product, Factory, and Status carry over from the previous entry.",
+    zh: "产品、工厂和状态将沿用上一条记录。",
+  },
+  "defects.codeHint": {
+    id: "Saran kode berikutnya untuk {factory} — tekan untuk memakai.",
+    en: "Suggested next code for {factory} — press to use it.",
+    zh: "{factory} 的下一个建议编号 — 点击即可使用。",
+  },
+  "defects.codeNoSuggestion": {
+    id: "Isi kode garansi, contoh: {sample}",
+    en: "Enter the warranty code, e.g. {sample}",
+    zh: "请输入保修编号，例如：{sample}",
+  },
+  "defects.useSuggested": {
+    id: "Pakai kode {code}",
+    en: "Use code {code}",
+    zh: "使用编号 {code}",
+  },
+  "defects.unsavedTitle": {
+    id: "Isian belum tersimpan",
+    en: "Unsaved entry",
+    zh: "尚未保存",
+  },
+  "defects.unsavedBody": {
+    id: "Ada isian yang belum disimpan. Menutup sekarang akan menghilangkannya.",
+    en: "This entry has unsaved changes. Closing now will discard them.",
+    zh: "有未保存的内容，关闭后将丢失。",
+  },
+  "defects.unsavedKeepEditing": {
+    id: "Lanjut mengisi",
+    en: "Keep editing",
+    zh: "继续编辑",
+  },
+  "defects.unsavedDiscard": {
+    id: "Buang & tutup",
+    en: "Discard & close",
+    zh: "放弃并关闭",
+  },
+  "defects.shortcutHint": {
+    id: "Ctrl+Enter untuk menyimpan",
+    en: "Ctrl+Enter to save",
+    zh: "按 Ctrl+Enter 保存",
+  },
+  "defects.savedNext": {
+    id: "Tersimpan. Lanjut entri berikutnya.",
+    en: "Saved. Ready for the next entry.",
+    zh: "已保存，可继续录入下一条。",
   },
 
   // Master

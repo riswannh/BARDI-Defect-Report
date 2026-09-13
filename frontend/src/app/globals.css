@@ -177,49 +177,7 @@
 }
 
 @layer utilities {
-  @keyframes fade-in-up {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes fade-in-soft {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  .animate-fade-in-up {
-    animation: fade-in-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  }
-  .animate-fade-in-soft {
-    animation: fade-in-soft 0.5s ease-out backwards;
-  }
-  .hover-lift {
-    transition:
-      transform 0.2s ease,
-      box-shadow 0.2s ease,
-      border-color 0.2s ease;
-  }
-  .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 30px -18px oklch(0.648 0.1 209.8 / 0.45);
-  }
-  .text-gradient-brand {
-    background: linear-gradient(
-      100deg,
-      oklch(0.648 0.1 209.8),
-      oklch(0.731 0.104 203.2) 55%,
-      oklch(0.816 0.084 204.3)
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
+  /* Animasi masuk berjenjang dan efek dekoratif (gradient text, hover-lift)
+     dihapus: ini permukaan Operate — gerak hanya untuk menyampaikan keadaan,
+     bukan menghias, dan pengguna sedang mengerjakan tugas, bukan menonton. */
 }

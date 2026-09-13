@@ -15,9 +15,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, ShieldCheck, ShieldAlert, User } from "lucide-react";
+import { LogOut, Menu, ShieldCheck, ShieldAlert, User } from "lucide-react";
 
-export function Header() {
+export function Header({
+  mobileNavOpen,
+  onMobileNavOpenChange,
+}: {
+  mobileNavOpen: boolean;
+  onMobileNavOpenChange: (open: boolean) => void;
+}) {
   const { user, logout, isAdmin } = useAuth();
   const { t } = useLanguage();
   const { data: factories } = useApi<Factory[]>("/api/factories");
@@ -29,18 +35,28 @@ export function Header() {
     : t("header.allFactories");
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-background/70 px-6 shadow-[0_1px_0_0_oklch(0.731_0.104_203.2/0.06)] backdrop-blur-md">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 shadow-[0_1px_0_0_oklch(0.731_0.104_203.2/0.06)] backdrop-blur-md sm:px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="lg:hidden"
+          aria-label={t("nav.openMenu")}
+          aria-expanded={mobileNavOpen}
+          onClick={() => onMobileNavOpenChange(true)}
+        >
+          <Menu className="size-4" />
+        </Button>
         {isAdmin ? (
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+          <span className="hidden size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 sm:flex">
             <ShieldCheck className="size-4" />
           </span>
         ) : (
-          <span className="flex size-7 items-center justify-center rounded-lg bg-muted text-muted-foreground ring-1 ring-border">
+          <span className="hidden size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground ring-1 ring-border sm:flex">
             <ShieldAlert className="size-4" />
           </span>
         )}
-        <span className="text-sm font-medium">{factoryName}</span>
+        <span className="truncate text-sm font-medium">{factoryName}</span>
       </div>
 
       <div className="flex items-center gap-1">

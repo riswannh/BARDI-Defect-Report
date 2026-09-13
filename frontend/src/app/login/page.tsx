@@ -67,7 +67,7 @@ export default function LoginPage() {
         <LanguageSwitcher />
       </div>
 
-      <Card className="animate-fade-in-up relative w-full max-w-sm gap-5 rounded-2xl shadow-2xl shadow-[oklch(0.648_0.1_209.8/0.18)] ring-1 ring-foreground/8 backdrop-blur-sm">
+      <Card className="relative w-full max-w-sm gap-5 rounded-2xl shadow-2xl shadow-[oklch(0.648_0.1_209.8/0.18)] ring-1 ring-foreground/8 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto flex size-16 items-center justify-center overflow-hidden bg-white shadow-lg shadow-[oklch(0.648_0.1_209.8/0.25)] ring-1 ring-primary/15">
             <Image
@@ -79,7 +79,7 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <CardTitle className="text-gradient-brand mt-2 text-xl font-semibold">
+          <CardTitle className="mt-2 text-xl font-semibold">
             {t("login.title")}
           </CardTitle>
           <CardDescription>{t("login.subtitle")}</CardDescription>
@@ -108,7 +108,7 @@ export default function LoginPage() {
               />
             </div>
             {error && (
-              <p className="animate-fade-in-soft rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {t("login.error")}
               </p>
             )}
