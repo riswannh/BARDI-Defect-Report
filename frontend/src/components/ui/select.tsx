@@ -89,11 +89,22 @@ function SelectContent({
     return () => window.clearTimeout(timer)
   }, [])
 
-  const filtered = React.useMemo(() => {
+  const { rendered, matchCount } = React.useMemo(() => {
     const items = React.Children.toArray(children)
     const q = query.trim().toLowerCase()
-    if (!q) return items
-    return items.filter((child) => nodeText(child).toLowerCase().includes(q))
+    if (!q) return { rendered: items, matchCount: items.length }
+    let matches = 0
+    const next = items.map((child) => {
+      const isMatch = nodeText(child).toLowerCase().includes(q)
+      if (isMatch) matches += 1
+      if (!React.isValidElement(child)) return child
+      const props = child.props as { className?: string }
+      return React.cloneElement(
+        child as React.ReactElement<{ className?: string }>,
+        { className: cn(props.className, isMatch ? "" : "hidden") }
+      )
+    })
+    return { rendered: next, matchCount: matches }
   }, [children, query])
 
   return (
@@ -134,9 +145,8 @@ function SelectContent({
           </div>
           <SelectScrollUpButton />
           <SelectPrimitive.List>
-            {filtered.length > 0 ? (
-              filtered
-            ) : (
+            {rendered}
+            {matchCount === 0 && (
               <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                 {t("common.noResults")}
               </div>
