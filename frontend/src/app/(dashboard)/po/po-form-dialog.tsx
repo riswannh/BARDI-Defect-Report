@@ -3,9 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 import {
+  formatIDR,
   formatNumber,
   formatPoCurrency,
   PO_CURRENCIES,
+  priceMonthLabel,
   type PoCurrency,
 } from "@/lib/format";
 import {
@@ -15,7 +17,7 @@ import {
   type KeteranganOption,
   type PpnStatus,
 } from "@/lib/api/validation";
-import type { Factory, Product } from "@/lib/types";
+import type { Factory, Product, ProductPrice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,6 +52,11 @@ export interface PoForm {
   ppn: PpnStatus;
   /** Keterangan: salah satu dari tiga pilihan tetap. */
   keterangan: KeteranganOption;
+  /**
+   * Baris harga master (per bulan/tahun) yang dipakai untuk Value RW.
+   * Kosong berarti produk ini belum punya harga untuk periode PO tersebut.
+   */
+  productPriceId: string;
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal, bukan UTC). */
@@ -75,6 +82,7 @@ export function emptyPoForm(): PoForm {
     // Default "Non PPN"; operator dapat mengubahnya ke "PPN" bila PO-nya kena pajak.
     ppn: "Non PPN",
     keterangan: DEFAULT_KETERANGAN,
+    productPriceId: "",
   };
 }
 
@@ -110,6 +118,7 @@ export function PoFormDialog({
   onSubmit,
   products,
   factories,
+  productPrices,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -119,6 +128,8 @@ export function PoFormDialog({
   onSubmit: (mode: "save" | "saveAndAddAnother") => void | Promise<void>;
   products: Product[];
   factories: Factory[];
+  /** Semua harga produk (semua periode) — dipilih untuk menghitung Value RW. */
+  productPrices: ProductPrice[];
 }) {
   const { t } = useLanguage();
   const isEditing = editingId !== null;
@@ -129,6 +140,28 @@ export function PoFormDialog({
   const keteranganOptions = useMemo(
     () => KETERANGAN_OPTIONS.map((option) => ({ value: option, label: option })),
     []
+  );
+
+  /**
+   * Harga yang bisa dipilih: harga milik produk terpilih, periode terbaru dulu.
+   * Labelnya memuat periode supaya operator tahu harga mana yang dipakai.
+   */
+  const priceOptions = useMemo(
+    () =>
+      productPrices
+        .filter((row) => form.productId !== "" && row.productId === Number(form.productId))
+        .sort((a, b) =>
+          b.year.localeCompare(a.year) || b.month.localeCompare(a.month)
+        )
+        .map((row) => ({
+          value: String(row.id),
+          label: `${priceMonthLabel(row.month)} ${row.year} — ${formatIDR(row.price)}`,
+        })),
+    [productPrices, form.productId]
+  );
+
+  const selectedPrice = productPrices.find(
+    (row) => String(row.id) === form.productPriceId
   );
 
   const productOptions = useMemo(
@@ -145,6 +178,8 @@ export function PoFormDialog({
   const quantity = Number(form.quantity) || 0;
   const price = Number(form.pricePerPcs) || 0;
   const total = quantity * price;
+  // Value RW = Quantity × Harga master (Rupiah), kolom terpisah dari Total.
+  const totalRw = selectedPrice ? quantity * selectedPrice.price : 0;
   const dirty = poFormHasContent(form);
 
   function handleOpenChange(next: boolean) {
@@ -211,7 +246,22 @@ export function PoFormDialog({
                   type="datetime-local"
                   value={form.poDate}
                   onChange={(e) =>
-                    onFormChange((f) => ({ ...f, poDate: e.target.value }))
+                    onFormChange((f) => {
+                      const poDate = e.target.value;
+                      // Tanggal PO berpindah bulan/tahun -> harga yang dipilih ikut
+                      // menyesuaikan selama produk itu punya harga di periode baru.
+                      const period = poDate.slice(0, 7);
+                      const match = productPrices.find(
+                        (row) =>
+                          row.productId === Number(f.productId) &&
+                          `${row.year}-${row.month}` === period
+                      );
+                      return {
+                        ...f,
+                        poDate,
+                        ...(match ? { productPriceId: String(match.id) } : {}),
+                      };
+                    })
                   }
                 />
               </div>
@@ -224,7 +274,31 @@ export function PoFormDialog({
                 <Select
                   value={form.productId}
                   onValueChange={(v) =>
-                    onFormChange((f) => ({ ...f, productId: String(v) }))
+                    onFormChange((f) => {
+                      const nextProductId = String(v);
+                      // Produk berganti -> harga periode PO sebelumnya tidak lagi
+                      // relevan, jadi pilih harga yang cocok dengan bulan/tahun PO
+                      // untuk produk baru itu.
+                      const period = f.poDate.slice(0, 7);
+                      const match =
+                        productPrices.find(
+                          (row) =>
+                            row.productId === Number(nextProductId) &&
+                            `${row.year}-${row.month}` === period
+                        ) ??
+                        productPrices
+                          .filter((row) => row.productId === Number(nextProductId))
+                          .sort(
+                            (a, b) =>
+                              b.year.localeCompare(a.year) ||
+                              b.month.localeCompare(a.month)
+                          )[0];
+                      return {
+                        ...f,
+                        productId: nextProductId,
+                        productPriceId: match ? String(match.id) : "",
+                      };
+                    })
                   }
                   items={productOptions}
                 >
@@ -345,6 +419,38 @@ export function PoFormDialog({
                 </Select>
               </div>
 
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("po.priceRw")}</Label>
+                {/* Harga master per bulan/tahun. Value RW dihitung dari harga ini,
+                    bukan dari Price/pcs, dan kolomnya terpisah dari Total. */}
+                <Select
+                  value={form.productPriceId}
+                  onValueChange={(v) =>
+                    onFormChange((f) => ({ ...f, productPriceId: String(v ?? "") }))
+                  }
+                  items={priceOptions}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("po.selectPrice")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priceOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedPrice
+                    ? t("po.valueRwHint", {
+                        qty: formatNumber(quantity),
+                        price: formatIDR(selectedPrice.price),
+                      })
+                    : t("po.priceMissing")}
+                </p>
+              </div>
+
               {/* Total dihitung di form; server menghitung ulang saat menyimpan. */}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="po-total">{t("po.totalValue")}</Label>
@@ -360,6 +466,17 @@ export function PoFormDialog({
                     qty: formatNumber(quantity),
                   })}
                 </p>
+              </div>
+
+              {/* Value RW: Quantity × Harga master, selalu Rupiah. */}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="po-value-rw">{t("po.valueRw")}</Label>
+                <Input
+                  id="po-value-rw"
+                  value={selectedPrice ? formatIDR(totalRw) : "-"}
+                  readOnly
+                  className="bg-muted/50 font-medium tabular-nums"
+                />
               </div>
             </div>
 

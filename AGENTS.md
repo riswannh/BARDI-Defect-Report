@@ -176,6 +176,22 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   menghapus `quantity` dan `value` sebuah defect hanya karena problemDetail-nya diubah. Karena itu
   schema update dibangun lewat `buildUpdate(fields)` di `validation.ts`, yang memasang `.optional()`
   di luar transform dan tanpa default. Jangan kembali memakai `SomeSchema.partial()` untuk update.
+- **Harga produk (`product_prices`)** — master harga per produk per bulan+tahun, **selalu Rupiah**,
+  dikelola di tab **Harga Produk** pada Data Master (`/api/product-prices`). Unik pada
+  `(productId, year, month)`: harga lama TIDAK ditimpa, perubahan harga = baris baru untuk periode
+  berikutnya. `month` disimpan dua digit (`"01"`..`"12"`) supaya bisa diurutkan sebagai teks.
+  - Baris PO menyimpan **rujukan** `productPriceId` (bukan salinan angka), jadi menambah harga baru
+    tidak mengubah nilai PO lama. Server mengisi rujukan itu otomatis dari bulan/tahun `poDate`
+    kalau operator tidak memilih; kalau produk belum punya harga di periode itu, rujukannya NULL dan
+    **PO tetap boleh disimpan** (Value RW dikosongkan, ditampilkan `-`).
+  - **Value RW** = `quantity × harga master`, kolom terpisah dari `value`/Total (yang mata uangnya
+    bisa USD/RMB). Ikut dihapus untuk role Pabrik bersama `pricePerPcs`/`value`/`currency`/`ppn` —
+    lihat `stripPoFinance()`; `productPriceMonth`/`Year` ikut dibuang karena hanya bermakna bersama
+    nominalnya.
+  - `POST /api/product-prices/carry-forward` menyalin harga dari periode terakhir sebelum periode
+    tujuan (bukan hanya bulan tepat sebelumnya) dan melewati yang sudah ada — dipakai untuk
+    pergantian bulan tanpa mengetik ulang semua produk.
+  - Menghapus harga yang masih dirujuk baris PO ditolak **409**.
 - **Tracing import**: respons import berisi `errors[]` & `skippedDetails[]` (baris, data, alasan) → ditampilkan di dialog `ImportResultDialog`, bisa diunduh CSV, dan dicatat di log server dengan prefix `[import:{module}]`
 - **Hapus semua data**: `DELETE /api/{module}` (admin only) — backup otomatis `backup-{module}-{timestamp}.db` dibuat dulu di folder data; master data gagal dihapus (409) jika masih dipakai defect/sales; hapus semua users mengecualikan akun sendiri
 - **Import users**: pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`

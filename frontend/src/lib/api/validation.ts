@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MONTHS_FULL } from "@/lib/format";
 
 export function normalizeTimestamp(value: string): string {
   const s = value.trim().replace(" ", "T");
@@ -178,6 +179,8 @@ export const purchaseOrderFields = {
   currency: z.string(),
   ppn: z.string(),
   keterangan: z.string(),
+  /** Harga master (Rupiah) yang dipakai baris PO; boleh kosong. */
+  productPriceId: z.coerce.number().int().positive().nullable(),
 } satisfies z.ZodRawShape;
 
 export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
@@ -186,9 +189,71 @@ export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
   currency: z.string().optional(),
   ppn: z.string().optional(),
   keterangan: z.string().optional(),
+  productPriceId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export const purchaseOrderUpdateSchema = buildUpdate(purchaseOrderFields);
+
+/* ---------------------- Harga produk per bulan ---------------------- */
+
+/** Bulan dua digit, "01".."12" — kunci harga bersama tahun. */
+export const PRICE_MONTHS = [
+  "01",
+  "02",
+  "03",
+  "04",
+  "05",
+  "06",
+  "07",
+  "08",
+  "09",
+  "10",
+  "11",
+  "12",
+] as const;
+export type PriceMonth = (typeof PRICE_MONTHS)[number];
+
+/** Terima "4", "04", atau "April"; kembalikan "04". Null bila tidak dikenali. */
+export function normalizePriceMonth(value: unknown): PriceMonth | null {
+  const raw =
+    typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  if (raw === "") return null;
+  const asNumber = Number(raw);
+  if (Number.isInteger(asNumber) && asNumber >= 1 && asNumber <= 12) {
+    return PRICE_MONTHS[asNumber - 1];
+  }
+  const lower = raw.toLowerCase();
+  const exact = MONTHS_FULL.findIndex((name) => name.toLowerCase() === lower);
+  if (exact >= 0) return PRICE_MONTHS[exact];
+  // Singkatan, mis. "Apr".
+  if (lower.length < 3) return null;
+  const short = MONTHS_FULL.findIndex((name) =>
+    name.toLowerCase().startsWith(lower.slice(0, 3))
+  );
+  return short >= 0 ? PRICE_MONTHS[short] : null;
+}
+
+/** Terima "2026"; null bila bukan tahun empat angka yang masuk akal. */
+export function normalizePriceYear(value: unknown): string | null {
+  const raw =
+    typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  if (!/^\d{4}$/.test(raw)) return null;
+  const n = Number(raw);
+  return n >= 1900 && n <= 2999 ? raw : null;
+}
+
+export const productPriceFields = {
+  productId: z.coerce.number().int().positive(),
+  price: z.coerce.number().min(0),
+  month: z.string().trim().min(1),
+  year: z.string().trim().min(1),
+} satisfies z.ZodRawShape;
+
+export const productPriceSchema = buildCreate(productPriceFields, {
+  price: z.coerce.number().min(0).default(0),
+});
+
+export const productPriceUpdateSchema = buildUpdate(productPriceFields);
 
 export const userCreateSchema = z.object({
   username: z.string().trim().min(3),

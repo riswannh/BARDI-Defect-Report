@@ -223,6 +223,42 @@ export const sales = sqliteTable(
 );
 
 /**
+ * Riwayat harga produk per bulan dan tahun — selalu dalam Rupiah.
+ *
+ * Satu produk boleh punya banyak baris (satu per bulan/tahun), sehingga harga
+ * lama tidak pernah ditimpa: kalau harga berubah, buat baris baru untuk periode
+ * berikutnya. Baris PO merujuk ke salah satu baris di sini lewat `productPriceId`,
+ * jadi nilai PO lama tetap memakai harga yang dulu dipilih.
+ */
+export const productPrices = sqliteTable(
+  "product_prices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    productId: integer("productId")
+      .notNull()
+      .references(() => products.id),
+    /** Rupiah; boleh pecahan seperti harga PO. */
+    price: real("price").notNull().default(0),
+    /** "01".."12" (dua digit, supaya bisa diurutkan sebagai teks). */
+    month: text("month").notNull(),
+    year: text("year").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    // Satu harga per produk per bulan/tahun — inilah yang menjaga harga lama
+    // tetap unik dan tidak bisa tertimpa diam-diam.
+    unique("product_prices_unique").on(t.productId, t.year, t.month),
+    index("product_prices_product_idx").on(t.productId),
+    index("product_prices_period_idx").on(t.year, t.month),
+  ]
+);
+
+/**
  * Purchase Order (PO) — satu baris per produk per PO.
  *
  * SENGAJA TANPA constraint UNIQUE: user memutuskan satu PO Number boleh diinput
@@ -257,6 +293,18 @@ export const purchaseOrders = sqliteTable(
     /** Hasil pricePerPcs x quantity; selalu dihitung ulang di server. */
     value: real("value").notNull().default(0),
     currency: text("currency").notNull().default("Rp"),
+    /**
+     * Harga master (Rupiah) yang dipakai baris PO ini.
+     *
+     * Rujukan ke baris `product_prices`, bukan salinan angkanya — sehingga
+     * "Value RW = quantity × harga" selalu konsisten dengan harga yang dipilih,
+     * dan PO lama tidak ikut berubah saat harga baru ditambahkan untuk periode
+     * berikutnya (baris harganya tidak diubah, hanya ditambah baris baru).
+     *
+     * NULL berarti produk ini belum punya harga untuk bulan/tahun PO tersebut;
+     * baris PO tetap boleh disimpan dan Value RW-nya dikosongkan.
+     */
+    productPriceId: integer("productPriceId").references(() => productPrices.id),
     /**
      * Status PPN baris PO: "PPN" atau "Non PPN".
      *

@@ -5,6 +5,7 @@ import {
   defects,
   factories,
   problems,
+  productPrices,
   products,
   purchaseOrders,
   sales,
@@ -44,10 +45,11 @@ function stripValue<T extends { value?: number }>(
 
 /**
  * Field PO yang tidak boleh dilihat role Pabrik: harga satuan, total, mata uang,
- * dan status PPN.
+ * status PPN, dan seluruh data harga master (yang dipakai menghitung Value RW).
  *
  * Dihapus di sini — bukan disembunyikan di UI — mengikuti aturan yang sama
- * dengan field `value` pada Defect/Sales.
+ * dengan field `value` pada Defect/Sales. `productPriceMonth`/`Year` ikut dibuang
+ * karena keduanya hanya masuk akal bersama nominal harganya.
  */
 function stripPoFinance<
   T extends {
@@ -55,18 +57,48 @@ function stripPoFinance<
     pricePerPcs?: number;
     currency?: string;
     ppn?: string;
+    productPrice?: number | null;
+    productPriceId?: number | null;
+    productPriceMonth?: string | null;
+    productPriceYear?: string | null;
   },
 >(
   row: T,
   user: SessionUser
-): T | Omit<T, "value" | "pricePerPcs" | "currency" | "ppn"> {
+):
+  | T
+  | Omit<
+      T,
+      | "value"
+      | "pricePerPcs"
+      | "currency"
+      | "ppn"
+      | "productPrice"
+      | "productPriceId"
+      | "productPriceMonth"
+      | "productPriceYear"
+    > {
   if (user.isAdmin) return row;
   const copy: Record<string, unknown> = { ...row };
   delete copy.value;
   delete copy.pricePerPcs;
   delete copy.currency;
   delete copy.ppn;
-  return copy as Omit<T, "value" | "pricePerPcs" | "currency" | "ppn">;
+  delete copy.productPrice;
+  delete copy.productPriceId;
+  delete copy.productPriceMonth;
+  delete copy.productPriceYear;
+  return copy as Omit<
+    T,
+    | "value"
+    | "pricePerPcs"
+    | "currency"
+    | "ppn"
+    | "productPrice"
+    | "productPriceId"
+    | "productPriceMonth"
+    | "productPriceYear"
+  >;
 }
 
 const defectSelect = {
@@ -111,6 +143,15 @@ const purchaseOrderSelect = {
   currency: purchaseOrders.currency,
   ppn: purchaseOrders.ppn,
   keterangan: purchaseOrders.keterangan,
+  /**
+   * Harga master (Rupiah) yang dipakai baris ini. Baris PO menyimpan rujukannya,
+   * bukan salinan angkanya, sehingga "Value RW = quantity × harga" selalu
+   * mengikuti harga yang dipilih dan tidak berubah saat harga periode lain dibuat.
+   */
+  productPriceId: purchaseOrders.productPriceId,
+  productPrice: productPrices.price,
+  productPriceMonth: productPrices.month,
+  productPriceYear: productPrices.year,
   // SKU ikut dikirim supaya konsumen lain (mis. ekspor Excel) tidak kehilangan
   // informasi; SKU tetap melekat pada produk, bukan disalin ke baris PO.
   sku: products.sku,
@@ -236,6 +277,34 @@ export function keteranganOptions() {
   return [...KETERANGAN_OPTIONS];
 }
 
+/**
+ * Cari baris harga master untuk produk tertentu pada bulan/tahun tertentu.
+ *
+ * `poDate` berformat `YYYY-MM-DDTHH:mm`, jadi bulan dan tahunnya dibaca langsung
+ * dari string — bukan lewat Date — supaya tidak bergeser karena zona waktu.
+ * Null berarti produk itu belum punya harga untuk periode tersebut; itu bukan
+ * error, baris PO tetap boleh disimpan dengan Value RW kosong.
+ */
+export async function findProductPriceId(
+  productId: number,
+  poDate: string
+): Promise<number | null> {
+  const year = poDate.slice(0, 4);
+  const month = poDate.slice(5, 7);
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return null;
+  const rows = await db
+    .select({ id: productPrices.id })
+    .from(productPrices)
+    .where(
+      and(
+        eq(productPrices.productId, productId),
+        eq(productPrices.year, year),
+        eq(productPrices.month, month)
+      )
+    );
+  return rows[0]?.id ?? null;
+}
+
 export async function listPurchaseOrderRows(
   user: SessionUser,
   params: URLSearchParams
@@ -246,6 +315,7 @@ export async function listPurchaseOrderRows(
     .from(purchaseOrders)
     .leftJoin(products, eq(purchaseOrders.productId, products.id))
     .leftJoin(factories, eq(purchaseOrders.factoryId, factories.id))
+    .leftJoin(productPrices, eq(purchaseOrders.productPriceId, productPrices.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(purchaseOrders.poDate), desc(purchaseOrders.id));
 }
@@ -545,6 +615,14 @@ export async function purchaseOrdersPOST(req: NextRequest) {
   const quantity = parsed.data.quantity ?? 0;
   const pricePerPcs = parsed.data.pricePerPcs ?? 0;
 
+  // Harga master: pakai yang dipilih operator, atau cari otomatis sesuai
+  // bulan/tahun tanggal PO. Boleh null bila produk itu belum punya harga.
+  const productPriceId =
+    parsed.data.productPriceId !== undefined &&
+    parsed.data.productPriceId !== null
+      ? parsed.data.productPriceId
+      : await findProductPriceId(productId, poDate);
+
   // Tidak ada pemeriksaan duplikat: satu PO Number boleh diinput berkali-kali,
   // termasuk untuk produk yang sama (keputusan user, lihat SPEC-po-product.md).
   const [row] = await db
@@ -561,6 +639,7 @@ export async function purchaseOrdersPOST(req: NextRequest) {
       currency: normalizeCurrency(parsed.data.currency),
       ppn: normalizePpn(parsed.data.ppn),
       keterangan: normalizeKeterangan(parsed.data.keterangan) ?? DEFAULT_KETERANGAN,
+      productPriceId,
     })
     .returning();
   return jsonOk(row, 201);
@@ -591,7 +670,20 @@ export async function purchaseOrdersPATCH(
   const merged = {
     quantity: parsed.data.quantity ?? current[0].quantity,
     pricePerPcs: parsed.data.pricePerPcs ?? current[0].pricePerPcs,
+    productId: parsed.data.productId ?? current[0].productId,
+    poDate: parsed.data.poDate ?? current[0].poDate,
   };
+
+  /**
+   * Harga master: kalau operator memilih sendiri, hormati pilihannya (termasuk
+   * memilih kosong). Kalau tidak dikirim, cari ulang otomatis — perlu karena
+   * tanggal PO atau produknya mungkin ikut berubah, sehingga rujukan harga lama
+   * bisa jadi tidak nyambung lagi.
+   */
+  const productPriceId =
+    parsed.data.productPriceId !== undefined
+      ? parsed.data.productPriceId
+      : await findProductPriceId(merged.productId, merged.poDate);
 
   const [row] = await db
     .update(purchaseOrders)
@@ -609,6 +701,7 @@ export async function purchaseOrdersPATCH(
       quantity: merged.quantity,
       pricePerPcs: merged.pricePerPcs,
       value: merged.pricePerPcs * merged.quantity,
+      productPriceId,
       ...(parsed.data.currency !== undefined
         ? { currency: normalizeCurrency(parsed.data.currency) }
         : {}),

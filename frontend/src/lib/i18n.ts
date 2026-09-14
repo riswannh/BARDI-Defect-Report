@@ -354,6 +354,61 @@ const translations = {
   },
   "po.currency": { id: "Currency", en: "Currency", zh: "币种" },
   "po.ppn": { id: "PPN", en: "VAT", zh: "增值税" },
+  "po.priceRw": {
+    id: "Harga RW",
+    en: "RW Price",
+    zh: "RW 价格",
+  },
+  "po.valueRw": {
+    id: "Value RW",
+    en: "RW Value",
+    zh: "RW 金额",
+  },
+  "po.selectPrice": {
+    id: "Pilih harga (bulan/tahun)",
+    en: "Select price (month/year)",
+    zh: "选择价格（月/年）",
+  },
+  "po.priceMissing": {
+    id: "Produk ini belum punya harga untuk periode PO. Tambahkan di Data Master → Harga Produk.",
+    en: "This product has no price for the PO period yet. Add it in Data Master → Product Prices.",
+    zh: "该产品在此采购期间尚无价格，请在数据主档 → 产品价格中添加。",
+  },
+  "po.valueRwHint": {
+    id: "{qty} × {price}",
+    en: "{qty} × {price}",
+    zh: "{qty} × {price}",
+  },
+  "price.tab": { id: "Harga Produk", en: "Product Prices", zh: "产品价格" },
+  "price.product": { id: "Nama Produk", en: "Product Name", zh: "产品名称" },
+  "price.value": { id: "Harga", en: "Price", zh: "价格" },
+  "price.month": { id: "Bulan", en: "Month", zh: "月份" },
+  "price.year": { id: "Tahun", en: "Year", zh: "年份" },
+  "price.saved": {
+    id: "Harga tersimpan.",
+    en: "Price saved.",
+    zh: "价格已保存。",
+  },
+  "price.deleted": {
+    id: "Harga dihapus.",
+    en: "Price deleted.",
+    zh: "价格已删除。",
+  },
+  "price.empty": {
+    id: "Belum ada harga produk. Tambahkan lewat formulir di atas.",
+    en: "No product prices yet. Add one with the form above.",
+    zh: "暂无产品价格，请使用上方表单添加。",
+  },
+  "price.carryHint": {
+    id: "Menyalin semua harga dari periode sebelum {month} {year} ke periode itu.",
+    en: "Copies every price from the period before {month} {year} into that period.",
+    zh: "将 {month} {year} 之前的价格全部复制到该期间。",
+  },
+  "price.carryButton": {
+    id: "Salin harga periode sebelumnya",
+    en: "Copy previous period prices",
+    zh: "复制上一期间价格",
+  },
   "po.totalValue": {
     id: "Total Value",
     en: "Total Value",
@@ -598,9 +653,9 @@ const translations = {
   // Master
   "master.title": { id: "Data Master", en: "Master Data", zh: "主数据" },
   "master.description": {
-    id: "Kelola daftar produk, problem, dan status.",
-    en: "Manage product, problem, and status lists.",
-    zh: "管理产品、问题和状态列表。",
+    id: "Kelola daftar produk, problem, harga produk, dan status.",
+    en: "Manage product, problem, product price, and status lists.",
+    zh: "管理产品、问题、产品价格和状态列表。",
   },
   "master.newProduct": {
     id: "Nama produk baru",

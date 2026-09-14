@@ -209,6 +209,20 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 
 **`statuses`** — `id` (PK auto), `name` (unik), `createdAt`
 
+**`product_prices`** — harga produk per bulan dan tahun, **selalu Rupiah**
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `productId` | FK → products | |
+| `price` | real (default 0) | Rupiah; boleh pecahan |
+| `month` | text | `"01"`..`"12"` (dua digit supaya bisa diurutkan sebagai teks) |
+| `year` | text | empat digit |
+| `createdAt` / `updatedAt` | timestamp | |
+
+Constraint unik: `(productId, year, month)` — **satu harga per produk per periode**. Harga lama tidak
+pernah ditimpa: kalau harga berubah, buat baris baru untuk periode berikutnya.
+
 > Keterangan PO **bukan** master: ketiga nilainya di-hardcode di kode
 > (`KETERANGAN_OPTIONS` di `src/lib/api/validation.ts`) dan disimpan sebagai teks pada baris PO.
 
@@ -227,6 +241,7 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 | `currency` | text (default `Rp`) | `Rp`, `USD`, atau `RMB` |
 | `ppn` | text (default `Non PPN`) | `PPN` atau `Non PPN`. **Hanya penanda — tidak dihitung ke `value`.** Tidak dikirim ke role Pabrik |
 | `keterangan` | text (default `Product Order`) | salah satu dari tiga nilai tetap: `Product Order`, `Sparepart Order`, `Replacement` |
+| `productPriceId` | FK → product_prices (nullable) | harga master (Rupiah) yang dipakai baris ini; NULL bila produk itu belum punya harga di periode PO |
 | `createdAt` / `updatedAt` | timestamp | jejak audit, tidak ditampilkan di tabel |
 
 Index: `factoryId`, `poNumber`, `keterangan`, `poDate`. **Tidak ada constraint UNIQUE** — satu PO
@@ -344,7 +359,7 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keterangan`. Query: `factoryId`, `productId`, `keterangan` (teks), `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn` |
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keterangan`, `productPrice`/`productPriceMonth`/`productPriceYear` (harga master). Query: `factoryId`, `productId`, `keterangan` (teks), `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn`/`productPrice*` |
 | POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat; `value` dihitung server |
 | PATCH | `/api/purchase-orders/{id}` | admin | ubah sebagian; `value` dihitung ulang dari nilai final |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
@@ -357,6 +372,26 @@ sebagai `NULL`.
 respons memuat `replacementPos` (baris PO berketerangan `Replacement` pada periode terpilih) dan
 `totals.replacementQty` yang dipakai kartu **Replacement**. Pencocokan periodenya memakai
 `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect.
+
+### Harga Produk (per bulan & tahun)
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/product-prices` | user login | daftar + `productName`/`sku`. Query: `productId`, `year`, `month` |
+| POST | `/api/product-prices` | admin | tambah; 409 bila produk itu sudah punya harga di periode yang sama |
+| PATCH | `/api/product-prices/{id}` | admin | ubah nominal/produk/periode |
+| DELETE | `/api/product-prices/{id}` | admin | hapus; 409 bila masih dipakai baris PO |
+| DELETE | `/api/product-prices` | admin | hapus semua + backup; 409 bila ada PO yang memakai |
+| POST | `/api/product-prices/carry-forward` | admin | `{ month, year }` — salin harga dari periode terakhir sebelum periode itu |
+
+**Value RW** pada baris PO = `quantity × harga master`. Baris PO menyimpan **rujukan**
+(`productPriceId`), bukan salinan angkanya, sehingga menambah harga baru untuk periode lain tidak
+mengubah nilai PO lama. Bila produk belum punya harga di periode PO, Value RW dikosongkan (`-`) dan
+PO tetap boleh disimpan.
+
+**`carry-forward`** ada karena harga biasanya hanya berubah untuk sebagian produk: alih-alih
+mengetik ratusan baris tiap bulan, salin dulu dari periode sebelumnya lalu sunting yang berubah.
+Yang sudah ada di periode tujuan dilewati, jadi aman dijalankan berulang.
 
 ### Users
 

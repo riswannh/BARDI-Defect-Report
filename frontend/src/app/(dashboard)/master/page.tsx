@@ -9,13 +9,16 @@ import type {
   ImportResult,
   Problem,
   Product,
+  ProductPrice,
   Status,
-} from "@/lib/types";import { AdminGuard } from "@/components/admin-guard";
+} from "@/lib/types";
+import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { PriceList } from "@/components/price-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -35,10 +38,13 @@ export default function MasterPage() {
     useApi<Problem[]>("/api/problems");
   const { data: statusData, reload: reloadStatuses } =
     useApi<Status[]>("/api/statuses");
+  const { data: priceData, reload: reloadPrices } =
+    useApi<ProductPrice[]>("/api/product-prices");
 
   const products = productData ?? [];
   const problems = problemData ?? [];
   const statuses = statusData ?? [];
+  const prices = priceData ?? [];
 
   const [pageSize, setPageSize] = useState(10);
   const [pageState, setPageState] = useState({ signature: tab, page: 1 });
@@ -55,6 +61,7 @@ export default function MasterPage() {
   const pagedProducts = products.slice(start, end);
   const pagedProblems = problems.slice(start, end);
   const pagedStatuses = statuses.slice(start, end);
+  const pagedPrices = prices.slice(start, end);
 
   async function addItem(
     endpoint: string,
@@ -124,7 +131,63 @@ export default function MasterPage() {
       ? t("common.product")
       : tab === "problems"
         ? t("common.problem")
-        : t("common.status");
+        : tab === "prices"
+          ? t("price.tab")
+          : t("common.status");
+
+  // Harga produk: satu baris = produk + nominal + periode, jadi handler-nya
+  // terpisah dari master yang hanya nama.
+  async function addPrice(input: {
+    productId: number;
+    price: number;
+    month: string;
+    year: string;
+  }) {
+    try {
+      await apiPost("/api/product-prices", input);
+      reloadPrices();
+      toast.success(t("price.saved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan harga.");
+    }
+  }
+
+  async function updatePrice(
+    id: number,
+    input: { productId: number; price: number; month: string; year: string }
+  ) {
+    try {
+      await apiPatch(`/api/product-prices/${id}`, input);
+      reloadPrices();
+      toast.success(t("price.saved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyimpan harga.");
+    }
+  }
+
+  async function deletePrice(id: number) {
+    try {
+      await apiDelete(`/api/product-prices/${id}`);
+      reloadPrices();
+      toast.success(t("price.deleted"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus harga.");
+    }
+  }
+
+  /** Salin semua harga dari periode sebelumnya ke periode yang dipilih di form. */
+  async function carryForwardPrices(input: { month: string; year: string }) {
+    try {
+      const res = await apiPost<{ inserted: number; skipped: number; message: string }>(
+        "/api/product-prices/carry-forward",
+        input
+      );
+      reloadPrices();
+      toast.success(res.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Gagal menyalin harga.");
+    }
+  }
 
   async function handleDeleteAll() {
     try {
@@ -158,6 +221,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/template`)}
+              disabled={tab === "prices"}
             >
               <FileDown className="size-4" /> {t("common.template")}
             </Button>
@@ -165,6 +229,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
+              disabled={tab === "prices"}
             >
               <Upload className="size-4" /> {t("common.importExcel")}
             </Button>
@@ -172,6 +237,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/export`)}
+              disabled={tab === "prices"}
             >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
@@ -199,6 +265,7 @@ export default function MasterPage() {
         <TabsList>
           <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
+          <TabsTrigger value="prices">{t("price.tab")}</TabsTrigger>
           <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
         </TabsList>
 
@@ -250,6 +317,30 @@ export default function MasterPage() {
                 <div className="mt-4">
                   <Pagination
                     totalItems={problems.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="prices">
+              <PriceList
+                items={pagedPrices}
+                products={products}
+                onAdd={addPrice}
+                onUpdate={updatePrice}
+                onDelete={deletePrice}
+                onCarryForward={carryForwardPrices}
+              />
+              {prices.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={prices.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}

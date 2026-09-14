@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import { formatDateTime, formatNumber, formatPoCurrency, formatPoCurrencyCompact, MONTHS } from "@/lib/format";
+import { formatDateTime, formatIDR, formatNumber, formatPoCurrency, formatPoCurrencyCompact, MONTHS } from "@/lib/format";
 import {
   apiDelete,
   apiPatch,
@@ -17,6 +17,7 @@ import type {
   Factory,
   ImportResult,
   Product,
+  ProductPrice,
   PurchaseOrder,
 } from "@/lib/types";
 import { DEFAULT_KETERANGAN, KETERANGAN_OPTIONS } from "@/lib/api/validation";
@@ -86,6 +87,11 @@ export default function PoPage() {
   const { data: factoryData } = useApi<Factory[]>(
     poDemoEnabled ? null : "/api/factories"
   );
+  // Harga master per bulan/tahun, dipakai untuk memilih harga dan menghitung
+  // Value RW (Quantity × Harga).
+  const { data: priceData } = useApi<ProductPrice[]>(
+    poDemoEnabled ? null : "/api/product-prices"
+  );
 
   // `?? []` membuat array baru tiap render dan itu membuat useMemo di bawah
   // selalu dianggap usang; memo dipakai agar hanya dihitung ulang saat data
@@ -98,6 +104,7 @@ export default function PoPage() {
     () => (poDemoEnabled ? demoFactories : factoryData ?? []),
     [factoryData]
   );
+  const productPrices = useMemo(() => priceData ?? [], [priceData]);
   const rows = useMemo(
     () =>
       poDemoEnabled
@@ -242,6 +249,8 @@ export default function PoPage() {
             currency: previous.currency,
             ppn: previous.ppn,
             keterangan: previous.keterangan,
+            // Harga tidak dibawa: produknya dikosongkan, jadi harga periode entri
+            // sebelumnya belum tentu milik produk berikutnya.
           }
         : emptyPoForm()
     );
@@ -261,6 +270,7 @@ export default function PoPage() {
       ppn: (row.ppn as PoForm["ppn"]) ?? "Non PPN",
       keterangan:
         (row.keterangan as PoForm["keterangan"]) ?? DEFAULT_KETERANGAN,
+      productPriceId: row.productPriceId ? String(row.productPriceId) : "",
     });
     setEditingId(row.id);
     setDialogOpen(true);
@@ -278,6 +288,9 @@ export default function PoPage() {
       currency: form.currency,
       ppn: form.ppn,
       keterangan: form.keterangan,
+      // Harga master yang dipakai untuk Value RW; null bila produk itu belum
+      // punya harga di periode PO.
+      productPriceId: form.productPriceId ? Number(form.productPriceId) : null,
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
       toast.error(t("po.incomplete"));
@@ -300,6 +313,7 @@ export default function PoPage() {
             currency: f.currency,
             ppn: f.ppn,
             keterangan: f.keterangan,
+            productPriceId: "",
           }));
           reload();
           toast.success(t("po.savedNext"));
@@ -402,8 +416,8 @@ export default function PoPage() {
     });
   }
 
-  // Admin: checkbox + PPN + Price/pcs + Total Currency + kolom aksi.
-  const columnCount = isAdmin ? 11 : 6;
+  // Admin: checkbox + PPN + Price/pcs + Total Currency + Value RW + kolom aksi.
+  const columnCount = isAdmin ? 12 : 6;
 
   return (
     // AuthGuard, bukan AdminGuard: halaman PO memang dibuka untuk role Pabrik
@@ -711,6 +725,11 @@ export default function PoPage() {
                         <TableHead className="text-right">
                           {t("po.totalCurrency")}
                         </TableHead>
+                        {/* Value RW = Quantity × Harga master (Rupiah), terpisah
+                            dari Total yang mata uangnya bisa USD/RMB. */}
+                        <TableHead className="text-right">
+                          {t("po.valueRw")}
+                        </TableHead>
                       </>
                     )}
                     {isAdmin && <TableHead className="w-24" />}
@@ -795,6 +814,20 @@ export default function PoPage() {
                               row.currency
                             )}
                           </TableCell>
+                          {/* Value RW: selalu Rupiah, dari harga master × quantity.
+                              "-" berarti produk itu belum punya harga di periode PO. */}
+                          <TableCell
+                            className="text-right font-medium tabular-nums"
+                            title={
+                              row.productPrice != null
+                                ? `${formatNumber(row.quantity)} × ${formatIDR(row.productPrice)}`
+                                : t("po.priceMissing")
+                            }
+                          >
+                            {row.productPrice != null
+                              ? formatIDR(row.quantity * row.productPrice)
+                              : "-"}
+                          </TableCell>
                         </>
                       )}
                       {isAdmin && (
@@ -862,6 +895,7 @@ export default function PoPage() {
             onSubmit={handleSubmit}
             products={products}
             factories={factories}
+            productPrices={productPrices}
           />
         )}
 

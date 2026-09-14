@@ -133,3 +133,14 @@ export const MONTHS_FULL = [
 export function monthIndex(month: string): number {
   return MONTHS.indexOf(month as (typeof MONTHS)[number]);
 }
+
+/**
+ * Nama bulan Indonesia dari kode dua digit, mis. "04" → "April".
+ *
+ * Dipakai harga produk yang menyimpan bulannya sebagai "01".."12" supaya bisa
+ * diurutkan sebagai teks.
+ */
+export function priceMonthLabel(month: string): string {
+  const index = Number(month) - 1;
+  return MONTHS_FULL[index] ?? month;
+}

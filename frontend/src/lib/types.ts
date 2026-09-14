@@ -29,6 +29,25 @@ export interface Status {
   name: string;
 }
 
+/**
+ * Harga produk per bulan dan tahun (selalu Rupiah).
+ *
+ * Satu produk boleh punya banyak baris — satu per periode. Baris PO merujuk ke
+ * salah satunya lewat `productPriceId`, jadi nilai PO lama tidak ikut berubah
+ * ketika harga baru ditambahkan untuk periode berikutnya.
+ */
+export interface ProductPrice {
+  id: number;
+  productId: number;
+  price: number;
+  /** "01".."12". */
+  month: string;
+  year: string;
+  /** Dari master produk, ikut dikirim server supaya tabel tidak perlu join di klien. */
+  sku?: string | null;
+  productName?: string | null;
+}
+
 export interface Defect {
   id: number;
   codeGaransi: string;
@@ -85,6 +104,12 @@ export interface PurchaseOrder {
    * "Product Order" | "Sparepart Order" | "Replacement".
    */
   keterangan?: string;
+  /** Rujukan ke harga master (Rupiah) yang dipakai baris ini; null bila belum ada. */
+  productPriceId?: number | null;
+  /** Nominal harga master yang dirujuk, untuk menghitung Value RW. */
+  productPrice?: number | null;
+  productPriceMonth?: string | null;
+  productPriceYear?: string | null;
   sku?: string | null;
   productName?: string | null;
   factoryName?: string | null;
