@@ -4,8 +4,10 @@ import { db } from "@/lib/db";
 import {
   defects,
   factories,
+  keterangan,
   problems,
   products,
+  purchaseOrders,
   sales,
   statuses,
 } from "@/lib/db/schema";
@@ -20,6 +22,9 @@ import { backupDatabase } from "@/lib/api/bulk";
 import {
   defectSchema,
   defectUpdateSchema,
+  normalizeCurrency,
+  purchaseOrderSchema,
+  purchaseOrderUpdateSchema,
   saleSchema,
   saleUpdateSchema,
 } from "@/lib/api/validation";
@@ -32,6 +37,23 @@ function stripValue<T extends { value?: number }>(
   const copy: Record<string, unknown> = { ...row };
   delete copy.value;
   return copy as Omit<T, "value">;
+}
+
+/**
+ * Role Pabrik tidak boleh melihat harga satuan, total, maupun mata uang.
+ *
+ * Dihapus di sini — bukan disembunyikan di UI — mengikuti aturan yang sama
+ * dengan field `value` pada Defect/Sales.
+ */
+function stripPricing<
+  T extends { value?: number; pricePerPcs?: number; currency?: string },
+>(row: T, user: SessionUser): T | Omit<T, "value" | "pricePerPcs" | "currency"> {
+  if (user.isAdmin) return row;
+  const copy: Record<string, unknown> = { ...row };
+  delete copy.value;
+  delete copy.pricePerPcs;
+  delete copy.currency;
+  return copy as Omit<T, "value" | "pricePerPcs" | "currency">;
 }
 
 const defectSelect = {
@@ -62,6 +84,25 @@ const saleSelect = {
   value: sales.value,
   productName: products.name,
   factoryName: factories.name,
+};
+
+const purchaseOrderSelect = {
+  id: purchaseOrders.id,
+  poNumber: purchaseOrders.poNumber,
+  poDate: purchaseOrders.poDate,
+  productId: purchaseOrders.productId,
+  factoryId: purchaseOrders.factoryId,
+  quantity: purchaseOrders.quantity,
+  pricePerPcs: purchaseOrders.pricePerPcs,
+  value: purchaseOrders.value,
+  currency: purchaseOrders.currency,
+  keteranganId: purchaseOrders.keteranganId,
+  // SKU ikut dikirim supaya konsumen lain (mis. ekspor Excel) tidak kehilangan
+  // informasi; SKU tetap melekat pada produk, bukan disalin ke baris PO.
+  sku: products.sku,
+  productName: products.name,
+  factoryName: factories.name,
+  keteranganName: keterangan.name,
 };
 
 function numParam(value: string | null): number | null {
@@ -125,6 +166,70 @@ export function saleConditions(
     if (searchClause) conditions.push(searchClause);
   }
   return conditions;
+}
+
+/**
+ * Filter PO: mengikuti Sales (pabrik, produk, pencarian) ditambah Keterangan
+ * serta Bulan/Tahun yang membaca `poDate`.
+ *
+ * Bulan dan tahun disaring lewat rentang string, bukan fungsi tanggal SQL,
+ * supaya format `YYYY-MM-DDTHH:mm` dibandingkan apa adanya.
+ */
+export function purchaseOrderConditions(
+  user: SessionUser,
+  params: URLSearchParams
+): SQL[] {
+  const factory = scopedFactoryId(user, numParam(params.get("factoryId")));
+  const productId = numParam(params.get("productId"));
+  const keteranganId = numParam(params.get("keteranganId"));
+  const month = params.get("month")?.trim();
+  const year = params.get("year")?.trim();
+  const q = params.get("search")?.trim();
+
+  const conditions: SQL[] = [];
+  if (factory !== null) conditions.push(eq(purchaseOrders.factoryId, factory));
+  if (productId !== null)
+    conditions.push(eq(purchaseOrders.productId, productId));
+  if (keteranganId !== null)
+    conditions.push(eq(purchaseOrders.keteranganId, keteranganId));
+  if (year && /^\d{4}$/.test(year)) {
+    if (month && /^\d{2}$/.test(month)) {
+      conditions.push(gte(purchaseOrders.poDate, `${year}-${month}-01`));
+      conditions.push(lte(purchaseOrders.poDate, `${year}-${month}-31T23:59`));
+    } else {
+      conditions.push(gte(purchaseOrders.poDate, `${year}-01-01`));
+      conditions.push(lte(purchaseOrders.poDate, `${year}-12-31T23:59`));
+    }
+  } else if (month && /^\d{2}$/.test(month)) {
+    // Bulan saja tanpa tahun: cocokkan bagian "-MM-" pada tanggal mana pun.
+    conditions.push(like(purchaseOrders.poDate, `____-${month}-%`));
+  }
+  if (q) {
+    const searchClause = or(
+      like(purchaseOrders.poNumber, `%${q}%`),
+      like(keterangan.name, `%${q}%`),
+      like(products.name, `%${q}%`),
+      like(products.sku, `%${q}%`),
+      like(factories.name, `%${q}%`)
+    );
+    if (searchClause) conditions.push(searchClause);
+  }
+  return conditions;
+}
+
+export async function listPurchaseOrderRows(
+  user: SessionUser,
+  params: URLSearchParams
+) {
+  const conditions = purchaseOrderConditions(user, params);
+  return db
+    .select(purchaseOrderSelect)
+    .from(purchaseOrders)
+    .leftJoin(products, eq(purchaseOrders.productId, products.id))
+    .leftJoin(factories, eq(purchaseOrders.factoryId, factories.id))
+    .leftJoin(keterangan, eq(purchaseOrders.keteranganId, keterangan.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(purchaseOrders.poDate), desc(purchaseOrders.id));
 }
 
 export async function listDefectRows(
@@ -397,5 +502,151 @@ export async function salesBULKDELETE(req: NextRequest) {
     .delete(sales)
     .where(inArray(sales.id, ids))
     .returning({ id: sales.id });
+  return jsonOk({ deleted: rows.length });
+}
+
+/* ============================ PO Product ============================ */
+
+export async function purchaseOrdersGET(req: NextRequest) {
+  const guard = await requireUser();
+  if (!guard.ok) return guard.response;
+
+  const rows = await listPurchaseOrderRows(guard.user, req.nextUrl.searchParams);
+  return jsonOk(rows.map((row) => stripPricing(row, guard.user)));
+}
+
+export async function purchaseOrdersPOST(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const parsed = purchaseOrderSchema.safeParse(await req.json());
+  if (!parsed.success) return jsonError("Data PO tidak valid.", 422);
+
+  const { poNumber, poDate, productId, factoryId } = parsed.data;
+  // quantity/pricePerPcs opsional di skema; pada create nilainya di-default 0.
+  const quantity = parsed.data.quantity ?? 0;
+  const pricePerPcs = parsed.data.pricePerPcs ?? 0;
+
+  // Tidak ada pemeriksaan duplikat: satu PO Number boleh diinput berkali-kali,
+  // termasuk untuk produk yang sama (keputusan user, lihat SPEC-po-product.md).
+  const [row] = await db
+    .insert(purchaseOrders)
+    .values({
+      poNumber,
+      poDate,
+      productId,
+      factoryId,
+      quantity,
+      pricePerPcs,
+      // Total dihitung di server; angka dari klien tidak dipercaya.
+      value: pricePerPcs * quantity,
+      currency: normalizeCurrency(parsed.data.currency),
+      keteranganId: parsed.data.keteranganId ?? null,
+    })
+    .returning();
+  return jsonOk(row, 201);
+}
+
+export async function purchaseOrdersPATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+  const rowId = Number(id);
+  if (!Number.isInteger(rowId)) return jsonError("ID tidak valid.", 400);
+
+  const parsed = purchaseOrderUpdateSchema.safeParse(await req.json());
+  if (!parsed.success) return jsonError("Data PO tidak valid.", 422);
+
+  const current = await db
+    .select()
+    .from(purchaseOrders)
+    .where(eq(purchaseOrders.id, rowId));
+  if (current.length === 0) return jsonError("Data tidak ditemukan.", 404);
+
+  // Gabungkan dulu supaya total dihitung dari nilai final, bukan dari sebagian
+  // field yang dikirim klien.
+  const merged = {
+    quantity: parsed.data.quantity ?? current[0].quantity,
+    pricePerPcs: parsed.data.pricePerPcs ?? current[0].pricePerPcs,
+  };
+
+  const [row] = await db
+    .update(purchaseOrders)
+    .set({
+      ...(parsed.data.poNumber !== undefined
+        ? { poNumber: parsed.data.poNumber }
+        : {}),
+      ...(parsed.data.poDate !== undefined ? { poDate: parsed.data.poDate } : {}),
+      ...(parsed.data.productId !== undefined
+        ? { productId: parsed.data.productId }
+        : {}),
+      ...(parsed.data.factoryId !== undefined
+        ? { factoryId: parsed.data.factoryId }
+        : {}),
+      quantity: merged.quantity,
+      pricePerPcs: merged.pricePerPcs,
+      value: merged.pricePerPcs * merged.quantity,
+      ...(parsed.data.currency !== undefined
+        ? { currency: normalizeCurrency(parsed.data.currency) }
+        : {}),
+      ...(parsed.data.keteranganId !== undefined
+        ? { keteranganId: parsed.data.keteranganId }
+        : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(purchaseOrders.id, rowId))
+    .returning();
+  if (!row) return jsonError("Data tidak ditemukan.", 404);
+  return jsonOk(row);
+}
+
+export async function purchaseOrdersDELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+  const rowId = Number(id);
+  if (!Number.isInteger(rowId)) return jsonError("ID tidak valid.", 400);
+
+  const [row] = await db
+    .delete(purchaseOrders)
+    .where(eq(purchaseOrders.id, rowId))
+    .returning();
+  if (!row) return jsonError("Data tidak ditemukan.", 404);
+  return jsonOk({ deleted: rowId });
+}
+
+export async function purchaseOrdersDELETEALL() {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const backup = backupDatabase("purchase-orders");
+  const rows = await db
+    .delete(purchaseOrders)
+    .returning({ id: purchaseOrders.id });
+  return jsonOk({ deleted: rows.length, backup });
+}
+
+export async function purchaseOrdersBULKDELETE(req: NextRequest) {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.response;
+
+  const body = (await req.json()) as { ids?: unknown };
+  const ids = Array.isArray(body?.ids)
+    ? body.ids.map((value) => Number(value)).filter((value) => Number.isInteger(value))
+    : [];
+  if (ids.length === 0) return jsonError("Tidak ada data yang dipilih.", 422);
+
+  const rows = await db
+    .delete(purchaseOrders)
+    .where(inArray(purchaseOrders.id, ids))
+    .returning({ id: purchaseOrders.id });
   return jsonOk({ deleted: rows.length });
 }

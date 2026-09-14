@@ -148,7 +148,28 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - Excel: `template-produk.xlsx` dan ekspor `produk.xlsx` memakai kolom `Nama` + `SKU`;
     impor melewati baris dengan SKU yang sudah dipakai (termasuk bentrok antar-baris di berkas
     yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap satu kolom `Nama`.
-- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, defects, sales, users)
+- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, keterangan, defects, sales, users, purchase-orders)
+- **PO Product** (`/po`, modul `purchase-orders`) — lihat `SPEC-po-product.md` untuk spec lengkapnya:
+  - Tabel `purchase_orders`: `poNumber` (boleh berulang), `poDate` (tanggal PO, DIISI MANUAL, format
+    `YYYY-MM-DDTHH:mm`), `productId`, `factoryId`, `quantity`, `pricePerPcs` (real, boleh pecahan),
+    `value` (real, = pricePerPcs × quantity), `currency` (Rp/USD/RMB), `keteranganId`.
+  - **TIDAK ADA `UNIQUE`** dan tidak ada validasi duplikat di POST/PATCH — user memutuskan satu PO
+    Number boleh diinput berkali-kali termasuk produk yang sama. Jangan tambahkan constraint itu.
+  - `value` **selalu dihitung ulang di server**; angka `value` dari klien diabaikan.
+  - Role Pabrik: `pricePerPcs`, `value`, dan `currency` dihapus dari respons oleh `stripPricing()`,
+    dan `scopedFactoryId()` memaksa filter pabriknya. Halaman memakai **AuthGuard** (bukan
+    AdminGuard) supaya Pabrik bisa membukanya read-only.
+  - SKU **tidak** disimpan di baris PO (melekat pada `products.sku`); form menampilkan satu dropdown
+    Product berisi nama produk saja, tanpa isian SKU terpisah.
+  - Keterangan adalah **master** (`keterangan`, tab sendiri di Data Master) yang dipilih lewat
+    dropdown; baris PO menyimpan `keteranganId`, bukan teks.
+  - Filter: `factoryId`, `productId`, `keteranganId`, `month`, `year` (memakai `poDate`), `search`.
+- **JEBAKAN zod yang pernah merusak data**: `schema.partial()` TIDAK melepas `.default()`. Pola
+  `z.object({ quantity: z.coerce.number().default(0) }).partial()` tetap mengisi `0` untuk field
+  yang tidak dikirim, sehingga PATCH satu field menulis `0` ke field berdefault lainnya — pernah
+  menghapus `quantity` dan `value` sebuah defect hanya karena problemDetail-nya diubah. Karena itu
+  schema update dibangun lewat `buildUpdate(fields)` di `validation.ts`, yang memasang `.optional()`
+  di luar transform dan tanpa default. Jangan kembali memakai `SomeSchema.partial()` untuk update.
 - **Tracing import**: respons import berisi `errors[]` & `skippedDetails[]` (baris, data, alasan) → ditampilkan di dialog `ImportResultDialog`, bisa diunduh CSV, dan dicatat di log server dengan prefix `[import:{module}]`
 - **Hapus semua data**: `DELETE /api/{module}` (admin only) — backup otomatis `backup-{module}-{timestamp}.db` dibuat dulu di folder data; master data gagal dihapus (409) jika masih dipakai defect/sales; hapus semua users mengecualikan akun sendiri
 - **Import users**: pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`
