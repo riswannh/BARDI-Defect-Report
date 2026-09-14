@@ -63,11 +63,14 @@ export interface PurchaseOrder {
   id: number;
   poNumber: string;
   /**
-   * Timestamp baris PO, ditampilkan di tabel tepat setelah PO Number.
-   * Saat ini terisi otomatis dari `createdAt`; bentuk pastinya (otomatis vs
-   * diisi manual operator) masih menunggu keputusan sebelum backend dibuat.
+   * Tanggal PO, DIISI MANUAL operator lewat input `datetime-local` di form
+   * (mis. tanggal PO diterbitkan), bukan waktu input baris. Formatnya sama
+   * dengan timestamp defect: `YYYY-MM-DDTHH:mm`.
+   *
+   * Ditampilkan sebagai kolom Timestamp tepat setelah PO Number, dan dipakai
+   * untuk filter per bulan.
    */
-  timestamp?: string;
+  poDate: string;
   productId: number;
   factoryId: number;
   quantity: number;

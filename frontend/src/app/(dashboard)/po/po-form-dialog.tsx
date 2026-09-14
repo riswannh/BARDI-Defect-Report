@@ -32,6 +32,8 @@ import { Save } from "lucide-react";
 
 export interface PoForm {
   poNumber: string;
+  /** Tanggal PO, diisi manual operator (input datetime-local). */
+  poDate: string;
   productId: string;
   factoryId: string;
   quantity: string;
@@ -41,9 +43,21 @@ export interface PoForm {
   keteranganId: string;
 }
 
+/** Nilai `datetime-local` untuk waktu sekarang (waktu lokal, bukan UTC). */
+function localDateTimeValue(date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
 export function emptyPoForm(): PoForm {
   return {
     poNumber: "",
+    // Default waktu sekarang supaya operator tidak perlu mengisi dari nol;
+    // nilainya tetap bisa diubah ke tanggal PO yang sebenarnya.
+    poDate: localDateTimeValue(),
     productId: "",
     factoryId: "",
     quantity: "",
@@ -172,6 +186,19 @@ export function PoFormDialog({
                     onFormChange((f) => ({ ...f, poNumber: e.target.value }))
                   }
                   placeholder={t("po.poNumberPlaceholder")}
+                />
+              </div>
+
+              {/* Tanggal PO diisi manual; default-nya waktu sekarang. */}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="po-date">{t("po.timestamp")}</Label>
+                <Input
+                  id="po-date"
+                  type="datetime-local"
+                  value={form.poDate}
+                  onChange={(e) =>
+                    onFormChange((f) => ({ ...f, poDate: e.target.value }))
+                  }
                 />
               </div>
 

@@ -419,6 +419,11 @@ const translations = {
     en: "PO Number, product, and factory are required.",
     zh: "采购单号、产品和工厂为必填项。",
   },
+  "po.dateRequired": {
+    id: "Timestamp PO wajib diisi.",
+    en: "PO timestamp is required.",
+    zh: "采购时间不能为空。",
+  },
   "po.selected": {
     id: "{count} baris dipilih",
     en: "{count} rows selected",

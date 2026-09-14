@@ -150,7 +150,7 @@ export default function PoPage() {
         // Timestamp berformat `YYYY-MM-DDTHH:mm`, jadi bulan dan tahun dibaca
         // langsung dari string — bukan lewat Date, supaya tidak bergeser akibat
         // konversi zona waktu.
-        const stamp = row.timestamp ?? "";
+        const stamp = row.poDate ?? "";
         const year = stamp.slice(0, 4);
         const month = stamp.slice(5, 7);
         if (filterYear !== "all" && year !== filterYear) return false;
@@ -213,7 +213,7 @@ export default function PoPage() {
   const yearOptions = useMemo(() => {
     const years = new Set<string>();
     for (const row of rows) {
-      const year = (row.timestamp ?? "").slice(0, 4);
+      const year = (row.poDate ?? "").slice(0, 4);
       if (year) years.add(year);
     }
     return Array.from(years)
@@ -241,6 +241,8 @@ export default function PoPage() {
         ? {
             ...emptyPoForm(),
             poNumber: previous.poNumber,
+            // Tanggal PO tidak dibawa dari entri sebelumnya: kiriman berikutnya
+            // punya tanggalnya sendiri, dan default-nya sudah waktu sekarang.
             factoryId: previous.factoryId,
             currency: previous.currency,
             keteranganId: previous.keteranganId,
@@ -254,6 +256,7 @@ export default function PoPage() {
   function openEdit(row: PurchaseOrder) {
     setForm({
       poNumber: row.poNumber,
+      poDate: row.poDate ?? "",
       productId: String(row.productId),
       factoryId: String(row.factoryId),
       quantity: String(row.quantity),
@@ -268,6 +271,8 @@ export default function PoPage() {
   async function handleSubmit(mode: "save" | "saveAndAddAnother" = "save") {
     const payload = {
       poNumber: form.poNumber.trim(),
+      // Tanggal PO dari operator; server menyimpannya sebagai `poDate`.
+      poDate: form.poDate,
       productId: Number(form.productId),
       factoryId: Number(form.factoryId),
       quantity: Number(form.quantity) || 0,
@@ -277,6 +282,10 @@ export default function PoPage() {
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
       toast.error(t("po.incomplete"));
+      return;
+    }
+    if (!payload.poDate) {
+      toast.error(t("po.dateRequired"));
       return;
     }
 
@@ -725,7 +734,7 @@ export default function PoPage() {
                         {row.poNumber}
                       </TableCell>
                       <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
-                        {formatDateTime(row.timestamp ?? "")}
+                        {row.poDate ? formatDateTime(row.poDate) : "-"}
                       </TableCell>
                       <TableCell className="max-w-32 truncate" title={row.keteranganName ?? ""}>
                         {row.keteranganName || "-"}

@@ -59,8 +59,8 @@ Tidak ada direktori baru. Berkas yang **disentuh**:
 
 ```
 frontend/src/lib/db/schema.ts              → tabel keterangan + purchaseOrders
-frontend/src/lib/api/validation.ts         → purchaseOrderSchema, keteranganSchema,
-                                             CURRENCIES, normalizeCurrency
+frontend/src/lib/api/validation.ts         → purchaseOrderSchema (termasuk poDate),
+                                             keteranganSchema, CURRENCIES, normalizeCurrency
 frontend/src/lib/api/records.ts            → select, kondisi filter, CRUD PO, stripPricing
 frontend/src/lib/api/master.ts             → daftar keterangan sebagai master (name unik)
 frontend/src/lib/api/excel.ts              → template/impor/ekspor modul purchase-orders
@@ -71,8 +71,8 @@ frontend/src/app/api/purchase-orders/bulk-delete/route.ts → POST
 frontend/src/app/api/keterangan/route.ts             → GET, POST, DELETE (hapus semua)
 frontend/src/app/api/keterangan/[id]/route.ts        → PATCH, DELETE
 frontend/src/app/(dashboard)/master/page.tsx         → tab Keterangan (CRUD)
-frontend/src/app/(dashboard)/po/page.tsx             → dropdown & filter keterangan
-frontend/src/app/(dashboard)/po/po-form-dialog.tsx   → pilih keterangan dari dropdown
+frontend/src/app/(dashboard)/po/page.tsx             → dropdown & filter keterangan, filter bulan/tahun
+frontend/src/app/(dashboard)/po/po-form-dialog.tsx   → pilih keterangan dari dropdown, isian tanggal PO
 README.md                                  → schema, API, aturan akses
 AGENTS.md                                  → catatan modul PO
 ```
@@ -145,6 +145,8 @@ keterangan (tabel: keterangan)          // BARU — master untuk dropdown form P
 purchaseOrders (tabel: purchase_orders)
   id           integer PK auto
   poNumber     text NOT NULL              // diinput manual, boleh berulang
+  poDate       text NOT NULL              // TANGGAL PO, diisi manual operator
+                                          // format `YYYY-MM-DDTHH:mm` (sama seperti defect)
   productId    integer NOT NULL → products.id
   factoryId    integer NOT NULL → factories.id
   quantity     integer NOT NULL default 0
@@ -155,7 +157,7 @@ purchaseOrders (tabel: purchase_orders)
   createdAt / updatedAt
 
   UNIQUE (poNumber, productId)   // SENGAJA TIDAK ADA — lihat "Keputusan 1.3"
-  INDEX (factoryId), INDEX (poNumber), INDEX (keteranganId)
+  INDEX (factoryId), INDEX (poNumber), INDEX (keteranganId), INDEX (poDate)
 ```
 
 **Tidak ada constraint unik di tabel ini.** User memutuskan (keputusan 1.3) bahwa satu
@@ -197,6 +199,26 @@ halaman PO. Konsekuensinya:
 - `sku` tetap dikirim di respons API PO supaya konsumen lain (mis. ekspor Excel) tidak
   kehilangan informasi; hanya UI form PO yang tidak menampilkannya.
 
+### Keputusan — Timestamp PO diisi manual, bukan waktu input
+
+Ada kolom **Timestamp** di tabel (tepat setelah PO Number) dan isian
+**datetime-local** di form. Isinya adalah **tanggal PO** yang diisi operator,
+bukan waktu baris itu diinput. Operator memakainya untuk mencatat tanggal PO
+diterbitkan atau tanggal kesepakatan dengan pabrik, yang bisa berbeda dari
+kapan datanya dimasukkan ke aplikasi.
+
+Konsekuensi teknis:
+
+- Kolom database bernama `poDate` bertipe `text`, format `YYYY-MM-DDTHH:mm` —
+  sama persis dengan `defects.timeStamp`, sehingga normalisasi dan tampilan bisa
+  memakai helper yang sudah ada (`normalizeTimestamp`, `formatDateTime`).
+- Form mengisinya otomatis dengan **waktu sekarang** sebagai default (seperti
+  form Defect), tapi operator bisa mengubahnya. `poDate` wajib diisi.
+- Filter per bulan dan tahun membaca `poDate`, langsung dari string (bukan lewat
+  `Date`) supaya tidak bergeser karena konversi zona waktu.
+- `createdAt`/`updatedAt` tetap ada sebagai jejak audit, tetapi **tidak**
+  ditampilkan di tabel.
+
 ### Keputusan 1.3 — tanpa kolom pembeda (SUDAH DIPUTUSKAN)
 
 User memutuskan: **tidak perlu kolom pembeda**. Satu PO Number boleh diinput berkali-kali,
@@ -235,8 +257,9 @@ PO Number-nya sama. Satu-satunya penolakan di impor adalah data yang tidak valid
 | GET/POST/PATCH/DELETE | `/api/excel/keterangan/{template,import,export}` | admin | Excel untuk master keterangan, mengikuti master lain |
 
 **Filter (GET)** — mengikuti Sales: `factoryId`, `productId`, `search`, ditambah
-`keteranganId`. Role Pabrik: `scopedFactoryId()` memaksa `factoryId` miliknya, parameter
-`factoryId` dari klien diabaikan.
+`keteranganId` serta `month` dan `year` (memakai `poDate`). Role Pabrik:
+`scopedFactoryId()` memaksa `factoryId` miliknya, parameter `factoryId` dari klien
+diabaikan.
 
 `search` mencocokkan `poNumber`, `keterangan.name`, `products.name`, `products.sku`,
 `factories.name`.
@@ -290,15 +313,19 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
    (mis. 12.50 × 1.000 = 12.500).
 5. **Role Pabrik**: `GET /api/purchase-orders` tidak memuat kunci `pricePerPcs`,
    `value`, maupun `currency` pada baris mana pun, dan hanya memuat baris pabriknya.
-6. Halaman `/po` menampilkan data nyata untuk kedua role: admin 7 kolom, pabrik 5 kolom
-   tanpa tombol tambah/ubah/hapus.
-7. **Master keterangan** bisa ditambah, diubah, dan dihapus dari Data Master; namanya
+6. Halaman `/po` menampilkan data nyata untuk kedua role: admin 8 kolom (PO Number,
+   Timestamp, Keterangan, Nama Produk, Pabrik, Quantity, Price/pcs, Total Currency),
+   pabrik 6 kolom tanpa price/total/currency dan tanpa tombol tambah/ubah/hapus.
+7. **Timestamp PO** tersimpan sesuai yang diisi operator (bukan waktu input), dan
+   filter Bulan/Tahun menyaring berdasarkan `poDate` itu. Memilih satu bulan
+   menyisakan hanya baris pada bulan tersebut.
+8. **Master keterangan** bisa ditambah, diubah, dan dihapus dari Data Master; namanya
    muncul di dropdown form PO; menghapusnya ditolak **409** selama masih dipakai baris PO.
-8. Template, impor, dan ekspor Excel bekerja untuk PO **dan** keterangan; impor PO
+9. Template, impor, dan ekspor Excel bekerja untuk PO **dan** keterangan; impor PO
    hanya menolak baris yang datanya tidak valid, bukan baris yang PO-nya sama.
-9. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
-10. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
-11. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
+10. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
+11. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
+12. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
 
 ## Open Questions
 
@@ -312,6 +339,8 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
 | 4 | `keterangan` per baris atau per PO | **Per baris**, dan berupa **master** yang bisa di-CRUD, dipilih lewat dropdown |
 | 5 | Price/pcs bilangan bulat? | **Boleh pecahan** — kolom `real`, tampilan 2 desimal untuk USD/RMB |
 | 6 | SKU Product sebagai isian terpisah di form | **Tidak.** Digabung jadi satu dropdown Product yang menampilkan nama produk; database tetap menyimpan `productId` dan `sku` |
+| 7 | Isi kolom Timestamp | **Tanggal PO yang diisi manual operator** (`poDate`, format `YYYY-MM-DDTHH:mm`), bukan waktu input |
+| 8 | Filter per bulan | **Ikut**, memakai `poDate`, dengan tambahan filter tahun |
 
 **Tidak ada pertanyaan yang menghalangi implementasi.** Spec siap masuk fase PLAN
 begitu user menyetujui.

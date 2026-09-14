@@ -159,7 +159,7 @@ export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
   return {
     id: index + 1,
     poNumber: row.poNumber,
-    timestamp: row.timestamp,
+    poDate: row.timestamp,
     productId: product.id,
     factoryId: factory.id,
     quantity: row.quantity,
