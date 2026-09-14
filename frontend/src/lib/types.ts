@@ -53,6 +53,28 @@ export interface Sale {
   value: number;
 }
 
+/**
+ * Satu baris PO Product.
+ *
+ * `pricePerPcs`, `value`, dan `currency` tidak dikirim ke role Pabrik (dihapus
+ * di API), jadi tipenya opsional di sini — sama seperti `value` pada Defect.
+ */
+export interface PurchaseOrder {
+  id: number;
+  poNumber: string;
+  productId: number;
+  factoryId: number;
+  quantity: number;
+  pricePerPcs?: number;
+  /** Hasil pricePerPcs x quantity; dihitung server. */
+  value?: number;
+  currency?: string;
+  keterangan: string;
+  sku?: string | null;
+  productName?: string | null;
+  factoryName?: string | null;
+}
+
 export type PeriodType = "daily" | "weekly" | "monthly" | "yearly" | "custom";
 
 export interface ImportIssue {

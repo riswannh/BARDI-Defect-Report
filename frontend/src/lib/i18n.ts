@@ -64,6 +64,7 @@ const translations = {
   "nav.brand": { id: "Defect & Sales", en: "Defect & Sales", zh: "缺陷与销售" },
   "nav.report": { id: "Report", en: "Report", zh: "报告" },
   "nav.sales": { id: "Data Sales", en: "Sales Data", zh: "销售数据" },
+  "nav.po": { id: "PO Product", en: "PO Product", zh: "采购订单" },
   "nav.defects": { id: "Data Defect", en: "Defect Data", zh: "缺陷数据" },
   "nav.master": { id: "Data Master", en: "Master Data", zh: "主数据" },
   "nav.users": {
@@ -270,6 +271,147 @@ const translations = {
   },
   "report.defect": { id: "Defect", en: "Defect", zh: "缺陷" },
   "report.sales": { id: "Sales", en: "Sales", zh: "销售" },
+
+  // PO Product
+  "po.title": { id: "PO Product", en: "PO Product", zh: "采购订单" },
+  "po.description": {
+    id: "Catat purchase order per produk dan pabrik.",
+    en: "Record purchase orders per product and factory.",
+    zh: "按产品和工厂记录采购订单。",
+  },
+  "po.addTitle": {
+    id: "Tambah PO Product",
+    en: "Add PO Product",
+    zh: "添加采购订单",
+  },
+  "po.editTitle": {
+    id: "Ubah PO Product",
+    en: "Edit PO Product",
+    zh: "编辑采购订单",
+  },
+  "po.formHint": {
+    id: "Total dihitung otomatis dari Price/pcs × Quantity.",
+    en: "Total is calculated automatically from Price/pcs × Quantity.",
+    zh: "总额由单价 × 数量自动计算。",
+  },
+  "po.poNumber": { id: "PO Number", en: "PO Number", zh: "采购单号" },
+  "po.poNumberPlaceholder": {
+    id: "Mis. PO-2026-001",
+    en: "E.g. PO-2026-001",
+    zh: "例如 PO-2026-001",
+  },
+  "po.skuProduct": {
+    id: "SKU Product",
+    en: "Product SKU",
+    zh: "产品 SKU",
+  },
+  "po.product": { id: "Product", en: "Product", zh: "产品" },
+  "po.productName": {
+    id: "Nama Produk",
+    en: "Product Name",
+    zh: "产品名称",
+  },
+  "po.productPlaceholder": {
+    id: "Terisi dari SKU",
+    en: "Filled from SKU",
+    zh: "由 SKU 自动填充",
+  },
+  "po.pricePerPcs": {
+    id: "Price/pcs",
+    en: "Price/pcs",
+    zh: "单价",
+  },
+  "po.currency": { id: "Currency", en: "Currency", zh: "币种" },
+  "po.totalValue": {
+    id: "Total Value",
+    en: "Total Value",
+    zh: "总金额",
+  },
+  "po.totalCurrency": {
+    id: "Total Currency",
+    en: "Total Currency",
+    zh: "总金额（币种）",
+  },
+  "po.totalHint": {
+    id: "{price} × {qty}",
+    en: "{price} × {qty}",
+    zh: "{price} × {qty}",
+  },
+  "po.keterangan": {
+    id: "Keterangan",
+    en: "Remarks",
+    zh: "备注",
+  },
+  "po.keteranganPlaceholder": {
+    id: "Catatan untuk baris PO ini",
+    en: "Note for this PO line",
+    zh: "此采购订单行的备注",
+  },
+  "po.filterKeterangan": {
+    id: "Saring keterangan",
+    en: "Filter remarks",
+    zh: "筛选备注",
+  },
+  "po.searchPlaceholder": {
+    id: "Cari PO, produk, keterangan…",
+    en: "Search PO, product, remarks…",
+    zh: "搜索单号、产品、备注…",
+  },
+  "po.totalQuantity": {
+    id: "Total Quantity PO",
+    en: "Total PO Quantity",
+    zh: "采购总数量",
+  },
+  "po.saveAndAddAnother": {
+    id: "Simpan & tambah lagi",
+    en: "Save & add another",
+    zh: "保存并继续添加",
+  },
+  "po.savedNext": {
+    id: "Tersimpan. Lanjut produk berikutnya.",
+    en: "Saved. Ready for the next product.",
+    zh: "已保存，可继续录入下一个产品。",
+  },
+  "po.saveFailed": {
+    id: "Gagal menyimpan PO.",
+    en: "Failed to save the PO.",
+    zh: "保存采购订单失败。",
+  },
+  "po.deleteFailed": {
+    id: "Gagal menghapus PO.",
+    en: "Failed to delete the PO.",
+    zh: "删除采购订单失败。",
+  },
+  "po.incomplete": {
+    id: "PO Number, produk, dan pabrik wajib diisi.",
+    en: "PO Number, product, and factory are required.",
+    zh: "采购单号、产品和工厂为必填项。",
+  },
+  "po.selected": {
+    id: "{count} baris dipilih",
+    en: "{count} rows selected",
+    zh: "已选择 {count} 行",
+  },
+  "po.selectAll": {
+    id: "Pilih semua baris di halaman ini",
+    en: "Select all rows on this page",
+    zh: "选择本页全部行",
+  },
+  "po.selectRow": {
+    id: "Pilih PO {po}",
+    en: "Select PO {po}",
+    zh: "选择采购单 {po}",
+  },
+  "po.importDone": {
+    id: "Import selesai: {inserted} masuk, {skipped} dilewati, {failed} gagal.",
+    en: "Import finished: {inserted} added, {skipped} skipped, {failed} failed.",
+    zh: "导入完成：新增 {inserted}，跳过 {skipped}，失败 {failed}。",
+  },
+  "po.importFailed": {
+    id: "Gagal import PO.",
+    en: "Failed to import POs.",
+    zh: "导入采购订单失败。",
+  },
 
   // Sales
   "sales.title": { id: "Data Sales", en: "Sales Data", zh: "销售数据" },

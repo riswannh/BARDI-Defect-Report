@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Database,
   Users,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
@@ -29,6 +30,8 @@ const navItems: NavItem[] = [
     icon: ShoppingCart,
     adminOnly: true,
   },
+  // PO Product juga dibuka untuk role Pabrik (read-only, tanpa harga/total).
+  { href: "/po", labelKey: "nav.po", icon: ClipboardList },
   {
     href: "/defects",
     labelKey: "nav.defects",

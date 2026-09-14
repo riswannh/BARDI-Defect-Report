@@ -14,6 +14,51 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(value);
 }
 
+/* ============================ PO: mata uang ============================ */
+
+/** Mata uang yang didukung modul PO Product. */
+export const PO_CURRENCIES = ["Rp", "USD", "RMB"] as const;
+export type PoCurrency = (typeof PO_CURRENCIES)[number];
+
+/**
+ * Format angka dengan mata uang PO.
+ *
+ * `Intl` dipakai supaya pemisah ribuan dan posisi simbolnya benar per mata uang
+ * (Rp 1.500.000 vs $2,400 vs ¥17,000), bukan sekadar menempelkan kode.
+ */
+const poFormatters: Record<PoCurrency, Intl.NumberFormat> = {
+  Rp: new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }),
+  USD: new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }),
+  RMB: new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "CNY",
+    maximumFractionDigits: 2,
+  }),
+};
+
+/** Terima "rp"/"idr"/"cny" dan spasi berlebih; kembalikan kode baku. */
+export function normalizePoCurrency(value: unknown): PoCurrency {
+  const s = typeof value === "string" ? value.trim().toUpperCase() : "";
+  if (s === "USD" || s === "US$" || s === "$") return "USD";
+  if (s === "RMB" || s === "CNY" || s === "¥" || s === "￥") return "RMB";
+  return "Rp";
+}
+
+/** Total + simbol mata uang, mis. "Rp 1.500.000" — dipakai kolom Total Currency. */
+export function formatPoCurrency(value: number, currency: unknown): string {
+  return poFormatters[normalizePoCurrency(currency)].format(
+    Number.isFinite(value) ? value : 0
+  );
+}
+
 export function formatDateTime(value: string): string {
   return value.replace("T", " ");
 }
