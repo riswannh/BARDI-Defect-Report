@@ -31,11 +31,30 @@ export async function masterNameExists(
   return rows.some((row) => row.id !== exceptId);
 }
 
+function isFactoriesTable(table: MasterTable): boolean {
+  return table === factories;
+}
+
 export function masterCollectionHandlers(table: MasterTable) {
   return {
     GET: async () => {
       const guard = await requireUser();
       if (!guard.ok) return guard.response;
+
+      // Daftar pabrik hanya relevan untuk admin (pemilih pabrik di Report) dan
+      // dikelola di User Management yang memang admin-only. Role Pabrik cuma
+      // butuh namanya sendiri untuk header, jadi jangan bocorkan daftar seluruh
+      // pabrik ke mereka.
+      if (isFactoriesTable(table) && !guard.user.isAdmin) {
+        const rows = guard.user.factoryId
+          ? await db
+              .select()
+              .from(factories)
+              .where(eq(factories.id, guard.user.factoryId))
+          : [];
+        return jsonOk(rows);
+      }
+
       const rows = await listMasterRows(table);
       return jsonOk(rows);
     },
