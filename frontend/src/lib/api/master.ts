@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   factories,
+  keterangan,
   problems,
   products,
   statuses,
@@ -20,7 +21,8 @@ export type MasterTable =
   | typeof factories
   | typeof products
   | typeof problems
-  | typeof statuses;
+  | typeof statuses
+  | typeof keterangan;
 
 /** Produk menerima SKU, master lain hanya nama. */
 function masterInputSchema(table: MasterTable) {

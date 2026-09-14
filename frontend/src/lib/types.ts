@@ -29,6 +29,12 @@ export interface Status {
   name: string;
 }
 
+/** Master keterangan untuk baris PO. */
+export interface Keterangan {
+  id: number;
+  name: string;
+}
+
 export interface Defect {
   id: number;
   codeGaransi: string;

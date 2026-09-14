@@ -617,8 +617,12 @@ const translations = {
     en: "New problem name",
     zh: "新问题名称",
   },
-  "master.newStatus": {
-    id: "Nama status baru",
+  "master.newKeterangan": {
+    id: "Keterangan baru",
+    en: "New remarks",
+    zh: "新备注",
+  },
+  "master.newStatus": {    id: "Nama status baru",
     en: "New status name",
     zh: "新状态名称",
   },

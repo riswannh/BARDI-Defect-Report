@@ -5,17 +5,23 @@ import { db } from "@/lib/db";
 import {
   defects,
   factories,
+  keterangan,
   problems,
   products,
+  purchaseOrders,
   sales,
   statuses,
   user,
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
-import { normalizeSku, normalizeTimestamp } from "@/lib/api/validation";
+import { normalizeSku, normalizeCurrency, normalizeTimestamp } from "@/lib/api/validation";
 import { createUserAccount } from "@/lib/api/users";
-import { listDefectRows, listSaleRows } from "@/lib/api/records";
+import {
+  listDefectRows,
+  listPurchaseOrderRows,
+  listSaleRows,
+} from "@/lib/api/records";
 import { MONTHS } from "@/lib/format";
 import type { ImportResult } from "@/lib/types";
 
@@ -136,6 +142,7 @@ const MASTER_MODULES = {
   problems: { table: problems, file: "problem", label: "Problem" },
   statuses: { table: statuses, file: "status", label: "Status" },
   factories: { table: factories, file: "pabrik", label: "Pabrik" },
+  keterangan: { table: keterangan, file: "keterangan", label: "Keterangan" },
 } as const;
 
 type MasterModule = keyof typeof MASTER_MODULES;
@@ -162,12 +169,53 @@ const SALES_HEADERS = ["Produk", "Pabrik", "Bulan", "Quantity", "Value"];
 
 const USER_HEADERS = ["Username", "Password", "Pabrik", "Admin"];
 
+/** Kolom PO; Price/pcs dan Total hanya ikut untuk admin. */
+const PO_HEADERS = [
+  "PO Number",
+  "Timestamp",
+  "Produk",
+  "Pabrik",
+  "Quantity",
+  "Price/pcs",
+  "Currency",
+  "Total",
+  "Keterangan",
+];
+
+const PO_MODULE = "purchase-orders";
+
 /* ------------------------------- export ------------------------------- */
 
 export async function excelExport(moduleName: string, req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
   const { user: currentUser } = guard;
+
+  if (moduleName === PO_MODULE) {
+    const rows = await listPurchaseOrderRows(currentUser, req.nextUrl.searchParams);
+    // Role Pabrik tidak menerima kolom harga sama sekali — bukan disembunyikan.
+    const headers = currentUser.isAdmin
+      ? PO_HEADERS
+      : PO_HEADERS.filter(
+          (h) => h !== "Price/pcs" && h !== "Total" && h !== "Currency"
+        );
+    const data = rows.map((row) => ({
+      "PO Number": row.poNumber,
+      Timestamp: displayDateTime(row.poDate),
+      Produk: row.productName ?? "",
+      Pabrik: row.factoryName ?? "",
+      Quantity: row.quantity,
+      ...(currentUser.isAdmin
+        ? {
+            "Price/pcs": row.pricePerPcs,
+            Currency: row.currency,
+            Total: row.value,
+          }
+        : {}),
+      Keterangan: row.keteranganName ?? "",
+    }));
+    return downloadResponse(sheetBuffer(data, headers), "po-product.xlsx");
+  }
 
   if (isMasterModule(moduleName)) {
     const { file } = MASTER_MODULES[moduleName];
@@ -258,10 +306,128 @@ export async function excelImport(moduleName: string, req: NextRequest) {
   if (isMasterModule(moduleName)) {
     return importMaster(moduleName, sheet);
   }
+  if (moduleName === PO_MODULE) return importPurchaseOrders(sheet);
   if (moduleName === "defects") return importDefects(sheet);
   if (moduleName === "sales") return importSales(sheet);
   if (moduleName === "users") return importUsers(sheet);
   return jsonError("Modul tidak dikenal.", 404);
+}
+
+/**
+ * Impor PO Product.
+ *
+ * Tidak ada deteksi duplikat: satu PO Number boleh diinput berkali-kali, termasuk
+ * untuk produk yang sama (keputusan user). Baris hanya ditolak kalau datanya tidak
+ * valid — PO Number atau tanggal kosong, produk/pabrik/keterangan tidak ditemukan,
+ * atau quantity/harga bukan angka. Nama dipetakan ke id; keterangan opsional.
+ */
+async function importPurchaseOrders(sheet: SheetRow[]) {
+  const [productRows, factoryRows, keteranganRows] = await Promise.all([
+    db.select().from(products),
+    db.select().from(factories),
+    db.select().from(keterangan),
+  ]);
+  const byName = <T extends { name: string }>(rows: T[]) =>
+    new Map(rows.map((row) => [row.name.toLowerCase(), row]));
+
+  const productMap = byName(productRows);
+  const factoryMap = byName(factoryRows);
+  const keteranganMap = byName(keteranganRows);
+
+  const result = newImportResult(PO_MODULE, sheet.length);
+  for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
+    const row = sheet[i];
+    const poNumber = cellString(row["PO Number"]);
+    const poDateRaw = cellString(row.Timestamp ?? row.Tanggal);
+    const productName = cellString(row.Produk ?? row.Product);
+    const factoryName = cellString(row.Pabrik ?? row.Factory);
+
+    if (!poNumber) {
+      result.errors.push({ row: rowNumber, key: "", reason: "PO Number kosong" });
+      continue;
+    }
+    if (!productName) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: "Produk kosong",
+      });
+      continue;
+    }
+    const product = productMap.get(productName.toLowerCase());
+    if (!product) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: `Produk "${productName}" tidak ditemukan`,
+      });
+      continue;
+    }
+    const factory = factoryMap.get(factoryName.toLowerCase());
+    if (!factory) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: `Pabrik "${factoryName}" tidak ditemukan`,
+      });
+      continue;
+    }
+
+    // Keterangan opsional; kalau diisi tapi tidak ada di master, barisnya ditolak
+    // supaya tidak diam-diam kehilangan keterangannya.
+    const keteranganName = cellString(row.Keterangan);
+    let keteranganId: number | null = null;
+    if (keteranganName) {
+      const found = keteranganMap.get(keteranganName.toLowerCase());
+      if (!found) {
+        result.errors.push({
+          row: rowNumber,
+          key: poNumber,
+          reason: `Keterangan "${keteranganName}" tidak ada di master`,
+        });
+        continue;
+      }
+      keteranganId = found.id;
+    }
+
+    const quantity = cellNumber(row.Quantity);
+    // Harga boleh pecahan (USD/RMB), jadi tidak dibulatkan seperti cellNumber.
+    const priceRaw = cellString(row["Price/pcs"]);
+    const pricePerPcs = priceRaw === "" ? 0 : Number(priceRaw.replace(/[^\d.-]/g, ""));
+    if (!Number.isFinite(pricePerPcs)) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: "Price/pcs bukan angka",
+      });
+      continue;
+    }
+
+    try {
+      await db.insert(purchaseOrders).values({
+        poNumber,
+        poDate: normalizeTimestamp(poDateRaw || "1970-01-01T00:00"),
+        productId: product.id,
+        factoryId: factory.id,
+        quantity,
+        pricePerPcs,
+        currency: normalizeCurrency(cellString(row.Currency)),
+        keteranganId,
+        // Total selalu dihitung server, tidak pernah dari berkas.
+        value: quantity * pricePerPcs,
+      });
+      result.inserted++;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan",
+      });
+    }
+  }
+  logImport(result);
+  return jsonOk(result);
 }
 
 async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
@@ -638,6 +804,26 @@ async function importUsers(sheet: SheetRow[]) {
 export async function excelTemplate(moduleName: string) {
   const admin = await requireAdmin();
   if (!admin.ok) return admin.response;
+
+  // Dicek SEBELUM isMasterModule: "purchase-orders" bukan master, dan urutan
+  // yang terbalik membuat modul ini jatuh ke "Modul tidak dikenal".
+  if (moduleName === PO_MODULE) {
+    const example: SheetRow = {
+      "PO Number": "PO-2026-001",
+      Timestamp: "2026-05-10 09:30",
+      Produk: "LED Bulb 12W RGBWW",
+      Pabrik: "PABRIK CONTOH",
+      Quantity: 120,
+      "Price/pcs": 18500,
+      Currency: "Rp",
+      Total: 2220000,
+      Keterangan: "Pengiriman batch pertama",
+    };
+    return downloadResponse(
+      sheetBuffer([example], PO_HEADERS, "Template"),
+      "template-po-product.xlsx"
+    );
+  }
 
   if (isMasterModule(moduleName)) {
     const { file } = MASTER_MODULES[moduleName];

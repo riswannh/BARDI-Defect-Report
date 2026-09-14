@@ -203,12 +203,37 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 **`factories`** — `id` (PK auto), `name` (unik), `createdAt`
 
 **`products`** — `id` (PK auto), `name` (unik), **`sku`** (unik, opsional/nullable), `createdAt`
-
 > `sku` opsional karena produk lama belum memilikinya; di SQLite beberapa baris `NULL` tidak saling bentrok pada constraint UNIQUE, sehingga produk tanpa SKU tetap valid sementara SKU yang diisi tidak bisa terduplikasi.
 
 **`problems`** — `id` (PK auto), `name` (unik), `createdAt`
 
 **`statuses`** — `id` (PK auto), `name` (unik), `createdAt`
+
+**`keterangan`** — `id` (PK auto), `name` (unik), `createdAt`
+
+> Master keterangan untuk baris PO Product. Dikelola di tab **Keterangan** pada halaman Data Master.
+> Baris PO menyimpan `keteranganId` (bukan teks), sehingga satu istilah dipakai konsisten dan bisa
+> diubah di satu tempat. Menghapus keterangan yang masih dipakai baris PO ditolak (409).
+
+**`purchase_orders`** — baris PO Product
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `poNumber` | text | diinput manual; **boleh berulang** |
+| `poDate` | text | **tanggal PO, diisi manual operator**, format `YYYY-MM-DDTHH:mm` |
+| `productId` | FK → products | SKU tidak disimpan di sini — SKU melekat pada produk |
+| `factoryId` | FK → factories | |
+| `quantity` | integer (default 0) | |
+| `pricePerPcs` | **real** (default 0) | boleh pecahan (USD/RMB) |
+| `value` | **real** (default 0) | `pricePerPcs × quantity`, **selalu dihitung ulang di server** |
+| `currency` | text (default `Rp`) | `Rp`, `USD`, atau `RMB` |
+| `keteranganId` | FK → keterangan (nullable) | |
+| `createdAt` / `updatedAt` | timestamp | jejak audit, tidak ditampilkan di tabel |
+
+Index: `factoryId`, `poNumber`, `keteranganId`, `poDate`. **Tidak ada constraint UNIQUE** — satu PO
+Number boleh diinput berkali-kali, termasuk untuk produk yang sama, dan sistem tidak menolak
+duplikat (keputusan pemilik produk).
 
 **`defects`**
 
@@ -317,6 +342,23 @@ sebagai `NULL`.
 
 **Sales**: sama polanya (`/api/sales`, `/api/sales/{id}`, `/api/sales/bulk-delete`), validasi unik `productId+factoryId+month`.
 
+### PO Product
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`. Query: `factoryId`, `productId`, `keteranganId`, `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency` |
+| POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat; `value` dihitung server |
+| PATCH | `/api/purchase-orders/{id}` | admin | ubah sebagian; `value` dihitung ulang dari nilai final |
+| DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
+| DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis |
+| POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
+
+### Keterangan (master)
+
+Mengikuti pola Data Master (CRUD): `GET/POST /api/keterangan`, `PATCH/DELETE /api/keterangan/{id}`,
+`DELETE /api/keterangan` (hapus semua + backup). `name` unik; hapus ditolak 409 bila masih dipakai
+baris PO.
+
 ### Users
 
 | Method | Path | Akses | Keterangan |
@@ -338,7 +380,14 @@ Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
 
 ### Excel
 
-Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`.
+Module: `products`, `problems`, `statuses`, `factories`, `keterangan`, `defects`, `sales`, `users`, `purchase-orders`.
+
+**PO Product** memakai kolom `PO Number`, `Timestamp`, `Produk`, `Pabrik`, `Quantity`, `Price/pcs`,
+`Currency`, `Total`, `Keterangan` (berkas `po-product.xlsx`, template `template-po-product.xlsx`).
+Ekspor untuk role Pabrik tidak memuat kolom `Price/pcs`, `Currency`, dan `Total`. Impor **tidak**
+mendeteksi duplikat — baris hanya ditolak bila datanya tidak valid (produk/pabrik/keterangan tidak
+ditemukan, atau PO Number/tanggal kosong), dan alasannya dilaporkan per baris. `Total` selalu
+dihitung server, nilai di berkas diabaikan.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|

@@ -16,6 +16,7 @@ import { useApi } from "@/lib/use-api";
 import type {
   Factory,
   ImportResult,
+  Keterangan,
   Product,
   PurchaseOrder,
 } from "@/lib/types";
@@ -222,14 +223,17 @@ export default function PoPage() {
   }, [rows]);
 
   // Master keterangan (dropdown pada filter dan form). Di mode demo daftarnya
-  // datang dari data contoh; setelah backend ada, diambil dari /api/keterangan.
+  // datang dari data contoh; kalau tidak, dari API master yang sesungguhnya.
+  const { data: keteranganData } = useApi<Keterangan[]>(
+    poDemoEnabled ? null : "/api/keterangan"
+  );
   const keteranganOptions = useMemo(
     () =>
-      (poDemoEnabled ? demoKeterangan : []).map((k) => ({
+      (poDemoEnabled ? demoKeterangan : keteranganData ?? []).map((k) => ({
         value: String(k.id),
         label: k.name,
       })),
-    []
+    [keteranganData]
   );
 
   function openCreate() {

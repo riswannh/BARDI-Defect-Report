@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  real,
   sqliteTable,
   text,
   unique,
@@ -151,6 +152,21 @@ export const statuses = sqliteTable("statuses", {
     .default(sql`(unixepoch())`),
 });
 
+/**
+ * Master keterangan untuk baris PO.
+ *
+ * Keterangan sengaja jadi master (bukan teks bebas di tiap baris PO) supaya
+ * istilahnya konsisten dan bisa diubah di satu tempat. Baris PO merujuk ke sini
+ * lewat `keteranganId`.
+ */
+export const keterangan = sqliteTable("keterangan", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 export const defects = sqliteTable(
   "defects",
   {
@@ -213,3 +229,54 @@ export const sales = sqliteTable(
     index("sales_factory_idx").on(t.factoryId),
   ]
 );
+
+/**
+ * Purchase Order (PO) — satu baris per produk per PO.
+ *
+ * SENGAJA TANPA constraint UNIQUE: user memutuskan satu PO Number boleh diinput
+ * berkali-kali, termasuk untuk produk yang sama, tanpa kolom pembeda. Jadi tidak
+ * ada aturan yang menolak baris duplikat.
+ *
+ * SKU tidak disimpan di sini: SKU melekat pada `products.sku` dan `productId`
+ * sudah menjadi rujukannya. Menyalin SKU sebagai teks bebas akan membuat dua
+ * sumber kebenaran yang bisa saling bertentangan saat SKU produk diubah.
+ */
+export const purchaseOrders = sqliteTable(
+  "purchase_orders",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Diinput manual; boleh berulang. */
+    poNumber: text("poNumber").notNull(),
+    /**
+     * TANGGAL PO yang diisi operator (bukan waktu input baris). Formatnya sama
+     * dengan `defects.timeStamp`: `YYYY-MM-DDTHH:mm`, sehingga helper
+     * normalisasi dan tampilan yang sudah ada bisa dipakai ulang.
+     */
+    poDate: text("poDate").notNull(),
+    productId: integer("productId")
+      .notNull()
+      .references(() => products.id),
+    factoryId: integer("factoryId")
+      .notNull()
+      .references(() => factories.id),
+    quantity: integer("quantity").notNull().default(0),
+    /** real, bukan integer: PO memakai USD/RMB yang butuh 2 angka desimal. */
+    pricePerPcs: real("pricePerPcs").notNull().default(0),
+    /** Hasil pricePerPcs x quantity; selalu dihitung ulang di server. */
+    value: real("value").notNull().default(0),
+    currency: text("currency").notNull().default("Rp"),
+    keteranganId: integer("keteranganId").references(() => keterangan.id),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    index("purchase_orders_factory_idx").on(t.factoryId),
+    index("purchase_orders_po_idx").on(t.poNumber),
+    index("purchase_orders_keterangan_idx").on(t.keteranganId),
+    index("purchase_orders_date_idx").on(t.poDate),
+  ]
+)
