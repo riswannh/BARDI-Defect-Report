@@ -64,6 +64,7 @@ import {
 import { poDemoEnabled } from "./po-demo";
 import {
   demoFactories,
+  demoKeterangan,
   demoProducts,
   demoPurchaseOrders,
   demoPurchaseOrdersForFactory,
@@ -109,7 +110,8 @@ export default function PoPage() {
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
-  const [keterangan, setKeterangan] = useState("");
+  // Keterangan adalah master, jadi filternya memilih id — bukan mengetik teks.
+  const [filterKeterangan, setFilterKeterangan] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -130,17 +132,20 @@ export default function PoPage() {
   // tambahan filter Keterangan.
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const ket = keterangan.trim().toLowerCase();
     return rows.filter((row) => {
       if (filterProduct !== "all" && row.productId !== Number(filterProduct))
         return false;
       if (filterFactory !== "all" && row.factoryId !== Number(filterFactory))
         return false;
-      if (ket && !row.keterangan.toLowerCase().includes(ket)) return false;
+      if (
+        filterKeterangan !== "all" &&
+        row.keteranganId !== Number(filterKeterangan)
+      )
+        return false;
       if (q) {
         const haystack = [
           row.poNumber,
-          row.keterangan,
+          row.keteranganName ?? "",
           row.productName ?? "",
           row.factoryName ?? "",
           row.sku ?? "",
@@ -151,7 +156,7 @@ export default function PoPage() {
       }
       return true;
     });
-  }, [rows, filterProduct, filterFactory, keterangan, search]);
+  }, [rows, filterProduct, filterFactory, filterKeterangan, search]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -181,6 +186,17 @@ export default function PoPage() {
       .map(([id, label]) => ({ value: String(id), label }));
   }, [isAdmin, rows, products]);
 
+  // Master keterangan (dropdown pada filter dan form). Di mode demo daftarnya
+  // datang dari data contoh; setelah backend ada, diambil dari /api/keterangan.
+  const keteranganOptions = useMemo(
+    () =>
+      (poDemoEnabled ? demoKeterangan : []).map((k) => ({
+        value: String(k.id),
+        label: k.name,
+      })),
+    []
+  );
+
   function openCreate() {
     const previous = lastEntryRef.current;
     // Satu PO biasanya berisi beberapa produk, jadi PO Number dan Pabrik dibawa
@@ -192,7 +208,7 @@ export default function PoPage() {
             poNumber: previous.poNumber,
             factoryId: previous.factoryId,
             currency: previous.currency,
-            keterangan: previous.keterangan,
+            keteranganId: previous.keteranganId,
           }
         : emptyPoForm()
     );
@@ -209,7 +225,7 @@ export default function PoPage() {
       quantity: String(row.quantity),
       pricePerPcs: String(row.pricePerPcs ?? 0),
       currency: (row.currency as PoForm["currency"]) ?? "Rp",
-      keterangan: row.keterangan,
+      keteranganId: row.keteranganId ? String(row.keteranganId) : "",
     });
     setEditingId(row.id);
     setDialogOpen(true);
@@ -223,7 +239,7 @@ export default function PoPage() {
       quantity: Number(form.quantity) || 0,
       pricePerPcs: Number(form.pricePerPcs) || 0,
       currency: form.currency,
-      keterangan: form.keterangan.trim(),
+      keteranganId: form.keteranganId ? Number(form.keteranganId) : null,
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
       toast.error(t("po.incomplete"));
@@ -240,7 +256,7 @@ export default function PoPage() {
             poNumber: f.poNumber,
             factoryId: f.factoryId,
             currency: f.currency,
-            keterangan: f.keterangan,
+            keteranganId: f.keteranganId,
           }));
           reload();
           toast.success(t("po.savedNext"));
@@ -500,17 +516,30 @@ export default function PoPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="po-filter-keterangan">{t("po.keterangan")}</Label>
-              <Input
-                id="po-filter-keterangan"
-                value={keterangan}
-                onChange={(e) => {
-                  setKeterangan(e.target.value);
+              <Label>{t("po.keterangan")}</Label>
+              <Select
+                value={filterKeterangan}
+                onValueChange={(v) => {
+                  setFilterKeterangan(String(v));
                   setPage(1);
                 }}
-                placeholder={t("po.filterKeterangan")}
-                className="w-52"
-              />
+                items={[
+                  { value: "all", label: t("po.allKeterangan") },
+                  ...keteranganOptions,
+                ]}
+              >
+                <SelectTrigger className="w-52">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("po.allKeterangan")}</SelectItem>
+                  {keteranganOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -599,8 +628,8 @@ export default function PoPage() {
                       <TableCell className="font-mono text-xs">
                         {row.poNumber}
                       </TableCell>
-                      <TableCell className="max-w-48 truncate" title={row.keterangan}>
-                        {row.keterangan || "-"}
+                      <TableCell className="max-w-48 truncate" title={row.keteranganName ?? ""}>
+                        {row.keteranganName || "-"}
                       </TableCell>
                       <TableCell className="font-medium">
                         {row.productName ?? "-"}
@@ -711,6 +740,7 @@ export default function PoPage() {
             onSubmit={handleSubmit}
             products={products}
             factories={factories}
+            keteranganOptions={keteranganOptions}
           />
         )}
 

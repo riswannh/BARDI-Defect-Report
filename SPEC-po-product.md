@@ -12,8 +12,9 @@ di commit `c8ac561`. Tanpa backend, halaman itu menampilkan keadaan kosong karen
 **Pengguna:**
 
 - **Admin** — mencatat dan memelihara baris PO: nomor PO, produk (lewat SKU), pabrik,
-  quantity, price/pcs, currency, keterangan. Bisa tambah, ubah, hapus, hapus massal,
-  hapus semua, serta impor/ekspor Excel.
+  quantity, price/pcs (boleh pecahan), currency, keterangan (dipilih dari master).
+  Bisa tambah, ubah, hapus, hapus massal, hapus semua, serta impor/ekspor Excel.
+  Ia juga mengelola **master keterangan** di Data Master.
 - **Pabrik** — membuka halaman yang sama dalam mode baca-saja untuk melihat PO yang
   menyangkut pabriknya: nomor PO, keterangan, nama produk, pabrik, quantity.
   **Tidak boleh** melihat price/pcs, total, maupun currency.
@@ -57,19 +58,27 @@ Backup DB:  node -e "..."    # VACUUM INTO, lihat pola di commit SKU
 Tidak ada direktori baru. Berkas yang **disentuh**:
 
 ```
-frontend/src/lib/db/schema.ts              → tabel purchaseOrders
-frontend/src/lib/api/validation.ts         → purchaseOrderSchema, CURRENCIES, normalizeCurrency
+frontend/src/lib/db/schema.ts              → tabel keterangan + purchaseOrders
+frontend/src/lib/api/validation.ts         → purchaseOrderSchema, keteranganSchema,
+                                             CURRENCIES, normalizeCurrency
 frontend/src/lib/api/records.ts            → select, kondisi filter, CRUD PO, stripPricing
+frontend/src/lib/api/master.ts             → daftar keterangan sebagai master (name unik)
 frontend/src/lib/api/excel.ts              → template/impor/ekspor modul purchase-orders
+                                             dan keterangan
 frontend/src/app/api/purchase-orders/route.ts        → GET, POST, DELETE (hapus semua)
 frontend/src/app/api/purchase-orders/[id]/route.ts   → PATCH, DELETE
 frontend/src/app/api/purchase-orders/bulk-delete/route.ts → POST
+frontend/src/app/api/keterangan/route.ts             → GET, POST, DELETE (hapus semua)
+frontend/src/app/api/keterangan/[id]/route.ts        → PATCH, DELETE
+frontend/src/app/(dashboard)/master/page.tsx         → tab Keterangan (CRUD)
+frontend/src/app/(dashboard)/po/page.tsx             → dropdown & filter keterangan
+frontend/src/app/(dashboard)/po/po-form-dialog.tsx   → pilih keterangan dari dropdown
 README.md                                  → schema, API, aturan akses
 AGENTS.md                                  → catatan modul PO
 ```
 
-Modul Excel `purchase-orders` harus terdaftar di `MASTER_MODULES`-nya `excel.ts`
-(tabel + nama berkas) agar tiga endpoint `/api/excel/purchase-orders/{template,import,export}`
+Modul Excel `purchase-orders` dan `keterangan` harus terdaftar di `MASTER_MODULES`-nya
+`excel.ts` (tabel + nama berkas) agar endpoint `/api/excel/{modul}/{template,import,export}`
 bekerja seperti modul lain.
 
 ## Code Style
@@ -128,46 +137,82 @@ of Done proyek, dengan bukti nyata alih-alih unit test:
 ## Data Model
 
 ```ts
+keterangan (tabel: keterangan)          // BARU — master untuk dropdown form PO
+  id           integer PK auto
+  name         text NOT NULL UNIQUE
+  createdAt
+
 purchaseOrders (tabel: purchase_orders)
   id           integer PK auto
   poNumber     text NOT NULL              // diinput manual, boleh berulang
   productId    integer NOT NULL → products.id
   factoryId    integer NOT NULL → factories.id
   quantity     integer NOT NULL default 0
-  pricePerPcs  integer NOT NULL default 0
-  value        integer NOT NULL default 0 // = pricePerPcs × quantity
+  pricePerPcs  real    NOT NULL default 0 // BOLEH PECAHAN (mis. USD 12.50)
+  value        real    NOT NULL default 0 // = pricePerPcs × quantity
   currency     text NOT NULL default "Rp" // "Rp" | "USD" | "RMB"
-  keterangan   text NOT NULL default ""
+  keteranganId integer → keterangan.id    // dropdown, bukan teks bebas
   createdAt / updatedAt
 
-  UNIQUE (poNumber, productId)   // PO sama boleh banyak produk; produk sama tidak boleh dobel
-  INDEX (factoryId), INDEX (poNumber)
+  UNIQUE (poNumber, productId)   // ← berubah bila Pilihan B diambil; lihat di bawah
+  INDEX (factoryId), INDEX (poNumber), INDEX (keteranganId)
 ```
 
-SKU **tidak** disimpan di tabel ini: SKU melekat pada `products.sku` dan `productId`
+**`pricePerPcs` dan `value` bertipe `real`** (bukan `integer` seperti `sales.value`),
+karena PO memakai USD dan RMB yang butuh 2 angka desimal. Modul Sales/Defect tetap
+integer sebab keduanya selalu Rupiah.
+
+**SKU tidak disimpan di tabel ini**: SKU melekat pada `products.sku` dan `productId`
 sudah menjadi rujukannya. Menyalin SKU sebagai teks bebas akan membuat dua sumber
 kebenaran yang bisa berbeda saat SKU produk diubah. Respons API tetap mengirim `sku`
 hasil join supaya tabel dan form bisa menampilkannya.
+
+**Keterangan adalah master, bukan teks.** Ia dikelola seperti master lain (Produk,
+Problem, Status) lewat tab baru di halaman Data Master, dan form PO menampilkannya
+sebagai dropdown searchable. Baris PO menyimpan `keteranganId`, bukan teksnya — supaya
+satu istilah dipakai konsisten dan bisa diubah di satu tempat.
+
+### Keputusan 1.3 — kolom pembeda (BELUM DIPUTUSKAN)
+
+Pertanyaan: bolehkah satu PO Number memuat **produk yang sama** lebih dari sekali?
+
+| | Pilihan A | Pilihan B |
+|---|---|---|
+| Aturan | Produk sama tidak boleh dobel dalam satu PO | Boleh, asalkan kolom pembeda berbeda |
+| Constraint | `UNIQUE (poNumber, productId)` | `UNIQUE (poNumber, productId, <pembeda>)` |
+| Kiriman bertahap | Operator membuat PO Number berbeda (`PO-2026-001A`) | Dicatat di baris terpisah dengan pembeda berbeda |
+| Tabel & form | Tidak ada kolom tambahan | Bertambah satu kolom (mis. `Tanggal Kirim`) |
+
+Contoh visual kedua pilihan ada di halaman sementara `/demo-kolom-pembeda`
+(login sebagai admin) — halaman itu dihapus setelah keputusan diambil.
+
+Kalau Pilihan B, **kolom pembedanya perlu ditentukan**: Tanggal Kirim, Batch,
+No. Surat Jalan, atau Nomor Kontainer. Pilihan kolom ini mengubah bentuk tabel,
+form, dan kontrak API, jadi harus dikunci sebelum implementasi.
 
 ## API Contract
 
 | Method | Path | Akses | Perilaku |
 |---|---|---|---|
-| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`; role Pabrik ter-scope pabriknya dan tanpa price/total/currency |
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`; role Pabrik ter-scope pabriknya dan tanpa price/total/currency |
 | POST | `/api/purchase-orders` | admin | tambah; 409 bila `poNumber + productId` sudah ada; `value` dihitung server |
 | PATCH | `/api/purchase-orders/{id}` | admin | ubah; 409 pada bentrok yang sama; `value` dihitung ulang |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
 | DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis dulu |
 | POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
+| GET/POST | `/api/keterangan` | GET user login, POST admin | master keterangan (tambah: `name` unik) |
+| PATCH/DELETE | `/api/keterangan/{id}` | admin | ubah / hapus (409 bila masih dipakai baris PO) |
+| DELETE | `/api/keterangan` | admin | hapus semua + backup |
 | GET | `/api/excel/purchase-orders/template` | admin | template kosong |
 | POST | `/api/excel/purchase-orders/import` | admin | impor; baris duplikat dilewati |
 | GET | `/api/excel/purchase-orders/export` | admin | ekspor; kolom harga/total/currency hanya untuk admin |
+| GET/POST/PATCH/DELETE | `/api/excel/keterangan/{template,import,export}` | admin | Excel untuk master keterangan, mengikuti master lain |
 
 **Filter (GET)** — mengikuti Sales: `factoryId`, `productId`, `search`, ditambah
-`keterangan`. Role Pabrik: `scopedFactoryId()` memaksa `factoryId` miliknya, parameter
+`keteranganId`. Role Pabrik: `scopedFactoryId()` memaksa `factoryId` miliknya, parameter
 `factoryId` dari klien diabaikan.
 
-`search` mencocokkan `poNumber`, `keterangan`, `products.name`, `products.sku`,
+`search` mencocokkan `poNumber`, `keterangan.name`, `products.name`, `products.sku`,
 `factories.name`.
 
 **Deteksi duplikat impor Excel** — baris dianggap duplikat bila `poNumber + produk`
@@ -199,6 +244,7 @@ pesannya tidak menyebut baris mana.
 - Mengirim `pricePerPcs`, `value`, atau `currency` ke sesi role Pabrik.
 - Memakai `requireUser` pada operasi tulis — semua tulis wajib `requireAdmin`.
 - Menyimpan SKU sebagai kolom teks di `purchase_orders`.
+- Menyimpan keterangan sebagai teks bebas di `purchase_orders`; yang disimpan adalah `keteranganId`.
 - Menghapus data tanpa backup lebih dulu.
 - Melonggarkan pemeriksaan (`@ts-ignore`, `eslint-disable`, tes dihapus) supaya hijau.
 
@@ -208,30 +254,46 @@ pesannya tidak menyebut baris mana.
 2. **Admin** dapat menambah baris PO lewat `/po`; baris tersimpan dan muncul di tabel.
 3. Menambah baris dengan `poNumber + produk` yang sama ditolak **409** dengan pesan
    berbahasa Indonesia; `poNumber` sama dengan produk berbeda **diterima**.
+   *(Bila Pilihan B diambil, aturannya berubah menjadi: boleh selama pembedanya berbeda.)*
 4. `value` di database selalu sama dengan `pricePerPcs × quantity`, termasuk setelah
-   PATCH yang hanya mengubah `quantity`.
+   PATCH yang hanya mengubah `quantity`, dan **tetap benar untuk harga pecahan**
+   (mis. 12.50 × 1.000 = 12.500).
 5. **Role Pabrik**: `GET /api/purchase-orders` tidak memuat kunci `pricePerPcs`,
    `value`, maupun `currency` pada baris mana pun, dan hanya memuat baris pabriknya.
 6. Halaman `/po` menampilkan data nyata untuk kedua role: admin 7 kolom, pabrik 5 kolom
    tanpa tombol tambah/ubah/hapus.
-7. Template, impor, dan ekspor Excel bekerja; impor melewati duplikat dengan alasan yang
-   bisa dibaca dan melaporkan barisnya.
-8. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
-9. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
-10. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
+7. **Master keterangan** bisa ditambah, diubah, dan dihapus dari Data Master; namanya
+   muncul di dropdown form PO; menghapusnya ditolak **409** selama masih dipakai baris PO.
+8. Template, impor, dan ekspor Excel bekerja untuk PO **dan** keterangan; impor PO
+   melewati duplikat dengan alasan yang bisa dibaca dan melaporkan barisnya.
+9. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
+10. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
+11. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
 
 ## Open Questions
 
-1. **Excel untuk PO**: ikut atau tidak? Spec ini **mengikutkan** karena frontend sudah
-   memanggil ketiga endpoint itu dan konvensi repo ini memberi Excel ke setiap modul CRUD.
-   Kalau tidak perlu, tiga endpoint itu dihapus dari lingkup dan tombolnya dilepas dari UI.
-2. **Hapus semua + hapus massal**: frontend juga sudah menyiapkannya. Spec ini mengikutkan.
-   Kalau PO dianggap data arsip yang tidak boleh dihapus massal, katakan sekarang.
-3. **Uniqueness**: `poNumber + productId`. Kalau satu PO boleh memuat produk yang sama dua
-   kali (mis. dua tanggal kirim berbeda), constraint ini harus dilonggarkan — dan tabel
-   perlu kolom pembeda.
-4. **`keterangan` per baris**: spec ini memperlakukannya sebagai milik baris. Kalau
-   sebenarnya milik PO Number (satu keterangan untuk semua barisnya), bentuk tabelnya
-   berbeda dan frontend perlu menyesuaikan.
-5. **Desimal pada price/pcs**: saat ini `integer`. Kalau harga PO bisa pecahan
-   (mis. USD 12,50), kolomnya harus berubah sebelum data masuk.
+**Sudah diputuskan (jangan dibuka lagi tanpa alasan baru):**
+
+| # | Pertanyaan | Keputusan |
+|---|---|---|
+| 1 | Excel untuk PO | **Ikut** — template, impor, ekspor |
+| 2 | Hapus semua + hapus massal | **Ikut**, dengan backup otomatis lebih dulu |
+| 4 | `keterangan` per baris atau per PO | **Per baris**, dan berupa **master** yang bisa di-CRUD, dipilih lewat dropdown |
+| 5 | Price/pcs bilangan bulat? | **Boleh pecahan** — kolom `real`, tampilan 2 desimal untuk USD/RMB |
+
+**Masih terbuka — menghalangi implementasi:**
+
+1. **Kolom pembeda (keputusan 1.3).** Boleh tidaknya produk yang sama muncul dua kali
+   dalam satu PO Number. Kalau boleh, kolom pembedanya apa (Tanggal Kirim / Batch /
+   No. Surat Jalan / Nomor Kontainer). Contoh visual: `/demo-kolom-pembeda`.
+   Ini mengubah constraint UNIQUE, bentuk tabel, form, dan kontrak API — jadi harus
+   dikunci lebih dulu.
+
+**Catatan kecil yang tidak menghalangi (akan saya putuskan sendiri bila tidak dijawab):**
+
+- **Lebar kolom keterangan.** Kolom Keterangan di tabel dipotong (`max-w-48`) dan nama
+  lengkapnya muncul di tooltip. Kalau namanya biasanya panjang, kolomnya bisa dilebarkan
+  dengan memangkas filter Produk/Pabrik.
+- **Filter Produk/Pabrik.** Frontend sekarang menampilkan keduanya (mengikuti Sales)
+  ditambah filter Keterangan, sehingga ada empat kontrol filter. Bisa dipangkas bila
+  dianggap terlalu banyak.

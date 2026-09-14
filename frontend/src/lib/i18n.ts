@@ -342,6 +342,16 @@ const translations = {
     en: "Remarks",
     zh: "备注",
   },
+  "po.allKeterangan": {
+    id: "Semua Keterangan",
+    en: "All Remarks",
+    zh: "所有备注",
+  },
+  "po.selectKeterangan": {
+    id: "Pilih keterangan",
+    en: "Select remarks",
+    zh: "选择备注",
+  },
   "po.keteranganPlaceholder": {
     id: "Catatan untuk baris PO ini",
     en: "Note for this PO line",

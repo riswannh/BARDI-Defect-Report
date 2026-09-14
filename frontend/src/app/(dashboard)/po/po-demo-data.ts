@@ -31,6 +31,21 @@ export const demoFactories: Factory[] = [
   { id: -3, name: "FUZHOU HOME APPLIANCE GROUP" },
 ];
 
+/**
+ * Master keterangan contoh.
+ *
+ * Keterangan adalah master yang bisa di-CRUD (lihat SPEC-po-product.md keputusan 1.4),
+ * jadi baris PO menyimpan `keteranganId`, bukan teks bebas.
+ */
+export const demoKeterangan = [
+  { id: -1, name: "Pengiriman batch pertama" },
+  { id: -2, name: "Tambah stok gudang A" },
+  { id: -3, name: "Retur diganti unit baru" },
+  { id: -4, name: "Pengiriman batch kedua" },
+  { id: -5, name: "Prioritas produksi" },
+  { id: -6, name: "Menunggu konfirmasi harga akhir" },
+];
+
 const rows: Array<{
   poNumber: string;
   productIndex: number;
@@ -38,7 +53,7 @@ const rows: Array<{
   quantity: number;
   pricePerPcs: number;
   currency: string;
-  keterangan: string;
+  keteranganIndex: number | null;
 }> = [
   {
     poNumber: "PO-2026-001",
@@ -47,7 +62,7 @@ const rows: Array<{
     quantity: 12000,
     pricePerPcs: 18500,
     currency: "Rp",
-    keterangan: "Pengiriman batch pertama, packing ekspor",
+    keteranganIndex: 0,
   },
   {
     poNumber: "PO-2026-001",
@@ -56,7 +71,7 @@ const rows: Array<{
     quantity: 4800,
     pricePerPcs: 2400,
     currency: "USD",
-    keterangan: "Pengiriman batch pertama, packing ekspor",
+    keteranganIndex: 0,
   },
   {
     poNumber: "PO-2026-001",
@@ -65,7 +80,7 @@ const rows: Array<{
     quantity: 3000,
     pricePerPcs: 950,
     currency: "RMB",
-    keterangan: "Tambah stok gudang A",
+    keteranganIndex: 1,
   },
   {
     poNumber: "PO-2026-002",
@@ -74,16 +89,17 @@ const rows: Array<{
     quantity: 7500,
     pricePerPcs: 42000,
     currency: "Rp",
-    keterangan: "Retur diganti unit baru",
+    keteranganIndex: 2,
   },
   {
+    // Baris tanpa keterangan, untuk melihat bagaimana tabel menanganinya.
     poNumber: "PO-2026-002",
     productIndex: 4,
     factoryIndex: 2,
     quantity: 2100,
     pricePerPcs: 7500,
     currency: "USD",
-    keterangan: "",
+    keteranganIndex: null,
   },
   {
     poNumber: "PO-2026-003",
@@ -92,7 +108,7 @@ const rows: Array<{
     quantity: 900,
     pricePerPcs: 1200,
     currency: "RMB",
-    keterangan: "Prioritas produksi, kirim sebelum akhir bulan",
+    keteranganIndex: 4,
   },
   {
     poNumber: "PO-2026-003",
@@ -101,17 +117,17 @@ const rows: Array<{
     quantity: 6400,
     pricePerPcs: 640000,
     currency: "Rp",
-    keterangan: "Pesanan tambahan dari distributor Surabaya",
+    keteranganIndex: 3,
   },
   {
+    // Harga pecahan (USD 38.75) untuk menunjukkan kolom real bekerja.
     poNumber: "PO-2026-004",
     productIndex: 7,
     factoryIndex: 2,
     quantity: 450,
-    pricePerPcs: 38,
+    pricePerPcs: 38.75,
     currency: "USD",
-    keterangan:
-      "Spesifikasi khusus: kabel 2 meter dan adaptor tipe C, mohon dicek sebelum kirim",
+    keteranganIndex: 4,
   },
   {
     poNumber: "PO-2026-004",
@@ -120,7 +136,7 @@ const rows: Array<{
     quantity: 1800,
     pricePerPcs: 275000,
     currency: "Rp",
-    keterangan: "Menunggu konfirmasi harga akhir",
+    keteranganIndex: 5,
   },
 ];
 
@@ -128,6 +144,8 @@ const rows: Array<{
 export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
   const product = demoProducts[row.productIndex];
   const factory = demoFactories[row.factoryIndex];
+  const keterangan =
+    row.keteranganIndex === null ? null : demoKeterangan[row.keteranganIndex];
   return {
     id: index + 1,
     poNumber: row.poNumber,
@@ -137,7 +155,8 @@ export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
     pricePerPcs: row.pricePerPcs,
     value: row.pricePerPcs * row.quantity,
     currency: row.currency,
-    keterangan: row.keterangan,
+    keteranganId: keterangan?.id ?? null,
+    keteranganName: keterangan?.name ?? null,
     sku: product.sku ?? null,
     productName: product.name,
     factoryName: factory.name,

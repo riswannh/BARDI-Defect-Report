@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Save } from "lucide-react";
 
@@ -39,7 +38,8 @@ export interface PoForm {
   quantity: string;
   pricePerPcs: string;
   currency: PoCurrency;
-  keterangan: string;
+  /** Keterangan adalah master, jadi form menyimpan id-nya (bukan teks bebas). */
+  keteranganId: string;
 }
 
 export function emptyPoForm(): PoForm {
@@ -51,7 +51,7 @@ export function emptyPoForm(): PoForm {
     quantity: "",
     pricePerPcs: "",
     currency: "Rp",
-    keterangan: "",
+    keteranganId: "",
   };
 }
 
@@ -63,7 +63,7 @@ export function poFormHasContent(form: PoForm): boolean {
     form.factoryId !== "" ||
     form.quantity.trim() !== "" ||
     form.pricePerPcs.trim() !== "" ||
-    form.keterangan.trim() !== ""
+    form.keteranganId !== ""
   );
 }
 
@@ -90,6 +90,7 @@ export function PoFormDialog({
   onSubmit,
   products,
   factories,
+  keteranganOptions,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -99,6 +100,7 @@ export function PoFormDialog({
   onSubmit: (mode: "save" | "saveAndAddAnother") => void | Promise<void>;
   products: Product[];
   factories: Factory[];
+  keteranganOptions: Array<{ value: string; label: string }>;
 }) {
   const { t } = useLanguage();
   const isEditing = editingId !== null;
@@ -316,15 +318,27 @@ export function PoFormDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="po-keterangan">{t("po.keterangan")}</Label>
-              <Textarea
-                id="po-keterangan"
-                value={form.keterangan}
-                onChange={(e) =>
-                  onFormChange((f) => ({ ...f, keterangan: e.target.value }))
+              <Label>{t("po.keterangan")}</Label>
+              {/* Keterangan dipilih dari master yang bisa di-CRUD, bukan diketik
+                  bebas, supaya istilahnya konsisten antar baris PO. */}
+              <Select
+                value={form.keteranganId}
+                onValueChange={(v) =>
+                  onFormChange((f) => ({ ...f, keteranganId: String(v) }))
                 }
-                placeholder={t("po.keteranganPlaceholder")}
-              />
+                items={keteranganOptions}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t("po.selectKeterangan")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {keteranganOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <DialogFooter className="sm:justify-between">
