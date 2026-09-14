@@ -1,5 +1,80 @@
 # AGENTS.md
 
+## Alur Kerja Agent — agent-skills (WAJIB DIBACA SEBELUM MENGERJAKAN FITUR)
+
+Proyek ini memakai paket **`addyosmani/agent-skills`** (25 skill, terpasang di
+`.agents/skills/` pada root workspace; disalin ke katalog skill sesi DSH saat boot).
+
+Alur kerjanya mengikuti siklus: **DEFINE → PLAN → BUILD → VERIFY → REVIEW → SHIP**.
+Di DSH tidak ada slash command `/spec` atau `/plan`, jadi **pintu masuknya adalah
+mapping intent → skill** di bawah. Kalau sebuah tugas cocok dengan sebuah skill,
+skill itu **wajib dijalankan lebih dulu**, bukan diimplementasikan langsung.
+
+| Fase | Tugas | Skill |
+|---|---|---|
+| Meta | Mulai sesi / bingung skill mana | `using-agent-skills` |
+| Define | Permintaan masih kabur | `interview-me`, `grill-me` |
+| Define | Baru berupa ide kasar | `idea-refine` |
+| Define | Fitur/perubahan baru | `spec-driven-development` |
+| Define | Bar belum tertulis | `constraint-driven-development` |
+| Plan | Spec sudah ada, perlu dipecah | `planning-and-task-breakdown` |
+| Build | Menulis kode (lebih dari satu file) | `incremental-implementation` |
+| Build | Pekerjaan UI | `frontend-ui-engineering` |
+| Build | Endpoint / kontrak antar modul | `api-and-interface-design` |
+| Verify | Menulis atau menjalankan tes | `test-driven-development` |
+| Verify | Ada yang rusak / tidak sesuai dugaan | `debugging-and-error-recovery` |
+| Review | Sebelum merge | `code-review-and-quality` |
+| Review | Kode terlalu rumit | `code-simplification` |
+| Review | Menyentuh input pengguna, auth, data | `security-and-hardening` |
+| Ship | Commit dan push (selalu) | `git-workflow-and-versioning` |
+| Ship | Keputusan arsitektur yang perlu dikenang | `documentation-and-adrs` |
+| Ship | Siap deploy | `shipping-and-launch` |
+
+Catatan penting:
+
+- **`browser-testing-with-devtools` belum bisa dipakai** — skill itu butuh Chrome
+  DevTools MCP server, dan server itu belum terkonfigurasi di sesi ini. Selama belum
+  ada, verifikasi browser dilakukan dengan Chrome headless + `playwright-core`
+  (pola yang sudah dipakai proyek ini: instal sementara, screenshot, lalu hapus).
+- Skill tambahan yang juga terpasang dan boleh dipakai: `apex`, `impeccable`,
+  `make-interfaces-feel-better`, `thermo-nuclear-code-quality-review`, `grilling`.
+
+### Definition of Done (bar proyek ini)
+
+Setiap perubahan wajib lolos bar ini sebelum dianggap selesai. Ini bar tetap —
+jangan dinegosiasi ulang per tugas:
+
+**Correctness**
+- Kriteria penerimaan tugas terpenuhi.
+- Dibuktikan **saat berjalan**, bukan sekadar `tsc` lolos — jalankan aplikasinya dan
+  periksa hasilnya (screenshot / respons API / isi database).
+- Kasus tepi dan jalur error ikut ditangani, bukan hanya jalur bahagia.
+
+**Quality**
+- `npx tsc --noEmit` dan `npx eslint` bersih **di folder `frontend`**.
+- Tidak ada kode mati, `console.log` debug, atau blok yang dikomentari.
+- Tidak ada `@ts-ignore`, `eslint-disable`, tes yang dihapus, atau assertion yang
+  dilonggarkan hanya supaya pemeriksaan hijau. Kalau sebuah pemeriksaan memang harus
+  dilonggarkan, tulis alasannya di commit message.
+- Perubahan sesuai lingkup tugas; refactor yang tidak diminta jangan ditumpangkan.
+
+**Integration**
+- Migrasi database dijalankan dan diverifikasi (proyek ini memakai `drizzle-kit push`);
+  **backup dulu** sebelum menyentuh database produksi — lihat catatan SKU sebagai contoh.
+- Data lama tetap valid (kolom baru nullable / punya default yang masuk akal).
+- Perubahan pada API publik dipertimbangkan dampaknya ke halaman yang memakainya.
+
+**Documentation**
+- `README.md` (single source of truth) dan `AGENTS.md` diperbarui bila perilaku,
+  skema, atau API berubah.
+- Keputusan yang tidak terlihat dari kode dicatat beserta alasannya.
+
+**Ship-readiness**
+- Aturan akses ditegakkan **di server**, bukan disembunyikan di UI (ini prinsip inti
+  aplikasi: lihat `stripValue` / `stripPricing` / `scopedFactoryId`).
+- Ada jalur balik: pekerjaan di-commit terpisah supaya bisa di-revert.
+- **Menunggu persetujuan manusia** sebelum dianggap selesai untuk perubahan besar.
+
 ## Git Workflow (WAJIB)
 
 Setiap selesai mengerjakan perubahan fitur, commit dan push ke git:
@@ -14,6 +89,9 @@ Setiap selesai mengerjakan perubahan fitur, commit dan push ke git:
 - Repo: https://github.com/riswannh/BARDI-Defect-Report (branch: `main`)
 - Gunakan pesan commit yang jelas dan deskriptif.
 - Jangan commit file yang di-ignore (`node_modules`, `.next`, settings lokal `.claude`).
+- **Shell**: `npm.ps1` diblokir execution policy — jalankan npm lewat `cmd /c`.
+  Untuk pesan commit multi-baris pakai `git commit -F <file>`, karena `git commit -m`
+  dengan pesan multi-baris pecah bila ada baris diawali `-`.
 
 ## Tools
 
