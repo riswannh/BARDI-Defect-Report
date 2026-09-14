@@ -29,6 +29,7 @@ const translations = {
   "common.factory": { id: "Pabrik", en: "Factory", zh: "工厂" },
   "common.month": { id: "Bulan", en: "Month", zh: "月份" },
   "common.quantity": { id: "Quantity", en: "Quantity", zh: "数量" },
+  "common.sku": { id: "SKU", en: "SKU", zh: "SKU" },
   "common.value": { id: "Value", en: "Value", zh: "金额" },
   "common.valueIdr": { id: "Value (IDR)", en: "Value (IDR)", zh: "金额 (IDR)" },
   "common.status": { id: "Status", en: "Status", zh: "状态" },
@@ -445,6 +446,16 @@ const translations = {
 
   // MasterList
   "masterList.newName": { id: "Nama baru", en: "New name", zh: "新名称" },
+  "masterList.skuPlaceholder": {
+    id: "SKU (opsional)",
+    en: "SKU (optional)",
+    zh: "SKU（可选）",
+  },
+  "masterList.skuEmpty": {
+    id: "Tanpa SKU",
+    en: "No SKU",
+    zh: "无 SKU",
+  },
   "masterList.empty": {
     id: "Belum ada data.",
     en: "No data yet.",

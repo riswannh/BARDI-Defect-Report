@@ -122,6 +122,14 @@ export const verification = sqliteTable(
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
+  /**
+   * SKU opsional tapi unik kalau diisi.
+   *
+   * Kolomnya nullable karena produk lama belum punya SKU; di SQLite beberapa
+   * baris NULL tidak saling bentrok pada constraint UNIQUE, jadi produk lama
+   * tetap valid sementara SKU baru tetap tidak bisa terduplikasi.
+   */
+  sku: text("sku").unique(),
   createdAt: integer("createdAt", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

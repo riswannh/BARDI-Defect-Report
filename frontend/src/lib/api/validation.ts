@@ -9,6 +9,22 @@ export const masterNameSchema = z.object({
   name: z.string().trim().min(1),
 });
 
+/** Normalisasi SKU: string kosong dianggap "tidak diisi" (null), bukan "". */
+export function normalizeSku(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+/**
+ * Produk punya SKU; master lain (problem/status/pabrik) hanya nama.
+ * SKU opsional, tapi kalau diisi harus unik — dicek terpisah di handler.
+ */
+export const productSchema = z.object({
+  name: z.string().trim().min(1),
+  sku: z.string().optional().nullable(),
+});
+
 export const defectSchema = z.object({
   codeGaransi: z.string().trim().min(1),
   timestamp: z

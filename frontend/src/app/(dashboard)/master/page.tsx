@@ -52,9 +52,14 @@ export default function MasterPage() {
   const pagedProblems = problems.slice(start, end);
   const pagedStatuses = statuses.slice(start, end);
 
-  async function addItem(endpoint: string, name: string, reload: () => void) {
+  async function addItem(
+    endpoint: string,
+    name: string,
+    reload: () => void,
+    sku?: string
+  ) {
     try {
-      await apiPost(endpoint, { name });
+      await apiPost(endpoint, sku === undefined ? { name } : { name, sku });
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menambah.");
@@ -65,10 +70,14 @@ export default function MasterPage() {
     endpoint: string,
     id: number,
     name: string,
-    reload: () => void
+    reload: () => void,
+    sku?: string
   ) {
     try {
-      await apiPatch(`${endpoint}/${id}`, { name });
+      await apiPatch(
+        `${endpoint}/${id}`,
+        sku === undefined ? { name } : { name, sku }
+      );
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal mengubah.");
@@ -194,10 +203,13 @@ export default function MasterPage() {
             <TabsContent value="products">
               <MasterList
                 items={pagedProducts}
+                withSku
                 addPlaceholder={t("master.newProduct")}
-                onAdd={(name) => addItem("/api/products", name, reloadProducts)}
-                onRename={(id, name) =>
-                  renameItem("/api/products", id, name, reloadProducts)
+                onAdd={(name, sku) =>
+                  addItem("/api/products", name, reloadProducts, sku)
+                }
+                onRename={(id, name, sku) =>
+                  renameItem("/api/products", id, name, reloadProducts, sku)
                 }
                 onDelete={(id) =>
                   deleteItem("/api/products", id, reloadProducts)

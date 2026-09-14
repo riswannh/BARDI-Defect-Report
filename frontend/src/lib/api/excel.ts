@@ -13,7 +13,7 @@ import {
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
-import { normalizeTimestamp } from "@/lib/api/validation";
+import { normalizeSku, normalizeTimestamp } from "@/lib/api/validation";
 import { createUserAccount } from "@/lib/api/users";
 import { listDefectRows, listSaleRows } from "@/lib/api/records";
 import { MONTHS } from "@/lib/format";
@@ -170,7 +170,14 @@ export async function excelExport(moduleName: string, req: NextRequest) {
   const { user: currentUser } = guard;
 
   if (isMasterModule(moduleName)) {
-    const { table, file } = MASTER_MODULES[moduleName];
+    const { file } = MASTER_MODULES[moduleName];
+    if (moduleName === "products") {
+      // Produk mengekspor SKU juga, sejajar dengan template dan impornya.
+      const rows = await db.select().from(products).orderBy(products.id);
+      const data = rows.map((row) => ({ Nama: row.name, SKU: row.sku ?? "" }));
+      return downloadResponse(sheetBuffer(data, ["Nama", "SKU"]), `${file}.xlsx`);
+    }
+    const { table } = MASTER_MODULES[moduleName];
     const rows = await db.select().from(table).orderBy(table.id);
     const data = rows.map((row) => ({ Nama: row.name }));
     return downloadResponse(sheetBuffer(data, ["Nama"]), `${file}.xlsx`);
@@ -259,8 +266,17 @@ export async function excelImport(moduleName: string, req: NextRequest) {
 
 async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
   const { table } = MASTER_MODULES[moduleName];
+  // Hanya produk yang punya SKU; master lain tetap nama saja.
+  const isProducts = table === products;
   const existingRows = await db.select().from(table);
   const existing = new Set(existingRows.map((row) => row.name.toLowerCase()));
+  const existingSkus = new Set(
+    isProducts
+      ? existingRows
+          .map((row) => (row as { sku?: string | null }).sku?.toLowerCase())
+          .filter((sku): sku is string => Boolean(sku))
+      : []
+  );
 
   const result = newImportResult(moduleName, sheet.length);
   for (let i = 0; i < sheet.length; i++) {
@@ -279,9 +295,32 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
       });
       continue;
     }
+
+    // SKU opsional, tapi kalau diisi tidak boleh bentrok — termasuk dengan baris
+    // lain di berkas yang sama, karena UNIQUE di database baru gagal saat insert
+    // dan pesannya tidak menyebut baris mana yang bertabrakan.
+    const sku = isProducts
+      ? normalizeSku(sheet[i].SKU ?? sheet[i].Sku ?? sheet[i].sku)
+      : null;
+    if (sku && existingSkus.has(sku.toLowerCase())) {
+      result.skipped++;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: sku,
+        reason: "SKU sudah dipakai",
+      });
+      continue;
+    }
+
     try {
-      await db.insert(table).values({ name });
+      // Bercabang supaya TypeScript menyempitkan tipe: hanya produk punya `sku`.
+      if (table === products) {
+        await db.insert(products).values({ name, sku });
+      } else {
+        await db.insert(table).values({ name });
+      }
       existing.add(name.toLowerCase());
+      if (sku) existingSkus.add(sku.toLowerCase());
       result.inserted++;
     } catch (err) {
       result.errors.push({
@@ -602,8 +641,15 @@ export async function excelTemplate(moduleName: string) {
 
   if (isMasterModule(moduleName)) {
     const { file } = MASTER_MODULES[moduleName];
+    // Template produk ikut memuat kolom SKU supaya pengisian massal cocok
+    // dengan kolom yang dibaca `importMaster`.
+    const headers = moduleName === "products" ? ["Nama", "SKU"] : ["Nama"];
+    const example: SheetRow =
+      moduleName === "products"
+        ? { Nama: "", SKU: "" }
+        : { Nama: "" };
     return downloadResponse(
-      sheetBuffer([{ Nama: "" }], ["Nama"]),
+      sheetBuffer([example], headers),
       `template-${file}.xlsx`
     );
   }

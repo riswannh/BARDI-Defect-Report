@@ -202,7 +202,9 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 
 **`factories`** — `id` (PK auto), `name` (unik), `createdAt`
 
-**`products`** — `id` (PK auto), `name` (unik), `createdAt`
+**`products`** — `id` (PK auto), `name` (unik), **`sku`** (unik, opsional/nullable), `createdAt`
+
+> `sku` opsional karena produk lama belum memilikinya; di SQLite beberapa baris `NULL` tidak saling bentrok pada constraint UNIQUE, sehingga produk tanpa SKU tetap valid sementara SKU yang diisi tidak bisa terduplikasi.
 
 **`problems`** — `id` (PK auto), `name` (unik), `createdAt`
 
@@ -255,6 +257,7 @@ Constraint unik: `(productId, factoryId, month)` — kunci deteksi duplikat impo
 | Defect | `codeGaransi` sudah ada |
 | Sales | kombinasi `productId + factoryId + month` sudah ada |
 | Produk / Problem / Status / Factory | `name` sudah ada |
+| Produk (tambahan) | `sku` sudah dipakai produk lain — baris dilewati dengan alasan "SKU sudah dipakai", termasuk bila bentrok dengan baris lain di berkas yang sama |
 | User | `username` sudah ada |
 
 ### Diagram Relasi
@@ -288,11 +291,16 @@ Berlaku untuk `products`, `problems`, `statuses`, `factories`:
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/{module}` | user login | daftar data |
-| POST | `/api/{module}` | admin | tambah (name unik) |
-| PATCH | `/api/{module}/{id}` | admin | ubah |
+| GET | `/api/{module}` | user login | daftar data (`factories` di-scope untuk role Pabrik) |
+| POST | `/api/{module}` | admin | tambah (`name` unik; `products` menerima `sku` opsional yang juga harus unik) |
+| PATCH | `/api/{module}/{id}` | admin | ubah (409 "Nama sudah ada." / "SKU sudah dipakai produk lain.") |
 | DELETE | `/api/{module}/{id}` | admin | hapus (409 jika masih dipakai defect/sales) |
 | DELETE | `/api/{module}` | admin | **hapus semua** (backup otomatis dulu) |
+
+**Produk punya `sku` di samping `name`** — dikelola di tab **Produk** (Data Master), ikut diekspor
+dan diimpor lewat Excel (`template-produk.xlsx` memuat kolom `Nama` + `SKU`). Master lain
+(problem/status/pabrik) tetap hanya nama. SKU kosong dikirim sebagai string kosong dan disimpan
+sebagai `NULL`.
 
 ### Records
 
@@ -425,6 +433,9 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 ### 8.5 Data Master
 
 - Tab: **Produk**, **Problem**, **Status**, **Pabrik** (komponen `master-list.tsx`).
+- **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
+  menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
+  kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
 - CRUD + paging (5/10/25/50/100) + import/export/template Excel.
 - Hapus master gagal (409) jika masih dipakai defect/sales.
 - **Hapus semua** per tab dengan dialog konfirmasi + backup otomatis.

@@ -15,6 +15,8 @@ export interface User {
 export interface Product {
   id: number;
   name: string;
+  /** Opsional: produk lama belum punya SKU. Unik kalau diisi. */
+  sku?: string | null;
 }
 
 export interface Problem {
