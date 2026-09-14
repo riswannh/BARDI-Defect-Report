@@ -351,6 +351,13 @@ sebagai `NULL`.
 | DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis |
 | POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
 
+### Report
+
+`GET /api/report` — ringkasan, bucket grafik, dan total dihitung **di server**. Selain defect/sales,
+respons memuat `replacementPos` (baris PO berketerangan `Replacement` pada periode terpilih) dan
+`totals.replacementQty` yang dipakai kartu **Replacement**. Pencocokan periodenya memakai
+`matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect.
+
 ### Users
 
 | Method | Path | Akses | Keterangan |
@@ -367,8 +374,15 @@ sebagai `NULL`.
 |---|---|---|---|
 | GET | `/api/report` | user login | `period` (`daily/weekly/monthly/yearly/custom`), `month`, `year`, `day`, `weekEnd`, `from`, `to`, `factoryId` (admin) |
 
-Respons berisi: `period`, `defects`, `sales`, `recap`, `buckets`, `salesYearly`, `salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `statuses`, `factories`.
+Respons berisi: `period`, `defects`, `sales`, `replacementPos`, `recap`, `buckets`, `salesYearly`,
+`salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `statuses`, `factories`.
 Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
+
+`replacementPos` adalah baris PO berketerangan **`Replacement`** pada periode terpilih, dan
+`totals.replacementQty` dipakai kartu **Replacement** di halaman Report. Periodenya dicocokkan
+dengan `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect
+(`YYYY-MM-DDTHH:mm`). Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa**
+`pricePerPcs`/`value`/`currency`.
 
 ### Excel
 

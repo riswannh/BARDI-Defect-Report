@@ -239,10 +239,19 @@ const translations = {
     en: "Defect/Sales Ratio",
     zh: "缺陷/销售比率",
   },
-  "report.ratioDesc": {
-    id: "Qty Defect ÷ Qty Sales",
+  "report.ratioDesc": {    id: "Qty Defect ÷ Qty Sales",
     en: "Defect Qty ÷ Sales Qty",
     zh: "缺陷数量 ÷ 销售数量",
+  },
+  "report.replacement": {
+    id: "Replacement",
+    en: "Replacement",
+    zh: "更换",
+  },
+  "report.replacementDesc": {
+    id: "Qty PO Replacement",
+    en: "Replacement PO Qty",
+    zh: "更换采购数量",
   },
   "report.detailTitle": {
     id: "Detail Defect — {product}",

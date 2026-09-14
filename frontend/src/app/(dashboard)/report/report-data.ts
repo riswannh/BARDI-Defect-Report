@@ -35,6 +35,8 @@ export interface ReportResponse {
   period: PeriodFilter;
   defects: Defect[];
   sales: Sale[];
+  /** Baris PO berketerangan "Replacement" pada periode terpilih. */
+  replacementPos: ReportPoRow[];
   recap: RecapRow[];
   buckets: ChartBucket[];
   salesYearly: ChartBucket[];
@@ -44,12 +46,34 @@ export interface ReportResponse {
     defectValue?: number;
     salesQty: number;
     salesValue?: number;
+    replacementQty: number;
+    replacementValue?: number;
   };
   years: number[];
   products: Product[];
   problems: Problem[];
   statuses: Status[];
   factories: Factory[];
+}
+
+/**
+ * Baris PO versi ringkas untuk halaman Report.
+ *
+ * `pricePerPcs`, `value`, dan `currency` tidak ada untuk role Pabrik — dihapus di
+ * server, jadi tipenya opsional di sini.
+ */
+export interface ReportPoRow {
+  id: number;
+  poNumber: string;
+  poDate: string;
+  productId: number;
+  factoryId: number;
+  quantity: number;
+  pricePerPcs?: number;
+  value?: number;
+  currency?: string;
+  productName?: string | null;
+  factoryName?: string | null;
 }
 
 export interface ReportFilters {

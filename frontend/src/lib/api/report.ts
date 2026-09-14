@@ -15,7 +15,15 @@ import {
   type PeriodFilter,
 } from "@/lib/period";
 import { db } from "@/lib/db";
-import { defects, factories, problems, products, sales, statuses } from "@/lib/db/schema";
+import {
+  defects,
+  factories,
+  problems,
+  products,
+  purchaseOrders,
+  sales,
+  statuses,
+} from "@/lib/db/schema";
 import {
   requireUser,
   scopedFactoryId,
@@ -23,6 +31,9 @@ import {
 } from "@/lib/api/guard";
 import { jsonOk } from "@/lib/api/response";
 import type { PeriodType } from "@/lib/types";
+
+/** Keterangan PO yang dihitung khusus di halaman Report. */
+const REPORT_PO_KETERANGAN = "Replacement";
 
 function numParam(value: string | null): number | null {
   if (!value) return null;
@@ -51,6 +62,18 @@ function stripRecapValues<T extends { defectValue?: number; salesValue?: number 
   return copy as Omit<T, "defectValue" | "salesValue">;
 }
 
+/** Sama seperti PO: role Pabrik tidak menerima angka harga sama sekali. */
+function stripPoMoney<
+  T extends { value?: number; pricePerPcs?: number; currency?: string },
+>(row: T, user: SessionUser): T | Omit<T, "value" | "pricePerPcs" | "currency"> {
+  if (user.isAdmin) return row;
+  const copy: Record<string, unknown> = { ...row };
+  delete copy.value;
+  delete copy.pricePerPcs;
+  delete copy.currency;
+  return copy as Omit<T, "value" | "pricePerPcs" | "currency">;
+}
+
 export async function reportGET(req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
@@ -73,7 +96,7 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows] =
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows] =
     await Promise.all([
       db.select().from(defects).where(defectWhere),
       db.select().from(sales).where(saleWhere),
@@ -81,6 +104,14 @@ export async function reportGET(req: NextRequest) {
       db.select().from(problems),
       db.select().from(statuses),
       db.select().from(factories),
+      db
+        .select()
+        .from(purchaseOrders)
+        .where(
+          factory !== null
+            ? eq(purchaseOrders.factoryId, factory)
+            : undefined
+        ),
     ]);
 
   const appDefects = defectRows.map((row) => ({
@@ -112,7 +143,32 @@ export async function reportGET(req: NextRequest) {
   );
   const filteredSales = appSales.filter((s) => matchesSalePeriod(s.month, f));
 
+  /**
+   * PO dengan keterangan "Replacement", mengikuti filter periode halaman Report.
+   *
+   * `poDate` berformat sama dengan timestamp defect (`YYYY-MM-DDTHH:mm`), jadi
+   * pencocokan periode bisa memakai `matchesDefectPeriod` tanpa duplikasi logika.
+   */
+  const appPurchaseOrders = poRows
+    .filter((row) => row.keterangan === REPORT_PO_KETERANGAN)
+    .map((row) => ({
+      id: row.id,
+      poNumber: row.poNumber,
+      poDate: row.poDate,
+      productId: row.productId,
+      factoryId: row.factoryId,
+      quantity: row.quantity,
+      pricePerPcs: row.pricePerPcs,
+      value: row.value,
+      currency: row.currency,
+    }));
+  const filteredPurchaseOrders = appPurchaseOrders.filter((row) =>
+    matchesDefectPeriod(row.poDate, f)
+  );
+
   const productList = productRows.map((p) => ({ id: p.id, name: p.name }));
+  const productNameById = new Map(productList.map((p) => [p.id, p.name]));
+  const factoryNameById = new Map(factoryRows.map((f2) => [f2.id, f2.name]));
   let recap = summarizeByProduct(filteredDefects, filteredSales, productList);
 
   // Role Pabrik hanya melihat produk yang punya data (defect/sales) di pabriknya.
@@ -134,6 +190,14 @@ export async function reportGET(req: NextRequest) {
     defectValue: totalDefectValue(filteredDefects),
     salesQty: totalSalesQty(filteredSales),
     salesValue: totalSalesValue(filteredSales),
+    replacementQty: filteredPurchaseOrders.reduce(
+      (sum, row) => sum + row.quantity,
+      0
+    ),
+    replacementValue: filteredPurchaseOrders.reduce(
+      (sum, row) => sum + row.value,
+      0
+    ),
   };
 
   const years = Array.from(
@@ -148,6 +212,16 @@ export async function reportGET(req: NextRequest) {
     period: f,
     defects: filteredDefects.map((row) => stripValue(row, user)),
     sales: filteredSales.map((row) => stripValue(row, user)),
+    replacementPos: filteredPurchaseOrders.map((row) =>
+      stripPoMoney(
+        {
+          ...row,
+          productName: productNameById.get(row.productId) ?? "",
+          factoryName: factoryNameById.get(row.factoryId) ?? "",
+        },
+        user
+      )
+    ),
     recap: recap.map((row) => stripRecapValues(row, user)),
     buckets: buckets.map((row) => stripRecapValues(row, user)),
     salesYearly: salesYearly.map((row) => stripRecapValues(row, user)),
@@ -156,7 +230,11 @@ export async function reportGET(req: NextRequest) {
     ),
     totals: user.isAdmin
       ? totals
-      : { defectQty: totals.defectQty, salesQty: totals.salesQty },
+      : {
+          defectQty: totals.defectQty,
+          salesQty: totals.salesQty,
+          replacementQty: totals.replacementQty,
+        },
     years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),
     problems: problemRows.map((row) => ({ id: row.id, name: row.name })),

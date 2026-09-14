@@ -33,6 +33,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Banknote,
+  Package,
   Percent,
   ShoppingCart,
   Wallet,
@@ -169,6 +170,8 @@ export default function ReportPage() {
   const sQty = report?.totals.salesQty ?? 0;
   const sVal = report?.totals.salesValue ?? 0;
   const ratioQty = defectSalesRatio(dQty, sQty);
+  // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
+  const replacementQty = report?.totals.replacementQty ?? 0;
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -353,7 +356,7 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <SummaryCard
           title={t("report.totalDefect")}
           value={formatNumber(dQty)}
@@ -395,6 +398,14 @@ export default function ReportPage() {
           }
           description={t("report.ratioDesc")}
           icon={Percent}
+        />
+        {/* Diambil dari PO Product berketerangan "Replacement", mengikuti
+            periode yang sedang dipilih. */}
+        <SummaryCard
+          title={t("report.replacement")}
+          value={formatNumber(replacementQty)}
+          description={t("report.replacementDesc")}
+          icon={Package}
         />
       </div>
 

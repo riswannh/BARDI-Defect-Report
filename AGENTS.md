@@ -243,6 +243,10 @@ Catatan perilaku Report yang harus dijaga:
   pindahkan perhitungan itu ke klien.
 - Daftar pabrik diambil dari `/api/factories`, bukan dari respons report, supaya
   dropdown tidak berkedip kosong setiap periode berganti.
+- Kartu **Replacement** menghitung **qty PO berketerangan `Replacement`** pada periode terpilih.
+  Datanya dari `GET /api/report` (`totals.replacementQty` dan `replacementPos`), dicocokkan dengan
+  `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect. Role Pabrik menerima
+  qty-nya tetapi baris PO-nya tanpa `pricePerPcs`/`value`/`currency`.
 
 ### Aturan alur input defect
 
