@@ -15,7 +15,12 @@ import {
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
-import { normalizeSku, normalizeCurrency, normalizeTimestamp } from "@/lib/api/validation";
+import {
+  normalizeSku,
+  normalizeCurrency,
+  normalizePpn,
+  normalizeTimestamp,
+} from "@/lib/api/validation";
 import { createUserAccount } from "@/lib/api/users";
 import {
   listDefectRows,
@@ -169,13 +174,14 @@ const SALES_HEADERS = ["Produk", "Pabrik", "Bulan", "Quantity", "Value"];
 
 const USER_HEADERS = ["Username", "Password", "Pabrik", "Admin"];
 
-/** Kolom PO; Price/pcs dan Total hanya ikut untuk admin. */
+/** Kolom PO; PPN, Price/pcs, Currency, dan Total hanya ikut untuk admin. */
 const PO_HEADERS = [
   "PO Number",
   "Timestamp",
   "Produk",
   "Pabrik",
   "Quantity",
+  "PPN",
   "Price/pcs",
   "Currency",
   "Total",
@@ -193,11 +199,15 @@ export async function excelExport(moduleName: string, req: NextRequest) {
 
   if (moduleName === PO_MODULE) {
     const rows = await listPurchaseOrderRows(currentUser, req.nextUrl.searchParams);
-    // Role Pabrik tidak menerima kolom harga sama sekali — bukan disembunyikan.
+    // Role Pabrik tidak menerima kolom harga maupun status PPN — bukan disembunyikan.
     const headers = currentUser.isAdmin
       ? PO_HEADERS
       : PO_HEADERS.filter(
-          (h) => h !== "Price/pcs" && h !== "Total" && h !== "Currency"
+          (h) =>
+            h !== "Price/pcs" &&
+            h !== "Total" &&
+            h !== "Currency" &&
+            h !== "PPN"
         );
     const data = rows.map((row) => ({
       "PO Number": row.poNumber,
@@ -207,6 +217,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       Quantity: row.quantity,
       ...(currentUser.isAdmin
         ? {
+            PPN: row.ppn,
             "Price/pcs": row.pricePerPcs,
             Currency: row.currency,
             Total: row.value,
@@ -413,6 +424,8 @@ async function importPurchaseOrders(sheet: SheetRow[]) {
         quantity,
         pricePerPcs,
         currency: normalizeCurrency(cellString(row.Currency)),
+        // Status PPN hanya penanda; tidak menambah nilai total.
+        ppn: normalizePpn(cellString(row.PPN)),
         keteranganId,
         // Total selalu dihitung server, tidak pernah dari berkas.
         value: quantity * pricePerPcs,
@@ -814,6 +827,7 @@ export async function excelTemplate(moduleName: string) {
       Produk: "LED Bulb 12W RGBWW",
       Pabrik: "PABRIK CONTOH",
       Quantity: 120,
+      PPN: "PPN",
       "Price/pcs": 18500,
       Currency: "Rp",
       Total: 2220000,

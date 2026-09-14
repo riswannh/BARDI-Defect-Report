@@ -120,6 +120,22 @@ export function normalizeCurrency(value: unknown): Currency {
   return "Rp";
 }
 
+/** Status PPN baris PO. Hanya penanda; tidak memengaruhi perhitungan total. */
+export const PPN_OPTIONS = ["PPN", "Non PPN"] as const;
+export type PpnStatus = (typeof PPN_OPTIONS)[number];
+
+/** Terima variasi penulisan ("ppn", "non-ppn", "PPN 11%") dan kembalikan baku. */
+export function normalizePpn(value: unknown): PpnStatus {
+  const s = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (s === "") return "Non PPN";
+  if (/^(non|no|tanpa|without|tidak)[\s-]*ppn/.test(s)) return "Non PPN";
+  if (s === "false" || s === "0" || s === "tidak") return "Non PPN";
+  if (s.includes("ppn") || s === "true" || s === "1" || s === "ya" || s === "yes") {
+    return "PPN";
+  }
+  return "Non PPN";
+}
+
 /**
  * PO Product.
  *
@@ -136,6 +152,7 @@ export const purchaseOrderFields = {
   quantity: z.coerce.number().int().min(0),
   pricePerPcs: z.coerce.number().min(0),
   currency: z.string(),
+  ppn: z.string(),
   keteranganId: z.coerce.number().int().positive().nullable(),
 } satisfies z.ZodRawShape;
 
@@ -143,6 +160,7 @@ export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
   quantity: z.coerce.number().int().min(0).default(0),
   pricePerPcs: z.coerce.number().min(0).default(0),
   currency: z.string().optional(),
+  ppn: z.string().optional(),
   keteranganId: z.coerce.number().int().positive().nullable().optional(),
 });
 

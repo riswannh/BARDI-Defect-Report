@@ -153,6 +153,7 @@ purchaseOrders (tabel: purchase_orders)
   pricePerPcs  real    NOT NULL default 0 // BOLEH PECAHAN (mis. USD 12.50)
   value        real    NOT NULL default 0 // = pricePerPcs × quantity
   currency     text NOT NULL default "Rp" // "Rp" | "USD" | "RMB"
+  ppn          text NOT NULL default "Non PPN" // "PPN" | "Non PPN", hanya penanda
   keteranganId integer → keterangan.id    // dropdown, bukan teks bebas
   createdAt / updatedAt
 
@@ -218,6 +219,22 @@ Konsekuensi teknis:
   `Date`) supaya tidak bergeser karena konversi zona waktu.
 - `createdAt`/`updatedAt` tetap ada sebagai jejak audit, tetapi **tidak**
   ditampilkan di tabel.
+
+### Keputusan — PPN/Non PPN hanya penanda, dan tidak terlihat oleh Pabrik
+
+Ada dropdown **PPN** di form dengan dua pilihan: `PPN` dan `Non PPN` (default
+`Non PPN`). Nilainya **tidak ikut dihitung ke `value`** — Total tetap
+`pricePerPcs × quantity`; tidak ada kolom nilai pajak maupun DPP.
+
+- Kolom database `ppn` bertipe `text` dengan default `Non PPN`, dinormalkan
+  `normalizePpn()` sehingga variasi penulisan (`ppn`, `non-ppn`, `PPN 11%`) tetap
+  diterima.
+- **Role Pabrik tidak boleh melihatnya.** Field `ppn` dihapus dari respons API
+  bersama `pricePerPcs`/`value`/`currency` oleh `stripPoFinance()`, dan kolomnya
+  juga tidak ikut pada ekspor Excel untuk Pabrik. Konsekuensinya: aturan
+  penyembunyian PO bukan lagi sekadar "field harga", jadi fungsinya diganti nama
+  dari `stripPricing()` menjadi `stripPoFinance()`.
+- Kolom tabel dan ekspor admin memuat `PPN` di antara `Quantity` dan `Price/pcs`.
 
 ### Keputusan 1.3 — tanpa kolom pembeda (SUDAH DIPUTUSKAN)
 
@@ -289,7 +306,7 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
 
 **Never**
 
-- Mengirim `pricePerPcs`, `value`, atau `currency` ke sesi role Pabrik.
+- Mengirim `pricePerPcs`, `value`, `currency`, atau `ppn` ke sesi role Pabrik.
 - Memakai `requireUser` pada operasi tulis — semua tulis wajib `requireAdmin`.
 - Menyimpan SKU sebagai kolom teks di `purchase_orders`.
 - Menambahkan `UNIQUE` pada `purchase_orders` — duplikat PO Number memang diizinkan
@@ -312,7 +329,7 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
    PATCH yang hanya mengubah `quantity`, dan **tetap benar untuk harga pecahan**
    (mis. 12.50 × 1.000 = 12.500).
 5. **Role Pabrik**: `GET /api/purchase-orders` tidak memuat kunci `pricePerPcs`,
-   `value`, maupun `currency` pada baris mana pun, dan hanya memuat baris pabriknya.
+   `value`, `currency`, maupun `ppn` pada baris mana pun, dan hanya memuat baris pabriknya.
 6. Halaman `/po` menampilkan data nyata untuk kedua role: admin 8 kolom (PO Number,
    Timestamp, Keterangan, Nama Produk, Pabrik, Quantity, Price/pcs, Total Currency),
    pabrik 6 kolom tanpa price/total/currency dan tanpa tombol tambah/ubah/hapus.

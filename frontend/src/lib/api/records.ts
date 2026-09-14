@@ -23,6 +23,7 @@ import {
   defectSchema,
   defectUpdateSchema,
   normalizeCurrency,
+  normalizePpn,
   purchaseOrderSchema,
   purchaseOrderUpdateSchema,
   saleSchema,
@@ -40,20 +41,30 @@ function stripValue<T extends { value?: number }>(
 }
 
 /**
- * Role Pabrik tidak boleh melihat harga satuan, total, maupun mata uang.
+ * Field PO yang tidak boleh dilihat role Pabrik: harga satuan, total, mata uang,
+ * dan status PPN.
  *
  * Dihapus di sini — bukan disembunyikan di UI — mengikuti aturan yang sama
  * dengan field `value` pada Defect/Sales.
  */
-function stripPricing<
-  T extends { value?: number; pricePerPcs?: number; currency?: string },
->(row: T, user: SessionUser): T | Omit<T, "value" | "pricePerPcs" | "currency"> {
+function stripPoFinance<
+  T extends {
+    value?: number;
+    pricePerPcs?: number;
+    currency?: string;
+    ppn?: string;
+  },
+>(
+  row: T,
+  user: SessionUser
+): T | Omit<T, "value" | "pricePerPcs" | "currency" | "ppn"> {
   if (user.isAdmin) return row;
   const copy: Record<string, unknown> = { ...row };
   delete copy.value;
   delete copy.pricePerPcs;
   delete copy.currency;
-  return copy as Omit<T, "value" | "pricePerPcs" | "currency">;
+  delete copy.ppn;
+  return copy as Omit<T, "value" | "pricePerPcs" | "currency" | "ppn">;
 }
 
 const defectSelect = {
@@ -96,6 +107,7 @@ const purchaseOrderSelect = {
   pricePerPcs: purchaseOrders.pricePerPcs,
   value: purchaseOrders.value,
   currency: purchaseOrders.currency,
+  ppn: purchaseOrders.ppn,
   keteranganId: purchaseOrders.keteranganId,
   // SKU ikut dikirim supaya konsumen lain (mis. ekspor Excel) tidak kehilangan
   // informasi; SKU tetap melekat pada produk, bukan disalin ke baris PO.
@@ -512,7 +524,7 @@ export async function purchaseOrdersGET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const rows = await listPurchaseOrderRows(guard.user, req.nextUrl.searchParams);
-  return jsonOk(rows.map((row) => stripPricing(row, guard.user)));
+  return jsonOk(rows.map((row) => stripPoFinance(row, guard.user)));
 }
 
 export async function purchaseOrdersPOST(req: NextRequest) {
@@ -541,6 +553,7 @@ export async function purchaseOrdersPOST(req: NextRequest) {
       // Total dihitung di server; angka dari klien tidak dipercaya.
       value: pricePerPcs * quantity,
       currency: normalizeCurrency(parsed.data.currency),
+      ppn: normalizePpn(parsed.data.ppn),
       keteranganId: parsed.data.keteranganId ?? null,
     })
     .returning();
@@ -593,6 +606,7 @@ export async function purchaseOrdersPATCH(
       ...(parsed.data.currency !== undefined
         ? { currency: normalizeCurrency(parsed.data.currency) }
         : {}),
+      ...(parsed.data.ppn !== undefined ? { ppn: normalizePpn(parsed.data.ppn) } : {}),
       ...(parsed.data.keteranganId !== undefined
         ? { keteranganId: parsed.data.keteranganId }
         : {}),

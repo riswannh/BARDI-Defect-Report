@@ -344,6 +344,7 @@ const translations = {
     zh: "单价",
   },
   "po.currency": { id: "Currency", en: "Currency", zh: "币种" },
+  "po.ppn": { id: "PPN", en: "VAT", zh: "增值税" },
   "po.totalValue": {
     id: "Total Value",
     en: "Total Value",

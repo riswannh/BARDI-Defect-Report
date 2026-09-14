@@ -8,6 +8,7 @@ import {
   PO_CURRENCIES,
   type PoCurrency,
 } from "@/lib/format";
+import { PPN_OPTIONS, type PpnStatus } from "@/lib/api/validation";
 import type { Factory, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,8 @@ export interface PoForm {
   quantity: string;
   pricePerPcs: string;
   currency: PoCurrency;
+  /** Status PPN: "PPN" atau "Non PPN". Hanya penanda, tidak menambah total. */
+  ppn: PpnStatus;
   /** Keterangan adalah master, jadi form menyimpan id-nya (bukan teks bebas). */
   keteranganId: string;
 }
@@ -63,6 +66,8 @@ export function emptyPoForm(): PoForm {
     quantity: "",
     pricePerPcs: "",
     currency: "Rp",
+    // Default "Non PPN"; operator dapat mengubahnya ke "PPN" bila PO-nya kena pajak.
+    ppn: "Non PPN",
     keteranganId: "",
   };
 }
@@ -299,6 +304,32 @@ export function PoFormDialog({
                     {PO_CURRENCIES.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("po.ppn")}</Label>
+                {/* Hanya penanda: tidak ada angka yang ditambahkan ke Total. */}
+                <Select
+                  value={form.ppn}
+                  onValueChange={(v) =>
+                    onFormChange((f) => ({ ...f, ppn: String(v) as PpnStatus }))
+                  }
+                  items={PPN_OPTIONS.map((option) => ({
+                    value: option,
+                    label: option,
+                  }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PPN_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
                       </SelectItem>
                     ))}
                   </SelectContent>

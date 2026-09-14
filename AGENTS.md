@@ -71,7 +71,7 @@ jangan dinegosiasi ulang per tugas:
 
 **Ship-readiness**
 - Aturan akses ditegakkan **di server**, bukan disembunyikan di UI (ini prinsip inti
-  aplikasi: lihat `stripValue` / `stripPricing` / `scopedFactoryId`).
+  aplikasi: lihat `stripValue` / `stripPoFinance` / `scopedFactoryId`).
 - Ada jalur balik: pekerjaan di-commit terpisah supaya bisa di-revert.
 - **Menunggu persetujuan manusia** sebelum dianggap selesai untuk perubahan besar.
 
@@ -135,7 +135,8 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - `src/lib/auth.ts` — konfigurasi Better Auth (username plugin, field `isAdmin` & `factoryId`)
   - `src/lib/api/*` — guard role, validasi zod, CRUD, report, Excel
   - `src/app/api/*` — route handlers
-- **Aturan akses**: Admin bisa semua; role Pabrik hanya data pabriknya & field `value` dihapus dari respons
+- **Aturan akses**: Admin bisa semua; role Pabrik hanya data pabriknya & field `value` dihapus dari
+  respons. Untuk PO Product, field yang dihapus lebih banyak — lihat bagian PO Product di bawah.
 - **Daftar pabrik (`GET /api/factories`) di-scope untuk role Pabrik**: mereka hanya menerima baris
   pabriknya sendiri. Header memang butuh satu nama pabrik, dan pemilih pabrik hanya ada di halaman
   admin, jadi daftar lengkap tidak perlu bocor. Admin tetap menerima seluruh daftar.
@@ -156,9 +157,11 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - **TIDAK ADA `UNIQUE`** dan tidak ada validasi duplikat di POST/PATCH — user memutuskan satu PO
     Number boleh diinput berkali-kali termasuk produk yang sama. Jangan tambahkan constraint itu.
   - `value` **selalu dihitung ulang di server**; angka `value` dari klien diabaikan.
-  - Role Pabrik: `pricePerPcs`, `value`, dan `currency` dihapus dari respons oleh `stripPricing()`,
-    dan `scopedFactoryId()` memaksa filter pabriknya. Halaman memakai **AuthGuard** (bukan
-    AdminGuard) supaya Pabrik bisa membukanya read-only.
+  - Role Pabrik: `pricePerPcs`, `value`, `currency`, dan `ppn` dihapus dari respons oleh
+    `stripPoFinance()`, dan `scopedFactoryId()` memaksa filter pabriknya. Halaman memakai
+    **AuthGuard** (bukan AdminGuard) supaya Pabrik bisa membukanya read-only.
+  - `ppn` berisi `PPN` atau `Non PPN` (dinormalkan `normalizePpn()`), **hanya penanda** dan
+    TIDAK ikut dihitung ke `value`. Kolomnya hanya tampil untuk admin, juga di ekspor Excel.
   - SKU **tidak** disimpan di baris PO (melekat pada `products.sku`); form menampilkan satu dropdown
     Product berisi nama produk saja, tanpa isian SKU terpisah.
   - Keterangan adalah **master** (`keterangan`, tab sendiri di Data Master) yang dipilih lewat

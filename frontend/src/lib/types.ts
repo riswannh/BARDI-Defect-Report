@@ -84,6 +84,8 @@ export interface PurchaseOrder {
   /** Hasil pricePerPcs x quantity; dihitung server. */
   value?: number;
   currency?: string;
+  /** "PPN" atau "Non PPN". Hanya penanda; tidak memengaruhi `value`. */
+  ppn?: string;
   /** Keterangan adalah master, jadi baris PO menyimpan id-nya. */
   keteranganId?: number | null;
   /** Nama keterangan hasil join, untuk ditampilkan. */

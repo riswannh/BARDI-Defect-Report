@@ -249,6 +249,7 @@ export default function PoPage() {
             // punya tanggalnya sendiri, dan default-nya sudah waktu sekarang.
             factoryId: previous.factoryId,
             currency: previous.currency,
+            ppn: previous.ppn,
             keteranganId: previous.keteranganId,
           }
         : emptyPoForm()
@@ -266,6 +267,7 @@ export default function PoPage() {
       quantity: String(row.quantity),
       pricePerPcs: String(row.pricePerPcs ?? 0),
       currency: (row.currency as PoForm["currency"]) ?? "Rp",
+      ppn: (row.ppn as PoForm["ppn"]) ?? "Non PPN",
       keteranganId: row.keteranganId ? String(row.keteranganId) : "",
     });
     setEditingId(row.id);
@@ -282,6 +284,7 @@ export default function PoPage() {
       quantity: Number(form.quantity) || 0,
       pricePerPcs: Number(form.pricePerPcs) || 0,
       currency: form.currency,
+      ppn: form.ppn,
       keteranganId: form.keteranganId ? Number(form.keteranganId) : null,
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
@@ -303,6 +306,7 @@ export default function PoPage() {
             poNumber: f.poNumber,
             factoryId: f.factoryId,
             currency: f.currency,
+            ppn: f.ppn,
             keteranganId: f.keteranganId,
           }));
           reload();
@@ -406,8 +410,8 @@ export default function PoPage() {
     });
   }
 
-  // Admin: checkbox pilih + Timestamp + Price/pcs + Total Currency + kolom aksi.
-  const columnCount = isAdmin ? 10 : 6;
+  // Admin: checkbox + PPN + Price/pcs + Total Currency + kolom aksi.
+  const columnCount = isAdmin ? 11 : 6;
 
   return (
     // AuthGuard, bukan AdminGuard: halaman PO memang dibuka untuk role Pabrik
@@ -707,6 +711,8 @@ export default function PoPage() {
                     </TableHead>
                     {isAdmin && (
                       <>
+                        {/* PPN hanya untuk admin, sama seperti kolom harga. */}
+                        <TableHead>{t("po.ppn")}</TableHead>
                         <TableHead className="text-right">
                           {t("po.pricePerPcs")}
                         </TableHead>
@@ -761,6 +767,18 @@ export default function PoPage() {
                       </TableCell>
                       {isAdmin && (
                         <>
+                          <TableCell>
+                            {/* Penanda pajak; tidak ada angka rupiah, jadi cukup teks. */}
+                            <span
+                              className={
+                                row.ppn === "PPN"
+                                  ? "rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20"
+                                  : "text-xs text-muted-foreground"
+                              }
+                            >
+                              {row.ppn ?? "Non PPN"}
+                            </span>
+                          </TableCell>
                           {/* Bentuk ringkas supaya kolom tidak melebar sampai header
                               terpotong. Angka penuh tetap bisa dibaca lewat tooltip,
                               dan tetap tampil penuh di form. */}

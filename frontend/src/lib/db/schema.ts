@@ -265,6 +265,14 @@ export const purchaseOrders = sqliteTable(
     /** Hasil pricePerPcs x quantity; selalu dihitung ulang di server. */
     value: real("value").notNull().default(0),
     currency: text("currency").notNull().default("Rp"),
+    /**
+     * Status PPN baris PO: "PPN" atau "Non PPN".
+     *
+     * Hanya penanda — TIDAK ikut dihitung ke `value` (keputusan user). Role
+     * Pabrik tidak boleh melihatnya, jadi field ini dihapus dari respons API
+     * bersama pricePerPcs/value/currency.
+     */
+    ppn: text("ppn").notNull().default("Non PPN"),
     keteranganId: integer("keteranganId").references(() => keterangan.id),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()

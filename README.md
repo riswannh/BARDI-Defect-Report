@@ -228,6 +228,7 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 | `pricePerPcs` | **real** (default 0) | boleh pecahan (USD/RMB) |
 | `value` | **real** (default 0) | `pricePerPcs × quantity`, **selalu dihitung ulang di server** |
 | `currency` | text (default `Rp`) | `Rp`, `USD`, atau `RMB` |
+| `ppn` | text (default `Non PPN`) | `PPN` atau `Non PPN`. **Hanya penanda — tidak dihitung ke `value`.** Tidak dikirim ke role Pabrik |
 | `keteranganId` | FK → keterangan (nullable) | |
 | `createdAt` / `updatedAt` | timestamp | jejak audit, tidak ditampilkan di tabel |
 
@@ -346,7 +347,7 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`. Query: `factoryId`, `productId`, `keteranganId`, `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency` |
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`. Query: `factoryId`, `productId`, `keteranganId`, `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn` |
 | POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat; `value` dihitung server |
 | PATCH | `/api/purchase-orders/{id}` | admin | ubah sebagian; `value` dihitung ulang dari nilai final |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
@@ -382,12 +383,13 @@ Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
 
 Module: `products`, `problems`, `statuses`, `factories`, `keterangan`, `defects`, `sales`, `users`, `purchase-orders`.
 
-**PO Product** memakai kolom `PO Number`, `Timestamp`, `Produk`, `Pabrik`, `Quantity`, `Price/pcs`,
-`Currency`, `Total`, `Keterangan` (berkas `po-product.xlsx`, template `template-po-product.xlsx`).
-Ekspor untuk role Pabrik tidak memuat kolom `Price/pcs`, `Currency`, dan `Total`. Impor **tidak**
-mendeteksi duplikat — baris hanya ditolak bila datanya tidak valid (produk/pabrik/keterangan tidak
-ditemukan, atau PO Number/tanggal kosong), dan alasannya dilaporkan per baris. `Total` selalu
-dihitung server, nilai di berkas diabaikan.
+**PO Product** memakai kolom `PO Number`, `Timestamp`, `Produk`, `Pabrik`, `Quantity`, `PPN`,
+`Price/pcs`, `Currency`, `Total`, `Keterangan` (berkas `po-product.xlsx`, template
+`template-po-product.xlsx`). Ekspor untuk role Pabrik tidak memuat kolom `PPN`, `Price/pcs`,
+`Currency`, dan `Total`. Impor **tidak** mendeteksi duplikat — baris hanya ditolak bila datanya
+tidak valid (produk/pabrik/keterangan tidak ditemukan, atau PO Number/tanggal kosong), dan alasannya
+dilaporkan per baris. `Total` selalu dihitung server, nilai di berkas diabaikan. Kolom `PPN` menerima
+variasi penulisan (`ppn`, `non-ppn`, `PPN 11%`) dan dinormalkan ke `PPN` / `Non PPN`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
