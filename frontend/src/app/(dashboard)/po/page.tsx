@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import { formatNumber, formatPoCurrency } from "@/lib/format";
+import { formatNumber, formatPoCurrency, formatPoCurrencyCompact } from "@/lib/format";
 import {
   apiDelete,
   apiPatch,
@@ -48,6 +48,7 @@ import {
   Boxes,
   Download,
   FileDown,
+  FlaskConical,
   History,
   Pencil,
   Plus,
@@ -60,23 +61,51 @@ import {
   productOptionLabel,
   type PoForm,
 } from "./po-form-dialog";
+import { poDemoEnabled } from "./po-demo";
+import {
+  demoFactories,
+  demoProducts,
+  demoPurchaseOrders,
+  demoPurchaseOrdersForFactory,
+} from "./po-demo-data";
 
 export default function PoPage() {
   const { isAdmin } = useAuth();
   const { t } = useLanguage();
 
+  // Mode demo: seluruh data (termasuk daftar produk dan pabrik) datang dari
+  // `po-demo-data.ts`, dan url `null` membuat `useApi` tidak memanggil API sama
+  // sekali — jadi tidak ada data asli yang dibaca maupun ditulis.
   const { data: poData, loading, reload } = useApi<PurchaseOrder[]>(
-    "/api/purchase-orders"
+    poDemoEnabled ? null : "/api/purchase-orders"
   );
-  const { data: productData } = useApi<Product[]>("/api/products");
-  const { data: factoryData } = useApi<Factory[]>("/api/factories");
+  const { data: productData } = useApi<Product[]>(
+    poDemoEnabled ? null : "/api/products"
+  );
+  const { data: factoryData } = useApi<Factory[]>(
+    poDemoEnabled ? null : "/api/factories"
+  );
 
   // `?? []` membuat array baru tiap render dan itu membuat useMemo di bawah
   // selalu dianggap usang; memo dipakai agar hanya dihitung ulang saat data
   // dari API benar-benar berubah.
-  const products = useMemo(() => productData ?? [], [productData]);
-  const factories = useMemo(() => factoryData ?? [], [factoryData]);
-  const rows = useMemo(() => poData ?? [], [poData]);
+  const products = useMemo(
+    () => (poDemoEnabled ? demoProducts : productData ?? []),
+    [productData]
+  );
+  const factories = useMemo(
+    () => (poDemoEnabled ? demoFactories : factoryData ?? []),
+    [factoryData]
+  );
+  const rows = useMemo(
+    () =>
+      poDemoEnabled
+        ? isAdmin
+          ? demoPurchaseOrders
+          : demoPurchaseOrdersForFactory()
+        : poData ?? [],
+    [poData, isAdmin]
+  );
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
@@ -336,6 +365,20 @@ export default function PoPage() {
                   className="hidden"
                   onChange={handleImportFile}
                 />
+
+        {poDemoEnabled && (
+          <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <FlaskConical className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              <strong className="font-semibold">Mode demo.</strong> Data di halaman ini
+              contoh dan berdiri sendiri — tidak dibaca dari database, dan tombol
+              tambah/ubah/hapus tidak menyimpan apa pun. Matikan dengan menghapus
+              <code className="mx-1 rounded bg-amber-500/15 px-1">NEXT_PUBLIC_PO_DEMO</code>
+              dari <code className="rounded bg-amber-500/15 px-1">frontend/.env</code> lalu
+              restart dev server.
+            </span>
+          </div>
+        )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -385,8 +428,7 @@ export default function PoPage() {
           }
         />
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SummaryCard
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">          <SummaryCard
             title={t("po.totalQuantity")}
             value={formatNumber(totalQuantity)}
             description={t("common.quantity")}
@@ -563,20 +605,44 @@ export default function PoPage() {
                       <TableCell className="font-medium">
                         {row.productName ?? "-"}
                       </TableCell>
-                      <TableCell>{row.factoryName ?? "-"}</TableCell>
+                      {/* Nama pabrik di data asli sangat panjang (mis. "NINGBO
+                          BRIGHTLITE ELECTRIC CO., LTD"), dan tanpa batas lebar ia
+                          mendorong kolom harga keluar layar. Dipotong dengan nama
+                          lengkap tetap bisa dibaca lewat tooltip. */}
+                      <TableCell
+                        className="max-w-40 truncate"
+                        title={row.factoryName ?? ""}
+                      >
+                        {row.factoryName ?? "-"}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatNumber(row.quantity)}
                       </TableCell>
                       {isAdmin && (
                         <>
-                          <TableCell className="text-right tabular-nums">
-                            {formatPoCurrency(
+                          {/* Bentuk ringkas supaya kolom tidak melebar sampai header
+                              terpotong. Angka penuh tetap bisa dibaca lewat tooltip,
+                              dan tetap tampil penuh di form. */}
+                          <TableCell
+                            className="text-right tabular-nums"
+                            title={formatPoCurrency(
+                              row.pricePerPcs ?? 0,
+                              row.currency
+                            )}
+                          >
+                            {formatPoCurrencyCompact(
                               row.pricePerPcs ?? 0,
                               row.currency
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            {formatPoCurrency(row.value ?? 0, row.currency)}
+                          <TableCell
+                            className="text-right font-medium tabular-nums"
+                            title={formatPoCurrency(row.value ?? 0, row.currency)}
+                          >
+                            {formatPoCurrencyCompact(
+                              row.value ?? 0,
+                              row.currency
+                            )}
                           </TableCell>
                         </>
                       )}

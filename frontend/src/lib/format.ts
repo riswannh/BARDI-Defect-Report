@@ -59,6 +59,43 @@ export function formatPoCurrency(value: number, currency: unknown): string {
   );
 }
 
+/**
+ * Bentuk ringkas untuk kolom tabel, mis. "Rp 222 jt" atau "$1,2 rb".
+ *
+ * Kolom Price/pcs dan Total Currency di tabel PO sempit, dan angka Rupiah penuh
+ * (Rp 222.000.000) membuat tabel melebar sampai header terpotong. Bentuk penuh
+ * tetap dipakai di form dan di mana pun angkanya perlu dibaca persis.
+ */
+const poCompactFormatters: Record<PoCurrency, Intl.NumberFormat> = {
+  Rp: new Intl.NumberFormat("id-ID", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }),
+  USD: new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }),
+  RMB: new Intl.NumberFormat("zh-CN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }),
+};
+
+const PO_SYMBOLS: Record<PoCurrency, string> = {
+  Rp: "Rp ",
+  USD: "$",
+  RMB: "¥",
+};
+
+export function formatPoCurrencyCompact(
+  value: number,
+  currency: unknown
+): string {
+  const code = normalizePoCurrency(currency);
+  const safe = Number.isFinite(value) ? value : 0;
+  return `${PO_SYMBOLS[code]}${poCompactFormatters[code].format(safe)}`;
+}
+
 export function formatDateTime(value: string): string {
   return value.replace("T", " ");
 }
