@@ -153,19 +153,11 @@ export const statuses = sqliteTable("statuses", {
 });
 
 /**
- * Master keterangan untuk baris PO.
- *
- * Keterangan sengaja jadi master (bukan teks bebas di tiap baris PO) supaya
- * istilahnya konsisten dan bisa diubah di satu tempat. Baris PO merujuk ke sini
- * lewat `keteranganId`.
+ * Master keterangan DIHAPUS. Keterangan PO kini nilai tetap — lihat
+ * `KETERANGAN_OPTIONS` di `src/lib/api/validation.ts` — sehingga tidak perlu
+ * tabel, CRUD, maupun tab Data Master. Baris PO menyimpan namanya langsung
+ * sebagai teks.
  */
-export const keterangan = sqliteTable("keterangan", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull().unique(),
-  createdAt: integer("createdAt", { mode: "timestamp" })
-    .notNull()
-    .default(sql`(unixepoch())`),
-});
 
 export const defects = sqliteTable(
   "defects",
@@ -273,7 +265,14 @@ export const purchaseOrders = sqliteTable(
      * bersama pricePerPcs/value/currency.
      */
     ppn: text("ppn").notNull().default("Non PPN"),
-    keteranganId: integer("keteranganId").references(() => keterangan.id),
+    /**
+     * Nilai tetap: "Product Order" | "Sparepart Order" | "Replacement".
+     *
+     * Dulu foreign key ke tabel master `keterangan`, tetapi user memutuskan
+     * ketiga nilai itu cukup di-hardcode di kode sehingga CRUD tidak diperlukan.
+     * Disimpan sebagai teks supaya baris PO tidak perlu di-join.
+     */
+    keterangan: text("keterangan").notNull().default("Product Order"),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),
@@ -284,7 +283,7 @@ export const purchaseOrders = sqliteTable(
   (t) => [
     index("purchase_orders_factory_idx").on(t.factoryId),
     index("purchase_orders_po_idx").on(t.poNumber),
-    index("purchase_orders_keterangan_idx").on(t.keteranganId),
+    index("purchase_orders_keterangan_idx").on(t.keterangan),
     index("purchase_orders_date_idx").on(t.poDate),
   ]
 )

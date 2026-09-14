@@ -29,12 +29,6 @@ export interface Status {
   name: string;
 }
 
-/** Master keterangan untuk baris PO. */
-export interface Keterangan {
-  id: number;
-  name: string;
-}
-
 export interface Defect {
   id: number;
   codeGaransi: string;
@@ -86,10 +80,11 @@ export interface PurchaseOrder {
   currency?: string;
   /** "PPN" atau "Non PPN". Hanya penanda; tidak memengaruhi `value`. */
   ppn?: string;
-  /** Keterangan adalah master, jadi baris PO menyimpan id-nya. */
-  keteranganId?: number | null;
-  /** Nama keterangan hasil join, untuk ditampilkan. */
-  keteranganName?: string | null;
+  /**
+   * Keterangan baris PO. Nilainya tetap salah satu dari tiga:
+   * "Product Order" | "Sparepart Order" | "Replacement".
+   */
+  keterangan?: string;
   sku?: string | null;
   productName?: string | null;
   factoryName?: string | null;

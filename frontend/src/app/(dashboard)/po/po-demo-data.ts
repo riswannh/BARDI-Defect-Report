@@ -32,19 +32,14 @@ export const demoFactories: Factory[] = [
 ];
 
 /**
- * Master keterangan contoh.
- *
- * Keterangan adalah master yang bisa di-CRUD (lihat SPEC-po-product.md keputusan 1.4),
- * jadi baris PO menyimpan `keteranganId`, bukan teks bebas.
+ * Keterangan contoh — nilainya tetap, sama dengan `KETERANGAN_OPTIONS` di
+ * `lib/api/validation.ts` (keterangan tidak lagi berupa master yang di-CRUD).
  */
-export const demoKeterangan = [
-  { id: -1, name: "Pengiriman batch pertama" },
-  { id: -2, name: "Tambah stok gudang A" },
-  { id: -3, name: "Retur diganti unit baru" },
-  { id: -4, name: "Pengiriman batch kedua" },
-  { id: -5, name: "Prioritas produksi" },
-  { id: -6, name: "Menunggu konfirmasi harga akhir" },
-];
+const DEMO_KETERANGAN = [
+  "Product Order",
+  "Sparepart Order",
+  "Replacement",
+] as const;
 
 const rows: Array<{
   poNumber: string;
@@ -97,7 +92,8 @@ const rows: Array<{
     timestamp: "2026-02-03T08:20",
   },
   {
-    // Baris tanpa keterangan, untuk melihat bagaimana tabel menanganinya.
+    // Baris tanpa keterangan pada data lama; di produksi baris seperti ini
+    // memakai default "Product Order".
     poNumber: "PO-2026-002",
     productIndex: 4,
     factoryIndex: 2,
@@ -114,7 +110,7 @@ const rows: Array<{
     quantity: 900,
     pricePerPcs: 1200,
     currency: "RMB",
-    keteranganIndex: 4,
+    keteranganIndex: 2,
     timestamp: "2026-03-05T10:10",
   },
   {
@@ -124,7 +120,7 @@ const rows: Array<{
     quantity: 6400,
     pricePerPcs: 640000,
     currency: "Rp",
-    keteranganIndex: 3,
+    keteranganIndex: 1,
     timestamp: "2026-03-21T13:30",
   },
   {
@@ -135,7 +131,7 @@ const rows: Array<{
     quantity: 450,
     pricePerPcs: 38.75,
     currency: "USD",
-    keteranganIndex: 4,
+    keteranganIndex: 2,
     timestamp: "2026-04-02T09:45",
   },
   {
@@ -145,7 +141,7 @@ const rows: Array<{
     quantity: 1800,
     pricePerPcs: 275000,
     currency: "Rp",
-    keteranganIndex: 5,
+    keteranganIndex: 1,
     timestamp: "2026-04-14T15:20",
   },
 ];
@@ -155,7 +151,7 @@ export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
   const product = demoProducts[row.productIndex];
   const factory = demoFactories[row.factoryIndex];
   const keterangan =
-    row.keteranganIndex === null ? null : demoKeterangan[row.keteranganIndex];
+    row.keteranganIndex === null ? null : DEMO_KETERANGAN[row.keteranganIndex];
   return {
     id: index + 1,
     poNumber: row.poNumber,
@@ -166,8 +162,9 @@ export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
     pricePerPcs: row.pricePerPcs,
     value: row.pricePerPcs * row.quantity,
     currency: row.currency,
-    keteranganId: keterangan?.id ?? null,
-    keteranganName: keterangan?.name ?? null,
+    keterangan: keterangan ?? DEMO_KETERANGAN[0],
+    // Status PPN tidak ikut dihitung ke value; separuh baris dibuat PPN.
+    ppn: index % 2 === 0 ? "PPN" : "Non PPN",
     sku: product.sku ?? null,
     productName: product.name,
     factoryName: factory.name,
@@ -193,6 +190,7 @@ export function demoPurchaseOrdersForFactory(): PurchaseOrder[] {
       delete copy.pricePerPcs;
       delete copy.value;
       delete copy.currency;
+      delete copy.ppn;
       return copy;
     });
 }

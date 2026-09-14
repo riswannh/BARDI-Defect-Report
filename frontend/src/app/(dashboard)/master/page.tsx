@@ -7,7 +7,6 @@ import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-
 import { useApi } from "@/lib/use-api";
 import type {
   ImportResult,
-  Keterangan,
   Problem,
   Product,
   Status,
@@ -36,13 +35,10 @@ export default function MasterPage() {
     useApi<Problem[]>("/api/problems");
   const { data: statusData, reload: reloadStatuses } =
     useApi<Status[]>("/api/statuses");
-  const { data: keteranganData, reload: reloadKeterangan } =
-    useApi<Keterangan[]>("/api/keterangan");
 
   const products = productData ?? [];
   const problems = problemData ?? [];
   const statuses = statusData ?? [];
-  const keteranganList = keteranganData ?? [];
 
   const [pageSize, setPageSize] = useState(10);
   const [pageState, setPageState] = useState({ signature: tab, page: 1 });
@@ -51,13 +47,7 @@ export default function MasterPage() {
     setPageState({ signature: tab, page: next });
 
   const activeItems =
-    tab === "products"
-      ? products
-      : tab === "problems"
-        ? problems
-        : tab === "keterangan"
-          ? keteranganList
-          : statuses;
+    tab === "products" ? products : tab === "problems" ? problems : statuses;
   const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
@@ -65,7 +55,6 @@ export default function MasterPage() {
   const pagedProducts = products.slice(start, end);
   const pagedProblems = problems.slice(start, end);
   const pagedStatuses = statuses.slice(start, end);
-  const pagedKeterangan = keteranganList.slice(start, end);
 
   async function addItem(
     endpoint: string,
@@ -124,7 +113,6 @@ export default function MasterPage() {
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
       if (tab === "statuses") reloadStatuses();
-      if (tab === "keterangan") reloadKeterangan();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal import.");
     }
@@ -136,9 +124,7 @@ export default function MasterPage() {
       ? t("common.product")
       : tab === "problems"
         ? t("common.problem")
-        : tab === "keterangan"
-          ? t("po.keterangan")
-          : t("common.status");
+        : t("common.status");
 
   async function handleDeleteAll() {
     try {
@@ -148,7 +134,6 @@ export default function MasterPage() {
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
       if (tab === "statuses") reloadStatuses();
-      if (tab === "keterangan") reloadKeterangan();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
@@ -214,7 +199,6 @@ export default function MasterPage() {
         <TabsList>
           <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
-          <TabsTrigger value="keterangan">{t("po.keterangan")}</TabsTrigger>
           <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
         </TabsList>
 
@@ -266,35 +250,6 @@ export default function MasterPage() {
                 <div className="mt-4">
                   <Pagination
                     totalItems={problems.length}
-                    page={currentPage}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(size) => {
-                      setPageSize(size);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="keterangan">
-              <MasterList
-                items={pagedKeterangan}
-                addPlaceholder={t("master.newKeterangan")}
-                onAdd={(name) =>
-                  addItem("/api/keterangan", name, reloadKeterangan)
-                }
-                onRename={(id, name) =>
-                  renameItem("/api/keterangan", id, name, reloadKeterangan)
-                }
-                onDelete={(id) =>
-                  deleteItem("/api/keterangan", id, reloadKeterangan)
-                }
-              />
-              {keteranganList.length > 0 && (
-                <div className="mt-4">
-                  <Pagination
-                    totalItems={keteranganList.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}

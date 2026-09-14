@@ -144,6 +144,30 @@ export function normalizePpn(value: unknown): PpnStatus {
  * tanggal PO yang diisi operator, dinormalkan sama seperti timestamp defect.
  * `pricePerPcs` boleh pecahan (USD/RMB), jadi tidak dibatasi bilangan bulat.
  */
+/**
+ * Pilihan keterangan PO — DI-HARDCODE, bukan master yang bisa di-CRUD.
+ *
+ * Dulu keterangan adalah tabel master dengan foreign key; user memutuskan cukup
+ * tiga nilai tetap ini. Karena itu tidak ada tabel `keterangan`, tidak ada
+ * `/api/keterangan`, dan tidak ada tab Data Master untuknya.
+ */
+export const KETERANGAN_OPTIONS = [
+  "Product Order",
+  "Sparepart Order",
+  "Replacement",
+] as const;
+export type KeteranganOption = (typeof KETERANGAN_OPTIONS)[number];
+
+export const DEFAULT_KETERANGAN: KeteranganOption = "Product Order";
+
+/** Terima variasi spasi/huruf besar-kecil; nilai di luar daftar ditolak (null). */
+export function normalizeKeterangan(value: unknown): KeteranganOption | null {
+  const s = typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, " ") : "";
+  if (s === "") return null;
+  const found = KETERANGAN_OPTIONS.find((option) => option.toLowerCase() === s);
+  return found ?? null;
+}
+
 export const purchaseOrderFields = {
   poNumber: z.string().trim().min(1),
   poDate: z.string().trim().min(1).transform(normalizeTimestamp),
@@ -153,7 +177,7 @@ export const purchaseOrderFields = {
   pricePerPcs: z.coerce.number().min(0),
   currency: z.string(),
   ppn: z.string(),
-  keteranganId: z.coerce.number().int().positive().nullable(),
+  keterangan: z.string(),
 } satisfies z.ZodRawShape;
 
 export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
@@ -161,7 +185,7 @@ export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
   pricePerPcs: z.coerce.number().min(0).default(0),
   currency: z.string().optional(),
   ppn: z.string().optional(),
-  keteranganId: z.coerce.number().int().positive().nullable().optional(),
+  keterangan: z.string().optional(),
 });
 
 export const purchaseOrderUpdateSchema = buildUpdate(purchaseOrderFields);

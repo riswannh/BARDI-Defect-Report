@@ -12,9 +12,8 @@ di commit `c8ac561`. Tanpa backend, halaman itu menampilkan keadaan kosong karen
 **Pengguna:**
 
 - **Admin** — mencatat dan memelihara baris PO: nomor PO, produk (lewat SKU), pabrik,
-  quantity, price/pcs (boleh pecahan), currency, keterangan (dipilih dari master).
+  quantity, price/pcs (boleh pecahan), currency, keterangan (salah satu dari tiga nilai tetap).
   Bisa tambah, ubah, hapus, hapus massal, hapus semua, serta impor/ekspor Excel.
-  Ia juga mengelola **master keterangan** di Data Master.
 - **Pabrik** — membuka halaman yang sama dalam mode baca-saja untuk melihat PO yang
   menyangkut pabriknya: nomor PO, keterangan, nama produk, pabrik, quantity.
   **Tidak boleh** melihat price/pcs, total, maupun currency.
@@ -60,19 +59,15 @@ Tidak ada direktori baru. Berkas yang **disentuh**:
 ```
 frontend/src/lib/db/schema.ts              → tabel keterangan + purchaseOrders
 frontend/src/lib/api/validation.ts         → purchaseOrderSchema (termasuk poDate),
-                                             keteranganSchema, CURRENCIES, normalizeCurrency
-frontend/src/lib/api/records.ts            → select, kondisi filter, CRUD PO, stripPricing
-frontend/src/lib/api/master.ts             → daftar keterangan sebagai master (name unik)
+                                             KETERANGAN_OPTIONS, CURRENCIES, normalizeCurrency
+frontend/src/lib/api/records.ts            → select, kondisi filter, CRUD PO, stripPoFinance
 frontend/src/lib/api/excel.ts              → template/impor/ekspor modul purchase-orders
-                                             dan keterangan
 frontend/src/app/api/purchase-orders/route.ts        → GET, POST, DELETE (hapus semua)
 frontend/src/app/api/purchase-orders/[id]/route.ts   → PATCH, DELETE
 frontend/src/app/api/purchase-orders/bulk-delete/route.ts → POST
-frontend/src/app/api/keterangan/route.ts             → GET, POST, DELETE (hapus semua)
-frontend/src/app/api/keterangan/[id]/route.ts        → PATCH, DELETE
-frontend/src/app/(dashboard)/master/page.tsx         → tab Keterangan (CRUD)
-frontend/src/app/(dashboard)/po/page.tsx             → dropdown & filter keterangan, filter bulan/tahun
-frontend/src/app/(dashboard)/po/po-form-dialog.tsx   → pilih keterangan dari dropdown, isian tanggal PO
+frontend/scripts/migrate-keterangan.ts     → migrasi satu kali master → teks (sudah dijalankan)
+frontend/src/app/(dashboard)/po/page.tsx             → filter keterangan/bulan/tahun, tabel
+frontend/src/app/(dashboard)/po/po-form-dialog.tsx   → dropdown keterangan tetap, isian tanggal PO
 README.md                                  → schema, API, aturan akses
 AGENTS.md                                  → catatan modul PO
 ```
@@ -154,11 +149,11 @@ purchaseOrders (tabel: purchase_orders)
   value        real    NOT NULL default 0 // = pricePerPcs × quantity
   currency     text NOT NULL default "Rp" // "Rp" | "USD" | "RMB"
   ppn          text NOT NULL default "Non PPN" // "PPN" | "Non PPN", hanya penanda
-  keteranganId integer → keterangan.id    // dropdown, bukan teks bebas
+  keterangan   text NOT NULL default "Product Order" // salah satu dari 3 nilai tetap
   createdAt / updatedAt
 
   UNIQUE (poNumber, productId)   // SENGAJA TIDAK ADA — lihat "Keputusan 1.3"
-  INDEX (factoryId), INDEX (poNumber), INDEX (keteranganId), INDEX (poDate)
+  INDEX (factoryId), INDEX (poNumber), INDEX (keterangan), INDEX (poDate)
 ```
 
 **Tidak ada constraint unik di tabel ini.** User memutuskan (keputusan 1.3) bahwa satu
@@ -174,10 +169,10 @@ sudah menjadi rujukannya. Menyalin SKU sebagai teks bebas akan membuat dua sumbe
 kebenaran yang bisa berbeda saat SKU produk diubah. Respons API tetap mengirim `sku`
 hasil join supaya tabel dan form bisa menampilkannya.
 
-**Keterangan adalah master, bukan teks.** Ia dikelola seperti master lain (Produk,
-Problem, Status) lewat tab baru di halaman Data Master, dan form PO menampilkannya
-sebagai dropdown searchable. Baris PO menyimpan `keteranganId`, bukan teksnya — supaya
-satu istilah dipakai konsisten dan bisa diubah di satu tempat.
+**Keterangan DI-HARDCODE, bukan master.** Ketiga nilainya tetap di kode dan form PO
+menampilkannya sebagai dropdown. Detail dan konsekuensinya ada di bagian keputusan
+"keterangan DI-HARDCODE" di bawah (keputusan ini menggantikan rencana awal
+menjadikannya master).
 
 ### Keputusan — SKU dan Product digabung jadi satu input di form
 
@@ -236,6 +231,33 @@ Ada dropdown **PPN** di form dengan dua pilihan: `PPN` dan `Non PPN` (default
   dari `stripPricing()` menjadi `stripPoFinance()`.
 - Kolom tabel dan ekspor admin memuat `PPN` di antara `Quantity` dan `Price/pcs`.
 
+### Keputusan — keterangan DI-HARDCODE, bukan master (menggantikan keputusan 1.4)
+
+Awalnya keterangan adalah tabel master yang bisa di-CRUD. User kemudian memutuskan
+ketiga nilainya cukup **hardcode di kode**:
+
+```
+KETERANGAN_OPTIONS = ["Product Order", "Sparepart Order", "Replacement"]
+DEFAULT_KETERANGAN = "Product Order"
+```
+
+Konsekuensinya:
+
+- Kolom `purchase_orders.keteranganId` (foreign key) **diganti** kolom teks
+  `keterangan` (default `Product Order`). Tabel master `keterangan` **dibuang**.
+- Endpoint `/api/keterangan` beserta tab **Keterangan** di Data Master **dihapus**,
+  begitu juga modul Excel `keterangan`.
+- `ALTER TABLE ... DROP COLUMN` tidak bisa dipakai untuk membuang `keteranganId`
+  (SQLite menolak kolom yang masih disebut definisi foreign key), jadi tabel
+  `purchase_orders` dibangun ulang lewat prosedur resmi SQLite di
+  `frontend/scripts/migrate-keterangan.ts` — idempotent, dan sudah dijalankan
+  (32 baris PO lama tetap utuh dan terpetakan ke nama keterangannya).
+- Nilai di luar ketiga pilihan: pada POST/PATCH jatuh ke `Product Order`, sedangkan
+  pada impor Excel **barisnya ditolak** dengan alasan yang menyebut pilihannya
+  (supaya data operator tidak diam-diam berubah).
+- Filter keterangan kini membandingkan **teks** (`?keterangan=Product Order`),
+  bukan id.
+
 ### Keputusan 1.3 — tanpa kolom pembeda (SUDAH DIPUTUSKAN)
 
 User memutuskan: **tidak perlu kolom pembeda**. Satu PO Number boleh diinput berkali-kali,
@@ -265,16 +287,14 @@ PO Number-nya sama. Satu-satunya penolakan di impor adalah data yang tidak valid
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
 | DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis dulu |
 | POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
-| GET/POST | `/api/keterangan` | GET user login, POST admin | master keterangan (tambah: `name` unik) |
-| PATCH/DELETE | `/api/keterangan/{id}` | admin | ubah / hapus (409 bila masih dipakai baris PO) |
-| DELETE | `/api/keterangan` | admin | hapus semua + backup |
 | GET | `/api/excel/purchase-orders/template` | admin | template kosong |
 | POST | `/api/excel/purchase-orders/import` | admin | impor; baris tidak valid dilaporkan, tanpa deteksi duplikat |
-| GET | `/api/excel/purchase-orders/export` | admin | ekspor; kolom harga/total/currency hanya untuk admin |
-| GET/POST/PATCH/DELETE | `/api/excel/keterangan/{template,import,export}` | admin | Excel untuk master keterangan, mengikuti master lain |
+| GET | `/api/excel/purchase-orders/export` | admin | ekspor; kolom harga/total/currency/PPN hanya untuk admin |
+
+> Tidak ada endpoint keterangan: nilainya tetap di kode.
 
 **Filter (GET)** — mengikuti Sales: `factoryId`, `productId`, `search`, ditambah
-`keteranganId` serta `month` dan `year` (memakai `poDate`). Role Pabrik:
+`keterangan` (teks) serta `month` dan `year` (memakai `poDate`). Role Pabrik:
 `scopedFactoryId()` memaksa `factoryId` miliknya, parameter `factoryId` dari klien
 diabaikan.
 
@@ -313,7 +333,8 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
   (keputusan 1.3).
 - Menampilkan SKU sebagai isian atau kolom terpisah di form dan tabel halaman PO
   (keputusan: SKU dan Product digabung jadi satu dropdown Product).
-- Menyimpan keterangan sebagai teks bebas di `purchase_orders`; yang disimpan adalah `keteranganId`.
+- Menyimpan keterangan di luar ketiga nilai tetap; `keterangan` boleh teks, tapi hanya
+  `Product Order` / `Sparepart Order` / `Replacement` yang sah.
 - Menghapus data tanpa backup lebih dulu.
 - Melonggarkan pemeriksaan (`@ts-ignore`, `eslint-disable`, tes dihapus) supaya hijau.
 
@@ -336,10 +357,12 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
 7. **Timestamp PO** tersimpan sesuai yang diisi operator (bukan waktu input), dan
    filter Bulan/Tahun menyaring berdasarkan `poDate` itu. Memilih satu bulan
    menyisakan hanya baris pada bulan tersebut.
-8. **Master keterangan** bisa ditambah, diubah, dan dihapus dari Data Master; namanya
-   muncul di dropdown form PO; menghapusnya ditolak **409** selama masih dipakai baris PO.
-9. Template, impor, dan ekspor Excel bekerja untuk PO **dan** keterangan; impor PO
-   hanya menolak baris yang datanya tidak valid, bukan baris yang PO-nya sama.
+8. **Keterangan** di form PO hanya menawarkan `Product Order`, `Sparepart Order`, dan
+   `Replacement`; nilainya tersimpan sebagai teks. Tidak ada tabel, endpoint, maupun tab
+   Data Master untuk keterangan.
+9. Template, impor, dan ekspor Excel bekerja untuk PO; impor hanya menolak baris yang
+   datanya tidak valid (termasuk keterangan di luar tiga pilihan), bukan baris yang
+   PO-nya sama.
 10. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
 11. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
 12. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
@@ -353,7 +376,7 @@ atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
 | 1 | Excel untuk PO | **Ikut** — template, impor, ekspor |
 | 2 | Hapus semua + hapus massal | **Ikut**, dengan backup otomatis lebih dulu |
 | 3 | Kolom pembeda untuk PO Number yang sama | **Tidak perlu pembeda.** PO Number boleh diinput berkali-kali, termasuk produk yang sama, tanpa validasi duplikat |
-| 4 | `keterangan` per baris atau per PO | **Per baris**, dan berupa **master** yang bisa di-CRUD, dipilih lewat dropdown |
+| 4 | `keterangan` per baris atau per PO | **Per baris**, DISEMPURNAKAN: nilainya di-hardcode (Product Order / Sparepart Order / Replacement), bukan master CRUD |
 | 5 | Price/pcs bilangan bulat? | **Boleh pecahan** — kolom `real`, tampilan 2 desimal untuk USD/RMB |
 | 6 | SKU Product sebagai isian terpisah di form | **Tidak.** Digabung jadi satu dropdown Product yang menampilkan nama produk; database tetap menyimpan `productId` dan `sku` |
 | 7 | Isi kolom Timestamp | **Tanggal PO yang diisi manual operator** (`poDate`, format `YYYY-MM-DDTHH:mm`), bukan waktu input |

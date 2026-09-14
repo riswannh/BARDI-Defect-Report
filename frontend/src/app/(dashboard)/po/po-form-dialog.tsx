@@ -8,7 +8,13 @@ import {
   PO_CURRENCIES,
   type PoCurrency,
 } from "@/lib/format";
-import { PPN_OPTIONS, type PpnStatus } from "@/lib/api/validation";
+import {
+  DEFAULT_KETERANGAN,
+  KETERANGAN_OPTIONS,
+  PPN_OPTIONS,
+  type KeteranganOption,
+  type PpnStatus,
+} from "@/lib/api/validation";
 import type { Factory, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,8 +48,8 @@ export interface PoForm {
   currency: PoCurrency;
   /** Status PPN: "PPN" atau "Non PPN". Hanya penanda, tidak menambah total. */
   ppn: PpnStatus;
-  /** Keterangan adalah master, jadi form menyimpan id-nya (bukan teks bebas). */
-  keteranganId: string;
+  /** Keterangan: salah satu dari tiga pilihan tetap. */
+  keterangan: KeteranganOption;
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal, bukan UTC). */
@@ -68,7 +74,7 @@ export function emptyPoForm(): PoForm {
     currency: "Rp",
     // Default "Non PPN"; operator dapat mengubahnya ke "PPN" bila PO-nya kena pajak.
     ppn: "Non PPN",
-    keteranganId: "",
+    keterangan: DEFAULT_KETERANGAN,
   };
 }
 
@@ -79,8 +85,7 @@ export function poFormHasContent(form: PoForm): boolean {
     form.productId !== "" ||
     form.factoryId !== "" ||
     form.quantity.trim() !== "" ||
-    form.pricePerPcs.trim() !== "" ||
-    form.keteranganId !== ""
+    form.pricePerPcs.trim() !== ""
   );
 }
 
@@ -105,7 +110,6 @@ export function PoFormDialog({
   onSubmit,
   products,
   factories,
-  keteranganOptions,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -115,12 +119,17 @@ export function PoFormDialog({
   onSubmit: (mode: "save" | "saveAndAddAnother") => void | Promise<void>;
   products: Product[];
   factories: Factory[];
-  keteranganOptions: Array<{ value: string; label: string }>;
 }) {
   const { t } = useLanguage();
   const isEditing = editingId !== null;
   const [discardOpen, setDiscardOpen] = useState(false);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  // Pilihan keterangan datang dari konstanta di kode, bukan dari API master.
+  const keteranganOptions = useMemo(
+    () => KETERANGAN_OPTIONS.map((option) => ({ value: option, label: option })),
+    []
+  );
 
   const productOptions = useMemo(
     () =>
@@ -356,17 +365,19 @@ export function PoFormDialog({
 
             <div className="flex flex-col gap-1.5">
               <Label>{t("po.keterangan")}</Label>
-              {/* Keterangan dipilih dari master yang bisa di-CRUD, bukan diketik
-                  bebas, supaya istilahnya konsisten antar baris PO. */}
+              {/* Tiga pilihan tetap — bukan master yang bisa di-CRUD. */}
               <Select
-                value={form.keteranganId}
+                value={form.keterangan}
                 onValueChange={(v) =>
-                  onFormChange((f) => ({ ...f, keteranganId: String(v) }))
+                  onFormChange((f) => ({
+                    ...f,
+                    keterangan: String(v) as KeteranganOption,
+                  }))
                 }
                 items={keteranganOptions}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t("po.selectKeterangan")} />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {keteranganOptions.map((option) => (

@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import {
   defects,
   factories,
-  keterangan,
   problems,
   products,
   purchaseOrders,
@@ -16,8 +15,11 @@ import {
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import {
+  KETERANGAN_OPTIONS,
+  DEFAULT_KETERANGAN,
   normalizeSku,
   normalizeCurrency,
+  normalizeKeterangan,
   normalizePpn,
   normalizeTimestamp,
 } from "@/lib/api/validation";
@@ -147,7 +149,6 @@ const MASTER_MODULES = {
   problems: { table: problems, file: "problem", label: "Problem" },
   statuses: { table: statuses, file: "status", label: "Status" },
   factories: { table: factories, file: "pabrik", label: "Pabrik" },
-  keterangan: { table: keterangan, file: "keterangan", label: "Keterangan" },
 } as const;
 
 type MasterModule = keyof typeof MASTER_MODULES;
@@ -223,7 +224,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
             Total: row.value,
           }
         : {}),
-      Keterangan: row.keteranganName ?? "",
+      Keterangan: row.keterangan,
     }));
     return downloadResponse(sheetBuffer(data, headers), "po-product.xlsx");
   }
@@ -329,21 +330,19 @@ export async function excelImport(moduleName: string, req: NextRequest) {
  *
  * Tidak ada deteksi duplikat: satu PO Number boleh diinput berkali-kali, termasuk
  * untuk produk yang sama (keputusan user). Baris hanya ditolak kalau datanya tidak
- * valid — PO Number atau tanggal kosong, produk/pabrik/keterangan tidak ditemukan,
- * atau quantity/harga bukan angka. Nama dipetakan ke id; keterangan opsional.
+ * valid — PO Number atau tanggal kosong, produk/pabrik tidak ditemukan, keterangan
+ * di luar tiga pilihan tetap, atau quantity/harga bukan angka.
  */
 async function importPurchaseOrders(sheet: SheetRow[]) {
-  const [productRows, factoryRows, keteranganRows] = await Promise.all([
+  const [productRows, factoryRows] = await Promise.all([
     db.select().from(products),
     db.select().from(factories),
-    db.select().from(keterangan),
   ]);
   const byName = <T extends { name: string }>(rows: T[]) =>
     new Map(rows.map((row) => [row.name.toLowerCase(), row]));
 
   const productMap = byName(productRows);
   const factoryMap = byName(factoryRows);
-  const keteranganMap = byName(keteranganRows);
 
   const result = newImportResult(PO_MODULE, sheet.length);
   for (let i = 0; i < sheet.length; i++) {
@@ -385,21 +384,17 @@ async function importPurchaseOrders(sheet: SheetRow[]) {
       continue;
     }
 
-    // Keterangan opsional; kalau diisi tapi tidak ada di master, barisnya ditolak
-    // supaya tidak diam-diam kehilangan keterangannya.
-    const keteranganName = cellString(row.Keterangan);
-    let keteranganId: number | null = null;
-    if (keteranganName) {
-      const found = keteranganMap.get(keteranganName.toLowerCase());
-      if (!found) {
-        result.errors.push({
-          row: rowNumber,
-          key: poNumber,
-          reason: `Keterangan "${keteranganName}" tidak ada di master`,
-        });
-        continue;
-      }
-      keteranganId = found.id;
+    // Keterangan opsional, tapi kalau diisi harus salah satu dari tiga pilihan
+    // tetap — nilai asing ditolak supaya tidak diam-diam berubah jadi default.
+    const keteranganRaw = cellString(row.Keterangan);
+    const keterangan = normalizeKeterangan(keteranganRaw);
+    if (keteranganRaw !== "" && keterangan === null) {
+      result.errors.push({
+        row: rowNumber,
+        key: poNumber,
+        reason: `Keterangan "${keteranganRaw}" tidak dikenal (pilihan: ${KETERANGAN_OPTIONS.join(", ")})`,
+      });
+      continue;
     }
 
     const quantity = cellNumber(row.Quantity);
@@ -426,7 +421,7 @@ async function importPurchaseOrders(sheet: SheetRow[]) {
         currency: normalizeCurrency(cellString(row.Currency)),
         // Status PPN hanya penanda; tidak menambah nilai total.
         ppn: normalizePpn(cellString(row.PPN)),
-        keteranganId,
+        keterangan: keterangan ?? DEFAULT_KETERANGAN,
         // Total selalu dihitung server, tidak pernah dari berkas.
         value: quantity * pricePerPcs,
       });
@@ -831,7 +826,7 @@ export async function excelTemplate(moduleName: string) {
       "Price/pcs": 18500,
       Currency: "Rp",
       Total: 2220000,
-      Keterangan: "Pengiriman batch pertama",
+      Keterangan: DEFAULT_KETERANGAN,
     };
     return downloadResponse(
       sheetBuffer([example], PO_HEADERS, "Template"),

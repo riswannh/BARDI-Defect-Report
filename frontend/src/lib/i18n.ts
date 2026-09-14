@@ -370,21 +370,6 @@ const translations = {
     en: "All Remarks",
     zh: "所有备注",
   },
-  "po.selectKeterangan": {
-    id: "Pilih keterangan",
-    en: "Select remarks",
-    zh: "选择备注",
-  },
-  "po.keteranganPlaceholder": {
-    id: "Catatan untuk baris PO ini",
-    en: "Note for this PO line",
-    zh: "此采购订单行的备注",
-  },
-  "po.filterKeterangan": {
-    id: "Saring keterangan",
-    en: "Filter remarks",
-    zh: "筛选备注",
-  },
   "po.searchPlaceholder": {
     id: "Cari PO, produk, keterangan…",
     en: "Search PO, product, remarks…",
@@ -617,11 +602,6 @@ const translations = {
     id: "Nama problem baru",
     en: "New problem name",
     zh: "新问题名称",
-  },
-  "master.newKeterangan": {
-    id: "Keterangan baru",
-    en: "New remarks",
-    zh: "新备注",
   },
   "master.newStatus": {    id: "Nama status baru",
     en: "New status name",

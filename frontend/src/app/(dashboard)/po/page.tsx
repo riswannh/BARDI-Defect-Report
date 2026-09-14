@@ -16,10 +16,10 @@ import { useApi } from "@/lib/use-api";
 import type {
   Factory,
   ImportResult,
-  Keterangan,
   Product,
   PurchaseOrder,
 } from "@/lib/types";
+import { DEFAULT_KETERANGAN, KETERANGAN_OPTIONS } from "@/lib/api/validation";
 import { AuthGuard } from "@/components/auth-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
@@ -65,7 +65,6 @@ import {
 import { poDemoEnabled } from "./po-demo";
 import {
   demoFactories,
-  demoKeterangan,
   demoProducts,
   demoPurchaseOrders,
   demoPurchaseOrdersForFactory,
@@ -111,7 +110,7 @@ export default function PoPage() {
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
-  // Keterangan adalah master, jadi filternya memilih id — bukan mengetik teks.
+  // Keterangan adalah nilai tetap, jadi filternya mencocokkan nama langsung.
   const [filterKeterangan, setFilterKeterangan] = useState("all");
   // Filter per bulan: "all" = semua bulan. Tahun ikut menyaring agar data lintas
   // tahun tidak tercampur ketika satu bulan dipilih.
@@ -144,7 +143,7 @@ export default function PoPage() {
         return false;
       if (
         filterKeterangan !== "all" &&
-        row.keteranganId !== Number(filterKeterangan)
+        row.keterangan !== filterKeterangan
       )
         return false;
       if (filterMonth !== "all" || filterYear !== "all") {
@@ -160,7 +159,7 @@ export default function PoPage() {
       if (q) {
         const haystack = [
           row.poNumber,
-          row.keteranganName ?? "",
+          row.keterangan ?? "",
           row.productName ?? "",
           row.factoryName ?? "",
           row.sku ?? "",
@@ -222,18 +221,10 @@ export default function PoPage() {
       .map((value) => ({ value, label: value }));
   }, [rows]);
 
-  // Master keterangan (dropdown pada filter dan form). Di mode demo daftarnya
-  // datang dari data contoh; kalau tidak, dari API master yang sesungguhnya.
-  const { data: keteranganData } = useApi<Keterangan[]>(
-    poDemoEnabled ? null : "/api/keterangan"
-  );
+  // Keterangan kini nilai tetap di kode — tidak ada endpoint master lagi.
   const keteranganOptions = useMemo(
-    () =>
-      (poDemoEnabled ? demoKeterangan : keteranganData ?? []).map((k) => ({
-        value: String(k.id),
-        label: k.name,
-      })),
-    [keteranganData]
+    () => KETERANGAN_OPTIONS.map((option) => ({ value: option, label: option })),
+    []
   );
 
   function openCreate() {
@@ -250,7 +241,7 @@ export default function PoPage() {
             factoryId: previous.factoryId,
             currency: previous.currency,
             ppn: previous.ppn,
-            keteranganId: previous.keteranganId,
+            keterangan: previous.keterangan,
           }
         : emptyPoForm()
     );
@@ -268,7 +259,8 @@ export default function PoPage() {
       pricePerPcs: String(row.pricePerPcs ?? 0),
       currency: (row.currency as PoForm["currency"]) ?? "Rp",
       ppn: (row.ppn as PoForm["ppn"]) ?? "Non PPN",
-      keteranganId: row.keteranganId ? String(row.keteranganId) : "",
+      keterangan:
+        (row.keterangan as PoForm["keterangan"]) ?? DEFAULT_KETERANGAN,
     });
     setEditingId(row.id);
     setDialogOpen(true);
@@ -285,7 +277,7 @@ export default function PoPage() {
       pricePerPcs: Number(form.pricePerPcs) || 0,
       currency: form.currency,
       ppn: form.ppn,
-      keteranganId: form.keteranganId ? Number(form.keteranganId) : null,
+      keterangan: form.keterangan,
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
       toast.error(t("po.incomplete"));
@@ -307,7 +299,7 @@ export default function PoPage() {
             factoryId: f.factoryId,
             currency: f.currency,
             ppn: f.ppn,
-            keteranganId: f.keteranganId,
+            keterangan: f.keterangan,
           }));
           reload();
           toast.success(t("po.savedNext"));
@@ -746,8 +738,8 @@ export default function PoPage() {
                       <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
                         {row.poDate ? formatDateTime(row.poDate) : "-"}
                       </TableCell>
-                      <TableCell className="max-w-32 truncate" title={row.keteranganName ?? ""}>
-                        {row.keteranganName || "-"}
+                      <TableCell className="max-w-32 truncate" title={row.keterangan ?? ""}>
+                        {row.keterangan || "-"}
                       </TableCell>
                       <TableCell className="font-medium">
                         {row.productName ?? "-"}
@@ -870,7 +862,6 @@ export default function PoPage() {
             onSubmit={handleSubmit}
             products={products}
             factories={factories}
-            keteranganOptions={keteranganOptions}
           />
         )}
 

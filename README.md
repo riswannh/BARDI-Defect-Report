@@ -209,11 +209,8 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 
 **`statuses`** — `id` (PK auto), `name` (unik), `createdAt`
 
-**`keterangan`** — `id` (PK auto), `name` (unik), `createdAt`
-
-> Master keterangan untuk baris PO Product. Dikelola di tab **Keterangan** pada halaman Data Master.
-> Baris PO menyimpan `keteranganId` (bukan teks), sehingga satu istilah dipakai konsisten dan bisa
-> diubah di satu tempat. Menghapus keterangan yang masih dipakai baris PO ditolak (409).
+> Keterangan PO **bukan** master: ketiga nilainya di-hardcode di kode
+> (`KETERANGAN_OPTIONS` di `src/lib/api/validation.ts`) dan disimpan sebagai teks pada baris PO.
 
 **`purchase_orders`** — baris PO Product
 
@@ -229,10 +226,10 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 | `value` | **real** (default 0) | `pricePerPcs × quantity`, **selalu dihitung ulang di server** |
 | `currency` | text (default `Rp`) | `Rp`, `USD`, atau `RMB` |
 | `ppn` | text (default `Non PPN`) | `PPN` atau `Non PPN`. **Hanya penanda — tidak dihitung ke `value`.** Tidak dikirim ke role Pabrik |
-| `keteranganId` | FK → keterangan (nullable) | |
+| `keterangan` | text (default `Product Order`) | salah satu dari tiga nilai tetap: `Product Order`, `Sparepart Order`, `Replacement` |
 | `createdAt` / `updatedAt` | timestamp | jejak audit, tidak ditampilkan di tabel |
 
-Index: `factoryId`, `poNumber`, `keteranganId`, `poDate`. **Tidak ada constraint UNIQUE** — satu PO
+Index: `factoryId`, `poNumber`, `keterangan`, `poDate`. **Tidak ada constraint UNIQUE** — satu PO
 Number boleh diinput berkali-kali, termasuk untuk produk yang sama, dan sistem tidak menolak
 duplikat (keputusan pemilik produk).
 
@@ -347,18 +344,12 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`. Query: `factoryId`, `productId`, `keteranganId`, `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn` |
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keterangan`. Query: `factoryId`, `productId`, `keterangan` (teks), `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn` |
 | POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat; `value` dihitung server |
 | PATCH | `/api/purchase-orders/{id}` | admin | ubah sebagian; `value` dihitung ulang dari nilai final |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
 | DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis |
 | POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
-
-### Keterangan (master)
-
-Mengikuti pola Data Master (CRUD): `GET/POST /api/keterangan`, `PATCH/DELETE /api/keterangan/{id}`,
-`DELETE /api/keterangan` (hapus semua + backup). `name` unik; hapus ditolak 409 bila masih dipakai
-baris PO.
 
 ### Users
 
@@ -381,7 +372,7 @@ Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
 
 ### Excel
 
-Module: `products`, `problems`, `statuses`, `factories`, `keterangan`, `defects`, `sales`, `users`, `purchase-orders`.
+Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
 
 **PO Product** memakai kolom `PO Number`, `Timestamp`, `Produk`, `Pabrik`, `Quantity`, `PPN`,
 `Price/pcs`, `Currency`, `Total`, `Keterangan` (berkas `po-product.xlsx`, template
@@ -389,7 +380,9 @@ Module: `products`, `problems`, `statuses`, `factories`, `keterangan`, `defects`
 `Currency`, dan `Total`. Impor **tidak** mendeteksi duplikat — baris hanya ditolak bila datanya
 tidak valid (produk/pabrik/keterangan tidak ditemukan, atau PO Number/tanggal kosong), dan alasannya
 dilaporkan per baris. `Total` selalu dihitung server, nilai di berkas diabaikan. Kolom `PPN` menerima
-variasi penulisan (`ppn`, `non-ppn`, `PPN 11%`) dan dinormalkan ke `PPN` / `Non PPN`.
+variasi penulisan (`ppn`, `non-ppn`, `PPN 11%`) dan dinormalkan ke `PPN` / `Non PPN`. Kolom
+`Keterangan` hanya menerima ketiga nilai tetap; nilai asing membuat barisnya ditolak dengan alasan
+yang menyebut pilihannya, dan sel kosong memakai default `Product Order`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|

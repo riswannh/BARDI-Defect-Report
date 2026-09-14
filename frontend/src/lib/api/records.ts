@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import {
   defects,
   factories,
-  keterangan,
   problems,
   products,
   purchaseOrders,
@@ -22,7 +21,10 @@ import { backupDatabase } from "@/lib/api/bulk";
 import {
   defectSchema,
   defectUpdateSchema,
+  DEFAULT_KETERANGAN,
+  KETERANGAN_OPTIONS,
   normalizeCurrency,
+  normalizeKeterangan,
   normalizePpn,
   purchaseOrderSchema,
   purchaseOrderUpdateSchema,
@@ -108,13 +110,12 @@ const purchaseOrderSelect = {
   value: purchaseOrders.value,
   currency: purchaseOrders.currency,
   ppn: purchaseOrders.ppn,
-  keteranganId: purchaseOrders.keteranganId,
+  keterangan: purchaseOrders.keterangan,
   // SKU ikut dikirim supaya konsumen lain (mis. ekspor Excel) tidak kehilangan
   // informasi; SKU tetap melekat pada produk, bukan disalin ke baris PO.
   sku: products.sku,
   productName: products.name,
   factoryName: factories.name,
-  keteranganName: keterangan.name,
 };
 
 function numParam(value: string | null): number | null {
@@ -193,7 +194,8 @@ export function purchaseOrderConditions(
 ): SQL[] {
   const factory = scopedFactoryId(user, numParam(params.get("factoryId")));
   const productId = numParam(params.get("productId"));
-  const keteranganId = numParam(params.get("keteranganId"));
+  // Keterangan sekarang teks tetap, jadi filternya membandingkan nama langsung.
+  const keterangan = normalizeKeterangan(params.get("keterangan"));
   const month = params.get("month")?.trim();
   const year = params.get("year")?.trim();
   const q = params.get("search")?.trim();
@@ -202,8 +204,8 @@ export function purchaseOrderConditions(
   if (factory !== null) conditions.push(eq(purchaseOrders.factoryId, factory));
   if (productId !== null)
     conditions.push(eq(purchaseOrders.productId, productId));
-  if (keteranganId !== null)
-    conditions.push(eq(purchaseOrders.keteranganId, keteranganId));
+  if (keterangan !== null)
+    conditions.push(eq(purchaseOrders.keterangan, keterangan));
   if (year && /^\d{4}$/.test(year)) {
     if (month && /^\d{2}$/.test(month)) {
       conditions.push(gte(purchaseOrders.poDate, `${year}-${month}-01`));
@@ -219,7 +221,7 @@ export function purchaseOrderConditions(
   if (q) {
     const searchClause = or(
       like(purchaseOrders.poNumber, `%${q}%`),
-      like(keterangan.name, `%${q}%`),
+      like(purchaseOrders.keterangan, `%${q}%`),
       like(products.name, `%${q}%`),
       like(products.sku, `%${q}%`),
       like(factories.name, `%${q}%`)
@@ -227,6 +229,11 @@ export function purchaseOrderConditions(
     if (searchClause) conditions.push(searchClause);
   }
   return conditions;
+}
+
+/** Dipakai halaman PO untuk mengisi dropdown keterangan tanpa endpoint master. */
+export function keteranganOptions() {
+  return [...KETERANGAN_OPTIONS];
 }
 
 export async function listPurchaseOrderRows(
@@ -239,7 +246,6 @@ export async function listPurchaseOrderRows(
     .from(purchaseOrders)
     .leftJoin(products, eq(purchaseOrders.productId, products.id))
     .leftJoin(factories, eq(purchaseOrders.factoryId, factories.id))
-    .leftJoin(keterangan, eq(purchaseOrders.keteranganId, keterangan.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(purchaseOrders.poDate), desc(purchaseOrders.id));
 }
@@ -554,7 +560,7 @@ export async function purchaseOrdersPOST(req: NextRequest) {
       value: pricePerPcs * quantity,
       currency: normalizeCurrency(parsed.data.currency),
       ppn: normalizePpn(parsed.data.ppn),
-      keteranganId: parsed.data.keteranganId ?? null,
+      keterangan: normalizeKeterangan(parsed.data.keterangan) ?? DEFAULT_KETERANGAN,
     })
     .returning();
   return jsonOk(row, 201);
@@ -607,8 +613,11 @@ export async function purchaseOrdersPATCH(
         ? { currency: normalizeCurrency(parsed.data.currency) }
         : {}),
       ...(parsed.data.ppn !== undefined ? { ppn: normalizePpn(parsed.data.ppn) } : {}),
-      ...(parsed.data.keteranganId !== undefined
-        ? { keteranganId: parsed.data.keteranganId }
+      ...(parsed.data.keterangan !== undefined
+        ? {
+            keterangan:
+              normalizeKeterangan(parsed.data.keterangan) ?? DEFAULT_KETERANGAN,
+          }
         : {}),
       updatedAt: new Date(),
     })

@@ -149,11 +149,11 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - Excel: `template-produk.xlsx` dan ekspor `produk.xlsx` memakai kolom `Nama` + `SKU`;
     impor melewati baris dengan SKU yang sudah dipakai (termasuk bentrok antar-baris di berkas
     yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap satu kolom `Nama`.
-- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, keterangan, defects, sales, users, purchase-orders)
+- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, defects, sales, users, purchase-orders)
 - **PO Product** (`/po`, modul `purchase-orders`) — lihat `SPEC-po-product.md` untuk spec lengkapnya:
   - Tabel `purchase_orders`: `poNumber` (boleh berulang), `poDate` (tanggal PO, DIISI MANUAL, format
     `YYYY-MM-DDTHH:mm`), `productId`, `factoryId`, `quantity`, `pricePerPcs` (real, boleh pecahan),
-    `value` (real, = pricePerPcs × quantity), `currency` (Rp/USD/RMB), `keteranganId`.
+    `value` (real, = pricePerPcs × quantity), `currency` (Rp/USD/RMB), `ppn`, `keterangan` (teks).
   - **TIDAK ADA `UNIQUE`** dan tidak ada validasi duplikat di POST/PATCH — user memutuskan satu PO
     Number boleh diinput berkali-kali termasuk produk yang sama. Jangan tambahkan constraint itu.
   - `value` **selalu dihitung ulang di server**; angka `value` dari klien diabaikan.
@@ -164,9 +164,12 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     TIDAK ikut dihitung ke `value`. Kolomnya hanya tampil untuk admin, juga di ekspor Excel.
   - SKU **tidak** disimpan di baris PO (melekat pada `products.sku`); form menampilkan satu dropdown
     Product berisi nama produk saja, tanpa isian SKU terpisah.
-  - Keterangan adalah **master** (`keterangan`, tab sendiri di Data Master) yang dipilih lewat
-    dropdown; baris PO menyimpan `keteranganId`, bukan teks.
-  - Filter: `factoryId`, `productId`, `keteranganId`, `month`, `year` (memakai `poDate`), `search`.
+  - Keterangan **bukan master** dan tidak punya tabel/API/tab sendiri: ketiga nilainya di-hardcode di
+    `KETERANGAN_OPTIONS` (`validation.ts`) — `Product Order`, `Sparepart Order`, `Replacement` — dan
+    baris PO menyimpannya sebagai **teks** `keterangan` (default `Product Order`). Nilai di luar daftar
+    dinormalkan ke default saat POST/PATCH; pada impor Excel barisnya ditolak dengan alasan.
+    Jangan menghidupkan lagi tabel/CRUD keterangan tanpa keputusan baru dari user.
+  - Filter: `factoryId`, `productId`, `keterangan` (teks), `month`, `year` (memakai `poDate`), `search`.
 - **JEBAKAN zod yang pernah merusak data**: `schema.partial()` TIDAK melepas `.default()`. Pola
   `z.object({ quantity: z.coerce.number().default(0) }).partial()` tetap mengisi `0` untuk field
   yang tidak dikirim, sehingga PATCH satu field menulis `0` ke field berdefault lainnya — pernah
