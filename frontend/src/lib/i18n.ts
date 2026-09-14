@@ -295,6 +295,23 @@ const translations = {
     zh: "总额由单价 × 数量自动计算。",
   },
   "po.poNumber": { id: "PO Number", en: "PO Number", zh: "采购单号" },
+  "po.timestamp": {
+    id: "Timestamp",
+    en: "Timestamp",
+    zh: "时间",
+  },
+  "po.month": { id: "Bulan", en: "Month", zh: "月份" },
+  "po.year": { id: "Tahun", en: "Year", zh: "年份" },
+  "po.allMonths": {
+    id: "Semua Bulan",
+    en: "All Months",
+    zh: "所有月份",
+  },
+  "po.allYears": {
+    id: "Semua Tahun",
+    en: "All Years",
+    zh: "所有年份",
+  },
   "po.poNumberPlaceholder": {
     id: "Mis. PO-2026-001",
     en: "E.g. PO-2026-001",

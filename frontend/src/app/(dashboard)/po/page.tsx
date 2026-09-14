@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import { formatNumber, formatPoCurrency, formatPoCurrencyCompact } from "@/lib/format";
+import { formatDateTime, formatNumber, formatPoCurrency, formatPoCurrencyCompact, MONTHS } from "@/lib/format";
 import {
   apiDelete,
   apiPatch,
@@ -112,6 +112,10 @@ export default function PoPage() {
   const [filterFactory, setFilterFactory] = useState("all");
   // Keterangan adalah master, jadi filternya memilih id — bukan mengetik teks.
   const [filterKeterangan, setFilterKeterangan] = useState("all");
+  // Filter per bulan: "all" = semua bulan. Tahun ikut menyaring agar data lintas
+  // tahun tidak tercampur ketika satu bulan dipilih.
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -142,6 +146,16 @@ export default function PoPage() {
         row.keteranganId !== Number(filterKeterangan)
       )
         return false;
+      if (filterMonth !== "all" || filterYear !== "all") {
+        // Timestamp berformat `YYYY-MM-DDTHH:mm`, jadi bulan dan tahun dibaca
+        // langsung dari string — bukan lewat Date, supaya tidak bergeser akibat
+        // konversi zona waktu.
+        const stamp = row.timestamp ?? "";
+        const year = stamp.slice(0, 4);
+        const month = stamp.slice(5, 7);
+        if (filterYear !== "all" && year !== filterYear) return false;
+        if (filterMonth !== "all" && month !== filterMonth) return false;
+      }
       if (q) {
         const haystack = [
           row.poNumber,
@@ -156,7 +170,15 @@ export default function PoPage() {
       }
       return true;
     });
-  }, [rows, filterProduct, filterFactory, filterKeterangan, search]);
+  }, [
+    rows,
+    filterProduct,
+    filterFactory,
+    filterKeterangan,
+    filterMonth,
+    filterYear,
+    search,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -185,6 +207,19 @@ export default function PoPage() {
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([id, label]) => ({ value: String(id), label }));
   }, [isAdmin, rows, products]);
+
+  // Pilihan tahun untuk filter, diambil dari data yang ada supaya dropdownnya
+  // tidak menawarkan tahun yang memang belum punya baris PO.
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>();
+    for (const row of rows) {
+      const year = (row.timestamp ?? "").slice(0, 4);
+      if (year) years.add(year);
+    }
+    return Array.from(years)
+      .sort((a, b) => b.localeCompare(a))
+      .map((value) => ({ value, label: value }));
+  }, [rows]);
 
   // Master keterangan (dropdown pada filter dan form). Di mode demo daftarnya
   // datang dari data contoh; setelah backend ada, diambil dari /api/keterangan.
@@ -358,8 +393,8 @@ export default function PoPage() {
     });
   }
 
-  // Admin: checkbox pilih + Price/pcs + Total Currency + kolom aksi.
-  const columnCount = isAdmin ? 9 : 5;
+  // Admin: checkbox pilih + Timestamp + Price/pcs + Total Currency + kolom aksi.
+  const columnCount = isAdmin ? 10 : 6;
 
   return (
     // AuthGuard, bukan AdminGuard: halaman PO memang dibuka untuk role Pabrik
@@ -515,6 +550,66 @@ export default function PoPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
+              <Label>{t("po.month")}</Label>
+              <Select
+                value={filterMonth}
+                onValueChange={(v) => {
+                  setFilterMonth(String(v));
+                  setPage(1);
+                }}
+                items={[
+                  { value: "all", label: t("po.allMonths") },
+                  ...MONTHS.map((m, index) => ({
+                    value: String(index + 1).padStart(2, "0"),
+                    label: m,
+                  })),
+                ]}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("po.allMonths")}</SelectItem>
+                  {MONTHS.map((m, index) => (
+                    <SelectItem
+                      key={m}
+                      value={String(index + 1).padStart(2, "0")}
+                    >
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("po.year")}</Label>
+              <Select
+                value={filterYear}
+                onValueChange={(v) => {
+                  setFilterYear(String(v));
+                  setPage(1);
+                }}
+                items={[
+                  { value: "all", label: t("po.allYears") },
+                  ...yearOptions,
+                ]}
+              >
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("po.allYears")}</SelectItem>
+                  {yearOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <Label>{t("po.keterangan")}</Label>
               <Select
                 value={filterKeterangan}
@@ -589,6 +684,8 @@ export default function PoPage() {
                       </TableHead>
                     )}
                     <TableHead>{t("po.poNumber")}</TableHead>
+                    {/* Timestamp tepat setelah PO Number, sesuai permintaan. */}
+                    <TableHead>{t("po.timestamp")}</TableHead>
                     <TableHead>{t("po.keterangan")}</TableHead>
                     <TableHead>{t("po.productName")}</TableHead>
                     <TableHead>{t("common.factory")}</TableHead>
@@ -627,7 +724,10 @@ export default function PoPage() {
                       <TableCell className="font-mono text-xs">
                         {row.poNumber}
                       </TableCell>
-                      <TableCell className="max-w-48 truncate" title={row.keteranganName ?? ""}>
+                      <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+                        {formatDateTime(row.timestamp ?? "")}
+                      </TableCell>
+                      <TableCell className="max-w-32 truncate" title={row.keteranganName ?? ""}>
                         {row.keteranganName || "-"}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -638,7 +738,7 @@ export default function PoPage() {
                           mendorong kolom harga keluar layar. Dipotong dengan nama
                           lengkap tetap bisa dibaca lewat tooltip. */}
                       <TableCell
-                        className="max-w-40 truncate"
+                        className="max-w-32 truncate"
                         title={row.factoryName ?? ""}
                       >
                         {row.factoryName ?? "-"}

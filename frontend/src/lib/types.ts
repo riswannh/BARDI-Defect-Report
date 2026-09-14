@@ -62,6 +62,12 @@ export interface Sale {
 export interface PurchaseOrder {
   id: number;
   poNumber: string;
+  /**
+   * Timestamp baris PO, ditampilkan di tabel tepat setelah PO Number.
+   * Saat ini terisi otomatis dari `createdAt`; bentuk pastinya (otomatis vs
+   * diisi manual operator) masih menunggu keputusan sebelum backend dibuat.
+   */
+  timestamp?: string;
   productId: number;
   factoryId: number;
   quantity: number;

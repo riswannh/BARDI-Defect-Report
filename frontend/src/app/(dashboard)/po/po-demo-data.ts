@@ -54,6 +54,7 @@ const rows: Array<{
   pricePerPcs: number;
   currency: string;
   keteranganIndex: number | null;
+  timestamp: string;
 }> = [
   {
     poNumber: "PO-2026-001",
@@ -63,6 +64,7 @@ const rows: Array<{
     pricePerPcs: 18500,
     currency: "Rp",
     keteranganIndex: 0,
+    timestamp: "2026-01-08T09:15",
   },
   {
     poNumber: "PO-2026-001",
@@ -72,6 +74,7 @@ const rows: Array<{
     pricePerPcs: 2400,
     currency: "USD",
     keteranganIndex: 0,
+    timestamp: "2026-01-22T14:40",
   },
   {
     poNumber: "PO-2026-001",
@@ -81,6 +84,7 @@ const rows: Array<{
     pricePerPcs: 950,
     currency: "RMB",
     keteranganIndex: 1,
+    timestamp: "2026-01-30T11:05",
   },
   {
     poNumber: "PO-2026-002",
@@ -90,6 +94,7 @@ const rows: Array<{
     pricePerPcs: 42000,
     currency: "Rp",
     keteranganIndex: 2,
+    timestamp: "2026-02-03T08:20",
   },
   {
     // Baris tanpa keterangan, untuk melihat bagaimana tabel menanganinya.
@@ -100,6 +105,7 @@ const rows: Array<{
     pricePerPcs: 7500,
     currency: "USD",
     keteranganIndex: null,
+    timestamp: "2026-02-18T16:55",
   },
   {
     poNumber: "PO-2026-003",
@@ -109,6 +115,7 @@ const rows: Array<{
     pricePerPcs: 1200,
     currency: "RMB",
     keteranganIndex: 4,
+    timestamp: "2026-03-05T10:10",
   },
   {
     poNumber: "PO-2026-003",
@@ -118,6 +125,7 @@ const rows: Array<{
     pricePerPcs: 640000,
     currency: "Rp",
     keteranganIndex: 3,
+    timestamp: "2026-03-21T13:30",
   },
   {
     // Harga pecahan (USD 38.75) untuk menunjukkan kolom real bekerja.
@@ -128,6 +136,7 @@ const rows: Array<{
     pricePerPcs: 38.75,
     currency: "USD",
     keteranganIndex: 4,
+    timestamp: "2026-04-02T09:45",
   },
   {
     poNumber: "PO-2026-004",
@@ -137,6 +146,7 @@ const rows: Array<{
     pricePerPcs: 275000,
     currency: "Rp",
     keteranganIndex: 5,
+    timestamp: "2026-04-14T15:20",
   },
 ];
 
@@ -149,6 +159,7 @@ export const demoPurchaseOrders: PurchaseOrder[] = rows.map((row, index) => {
   return {
     id: index + 1,
     poNumber: row.poNumber,
+    timestamp: row.timestamp,
     productId: product.id,
     factoryId: factory.id,
     quantity: row.quantity,
