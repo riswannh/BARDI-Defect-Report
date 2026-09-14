@@ -32,7 +32,6 @@ import { Save } from "lucide-react";
 
 export interface PoForm {
   poNumber: string;
-  sku: string;
   productId: string;
   factoryId: string;
   quantity: string;
@@ -45,7 +44,6 @@ export interface PoForm {
 export function emptyPoForm(): PoForm {
   return {
     poNumber: "",
-    sku: "",
     productId: "",
     factoryId: "",
     quantity: "",
@@ -67,11 +65,9 @@ export function poFormHasContent(form: PoForm): boolean {
   );
 }
 
-/** Label dropdown produk: SKU lebih dulu supaya bisa dicari dengan SKU-nya. */
+/** Label dropdown produk — nama produk saja, tanpa SKU (lihat SPEC keputusan SKU). */
 export function productOptionLabel(product: Product): string {
-  return product.sku
-    ? `${product.sku} — ${product.name}`
-    : product.name;
+  return product.name;
 }
 
 /**
@@ -118,7 +114,6 @@ export function PoFormDialog({
     [products]
   );
 
-  const selectedProduct = products.find((p) => String(p.id) === form.productId);
   const quantity = Number(form.quantity) || 0;
   const price = Number(form.pricePerPcs) || 0;
   const total = quantity * price;
@@ -180,25 +175,20 @@ export function PoFormDialog({
                 />
               </div>
 
+              {/* SKU dan Product digabung: satu dropdown yang menampilkan nama
+                  produk. Ke database tetap tersimpan productId, dan SKU produk
+                  tetap ikut di data karena melekat pada produknya. */}
               <div className="flex flex-col gap-1.5">
-                <Label>{t("po.skuProduct")}</Label>
+                <Label>{t("po.product")}</Label>
                 <Select
                   value={form.productId}
                   onValueChange={(v) =>
-                    onFormChange((f) => {
-                      const next = String(v);
-                      const product = products.find((p) => String(p.id) === next);
-                      return {
-                        ...f,
-                        productId: next,
-                        sku: product?.sku ?? "",
-                      };
-                    })
+                    onFormChange((f) => ({ ...f, productId: String(v) }))
                   }
                   items={productOptions}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder={t("po.selectProduct")} />
                   </SelectTrigger>
                   <SelectContent>
                     {productOptions.map((option) => (
@@ -208,17 +198,6 @@ export function PoFormDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="po-product">{t("po.product")}</Label>
-                <Input
-                  id="po-product"
-                  value={selectedProduct?.name ?? ""}
-                  readOnly
-                  placeholder={t("po.productPlaceholder")}
-                  className="bg-muted/50 text-muted-foreground"
-                />
               </div>
 
               <div className="flex flex-col gap-1.5">

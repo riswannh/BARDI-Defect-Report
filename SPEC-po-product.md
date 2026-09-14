@@ -154,9 +154,13 @@ purchaseOrders (tabel: purchase_orders)
   keteranganId integer → keterangan.id    // dropdown, bukan teks bebas
   createdAt / updatedAt
 
-  UNIQUE (poNumber, productId)   // ← berubah bila Pilihan B diambil; lihat di bawah
+  UNIQUE (poNumber, productId)   // SENGAJA TIDAK ADA — lihat "Keputusan 1.3"
   INDEX (factoryId), INDEX (poNumber), INDEX (keteranganId)
 ```
+
+**Tidak ada constraint unik di tabel ini.** User memutuskan (keputusan 1.3) bahwa satu
+PO Number boleh diinput berkali-kali, termasuk untuk produk yang sama, tanpa kolom
+pembeda. Jadi tidak ada aturan yang menolak baris duplikat — lihat bagian di bawah.
 
 **`pricePerPcs` dan `value` bertipe `real`** (bukan `integer` seperti `sales.value`),
 karena PO memakai USD dan RMB yang butuh 2 angka desimal. Modul Sales/Defect tetap
@@ -172,31 +176,53 @@ Problem, Status) lewat tab baru di halaman Data Master, dan form PO menampilkann
 sebagai dropdown searchable. Baris PO menyimpan `keteranganId`, bukan teksnya — supaya
 satu istilah dipakai konsisten dan bisa diubah di satu tempat.
 
-### Keputusan 1.3 — kolom pembeda (BELUM DIPUTUSKAN)
+### Keputusan — SKU dan Product digabung jadi satu input di form
 
-Pertanyaan: bolehkah satu PO Number memuat **produk yang sama** lebih dari sekali?
+Di form PO, **SKU Product dan Product bukan dua isian terpisah**. Yang tampil hanya
+**satu dropdown bernama Product**, dan yang ditampilkan adalah **nama produk tanpa SKU**.
 
-| | Pilihan A | Pilihan B |
-|---|---|---|
-| Aturan | Produk sama tidak boleh dobel dalam satu PO | Boleh, asalkan kolom pembeda berbeda |
-| Constraint | `UNIQUE (poNumber, productId)` | `UNIQUE (poNumber, productId, <pembeda>)` |
-| Kiriman bertahap | Operator membuat PO Number berbeda (`PO-2026-001A`) | Dicatat di baris terpisah dengan pembeda berbeda |
-| Tabel & form | Tidak ada kolom tambahan | Bertambah satu kolom (mis. `Tanggal Kirim`) |
+Yang tersimpan ke database tetap keduanya:
 
-Contoh visual kedua pilihan ada di halaman sementara `/demo-kolom-pembeda`
-(login sebagai admin) — halaman itu dihapus setelah keputusan diambil.
+- `purchase_orders.productId` — foreign key ke `products.id` (sumber kebenaran baris PO)
+- `products.sku` — melekat pada produknya, ikut terkirim di respons API sebagai `sku`
 
-Kalau Pilihan B, **kolom pembedanya perlu ditentukan**: Tanggal Kirim, Batch,
-No. Surat Jalan, atau Nomor Kontainer. Pilihan kolom ini mengubah bentuk tabel,
-form, dan kontrak API, jadi harus dikunci sebelum implementasi.
+Jadi SKU tetap ada di database dan tetap bisa dipakai di luar form PO (Data Master,
+ekspor Excel, pencarian), tetapi **tidak ditampilkan** di form PO maupun di kolom tabel
+halaman PO. Konsekuensinya:
+
+- Label dropdown hanya nama produk; SKU tidak muncul sebagai teks pendamping.
+- Kotak pencarian dropdown mencocokkan **nama produk** saja.
+- Pencarian di halaman (`search`) tetap boleh mencocokkan `products.sku` — itu pencarian
+  lintas kolom, bukan tampilan label.
+- `sku` tetap dikirim di respons API PO supaya konsumen lain (mis. ekspor Excel) tidak
+  kehilangan informasi; hanya UI form PO yang tidak menampilkannya.
+
+### Keputusan 1.3 — tanpa kolom pembeda (SUDAH DIPUTUSKAN)
+
+User memutuskan: **tidak perlu kolom pembeda**. Satu PO Number boleh diinput berkali-kali,
+termasuk dengan produk yang sama, dan sistem tidak menolaknya.
+
+Konsekuensinya yang perlu diketahui:
+
+- **Tidak ada `UNIQUE`** di `purchase_orders`. Duplikat persis (PO Number + produk + qty +
+  harga sama) tetap bisa tersimpan sebagai dua baris berbeda; id-nya yang membedakan.
+- Tidak ada validasi duplikat di POST maupun PATCH, jadi tidak ada pesan 409 untuk PO.
+- Karena tidak ada pembeda, dua baris dengan isi identik tidak bisa dibedakan di tabel
+  selain dari id. Kalau operator salah input dua kali, barisnya harus dihapus manual.
+- Halaman PO **tidak** melakukan pencegahan duplikat. Kalau nanti dirasa perlu peringatan
+  lunak (mis. "PO + produk ini sudah ada, tetap simpan?"), itu perubahan terpisah.
+
+Impor Excel juga mengikuti aturan yang sama: baris tidak dianggap duplikat karena
+PO Number-nya sama. Satu-satunya penolakan di impor adalah data yang tidak valid
+(produk/pabrik/keterangan tidak ditemukan, qty atau harga bukan angka).
 
 ## API Contract
 
 | Method | Path | Akses | Perilaku |
 |---|---|---|---|
 | GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keteranganName`; role Pabrik ter-scope pabriknya dan tanpa price/total/currency |
-| POST | `/api/purchase-orders` | admin | tambah; 409 bila `poNumber + productId` sudah ada; `value` dihitung server |
-| PATCH | `/api/purchase-orders/{id}` | admin | ubah; 409 pada bentrok yang sama; `value` dihitung ulang |
+| POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat (lihat keputusan 1.3); `value` dihitung server |
+| PATCH | `/api/purchase-orders/{id}` | admin | ubah; `value` dihitung ulang |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
 | DELETE | `/api/purchase-orders` | admin | hapus semua + backup otomatis dulu |
 | POST | `/api/purchase-orders/bulk-delete` | admin | `{ ids: number[] }` |
@@ -204,7 +230,7 @@ form, dan kontrak API, jadi harus dikunci sebelum implementasi.
 | PATCH/DELETE | `/api/keterangan/{id}` | admin | ubah / hapus (409 bila masih dipakai baris PO) |
 | DELETE | `/api/keterangan` | admin | hapus semua + backup |
 | GET | `/api/excel/purchase-orders/template` | admin | template kosong |
-| POST | `/api/excel/purchase-orders/import` | admin | impor; baris duplikat dilewati |
+| POST | `/api/excel/purchase-orders/import` | admin | impor; baris tidak valid dilaporkan, tanpa deteksi duplikat |
 | GET | `/api/excel/purchase-orders/export` | admin | ekspor; kolom harga/total/currency hanya untuk admin |
 | GET/POST/PATCH/DELETE | `/api/excel/keterangan/{template,import,export}` | admin | Excel untuk master keterangan, mengikuti master lain |
 
@@ -215,10 +241,9 @@ form, dan kontrak API, jadi harus dikunci sebelum implementasi.
 `search` mencocokkan `poNumber`, `keterangan.name`, `products.name`, `products.sku`,
 `factories.name`.
 
-**Deteksi duplikat impor Excel** — baris dianggap duplikat bila `poNumber + produk`
-sudah ada, atau bila bentrok dengan baris lain di berkas yang sama (alasan:
-"PO + produk sudah ada"). Ini mencegah kegagalan UNIQUE di level database yang
-pesannya tidak menyebut baris mana.
+**Impor Excel** — tidak ada deteksi duplikat (lihat keputusan 1.3). Baris ditolak hanya
+kalau datanya tidak valid: `poNumber` kosong, produk/pabrik/keterangan tidak ditemukan,
+atau qty/harga bukan angka. Alasan penolakan menyebut barisnya.
 
 ## Boundaries
 
@@ -244,6 +269,10 @@ pesannya tidak menyebut baris mana.
 - Mengirim `pricePerPcs`, `value`, atau `currency` ke sesi role Pabrik.
 - Memakai `requireUser` pada operasi tulis — semua tulis wajib `requireAdmin`.
 - Menyimpan SKU sebagai kolom teks di `purchase_orders`.
+- Menambahkan `UNIQUE` pada `purchase_orders` — duplikat PO Number memang diizinkan
+  (keputusan 1.3).
+- Menampilkan SKU sebagai isian atau kolom terpisah di form dan tabel halaman PO
+  (keputusan: SKU dan Product digabung jadi satu dropdown Product).
 - Menyimpan keterangan sebagai teks bebas di `purchase_orders`; yang disimpan adalah `keteranganId`.
 - Menghapus data tanpa backup lebih dulu.
 - Melonggarkan pemeriksaan (`@ts-ignore`, `eslint-disable`, tes dihapus) supaya hijau.
@@ -252,9 +281,10 @@ pesannya tidak menyebut baris mana.
 
 1. `npx tsc --noEmit` dan `npx eslint` bersih di `frontend/`.
 2. **Admin** dapat menambah baris PO lewat `/po`; baris tersimpan dan muncul di tabel.
-3. Menambah baris dengan `poNumber + produk` yang sama ditolak **409** dengan pesan
-   berbahasa Indonesia; `poNumber` sama dengan produk berbeda **diterima**.
-   *(Bila Pilihan B diambil, aturannya berubah menjadi: boleh selama pembedanya berbeda.)*
+   Form hanya punya **satu dropdown Product** (tanpa isian SKU terpisah), dan yang
+   tersimpan ke database tetap `productId` **beserta** `sku` produknya.
+3. Menambah dua baris dengan `poNumber` dan produk yang sama **diterima** — sistem tidak
+   menolak duplikat (keputusan 1.3), dan keduanya tersimpan sebagai baris terpisah.
 4. `value` di database selalu sama dengan `pricePerPcs × quantity`, termasuk setelah
    PATCH yang hanya mengubah `quantity`, dan **tetap benar untuk harga pecahan**
    (mis. 12.50 × 1.000 = 12.500).
@@ -265,7 +295,7 @@ pesannya tidak menyebut baris mana.
 7. **Master keterangan** bisa ditambah, diubah, dan dihapus dari Data Master; namanya
    muncul di dropdown form PO; menghapusnya ditolak **409** selama masih dipakai baris PO.
 8. Template, impor, dan ekspor Excel bekerja untuk PO **dan** keterangan; impor PO
-   melewati duplikat dengan alasan yang bisa dibaca dan melaporkan barisnya.
+   hanya menolak baris yang datanya tidak valid, bukan baris yang PO-nya sama.
 9. Hapus semua membuat berkas backup `backup-purchase-orders-*.db` lebih dulu.
 10. Data lama tidak berubah: `products` 118 baris, `defects` 3.584, `sales` 1.008 tetap utuh.
 11. `README.md` dan `AGENTS.md` memuat skema, endpoint, dan aturan akses modul PO.
@@ -278,22 +308,18 @@ pesannya tidak menyebut baris mana.
 |---|---|---|
 | 1 | Excel untuk PO | **Ikut** — template, impor, ekspor |
 | 2 | Hapus semua + hapus massal | **Ikut**, dengan backup otomatis lebih dulu |
+| 3 | Kolom pembeda untuk PO Number yang sama | **Tidak perlu pembeda.** PO Number boleh diinput berkali-kali, termasuk produk yang sama, tanpa validasi duplikat |
 | 4 | `keterangan` per baris atau per PO | **Per baris**, dan berupa **master** yang bisa di-CRUD, dipilih lewat dropdown |
 | 5 | Price/pcs bilangan bulat? | **Boleh pecahan** — kolom `real`, tampilan 2 desimal untuk USD/RMB |
+| 6 | SKU Product sebagai isian terpisah di form | **Tidak.** Digabung jadi satu dropdown Product yang menampilkan nama produk; database tetap menyimpan `productId` dan `sku` |
 
-**Masih terbuka — menghalangi implementasi:**
+**Tidak ada pertanyaan yang menghalangi implementasi.** Spec siap masuk fase PLAN
+begitu user menyetujui.
 
-1. **Kolom pembeda (keputusan 1.3).** Boleh tidaknya produk yang sama muncul dua kali
-   dalam satu PO Number. Kalau boleh, kolom pembedanya apa (Tanggal Kirim / Batch /
-   No. Surat Jalan / Nomor Kontainer). Contoh visual: `/demo-kolom-pembeda`.
-   Ini mengubah constraint UNIQUE, bentuk tabel, form, dan kontrak API — jadi harus
-   dikunci lebih dulu.
-
-**Catatan kecil yang tidak menghalangi (akan saya putuskan sendiri bila tidak dijawab):**
+**Catatan kecil yang tidak menghalangi (saya putuskan sendiri bila tidak dijawab):**
 
 - **Lebar kolom keterangan.** Kolom Keterangan di tabel dipotong (`max-w-48`) dan nama
   lengkapnya muncul di tooltip. Kalau namanya biasanya panjang, kolomnya bisa dilebarkan
   dengan memangkas filter Produk/Pabrik.
-- **Filter Produk/Pabrik.** Frontend sekarang menampilkan keduanya (mengikuti Sales)
-  ditambah filter Keterangan, sehingga ada empat kontrol filter. Bisa dipangkas bila
-  dianggap terlalu banyak.
+- **Filter Produk/Pabrik.** Frontend menampilkan keduanya (mengikuti Sales) ditambah filter
+  Keterangan, sehingga ada empat kontrol filter. Bisa dipangkas bila dianggap terlalu banyak.

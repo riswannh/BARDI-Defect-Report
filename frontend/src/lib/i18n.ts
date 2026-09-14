@@ -306,6 +306,11 @@ const translations = {
     zh: "产品 SKU",
   },
   "po.product": { id: "Product", en: "Product", zh: "产品" },
+  "po.selectProduct": {
+    id: "Pilih produk",
+    en: "Select product",
+    zh: "选择产品",
+  },
   "po.productName": {
     id: "Nama Produk",
     en: "Product Name",

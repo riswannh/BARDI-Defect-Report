@@ -219,7 +219,6 @@ export default function PoPage() {
   function openEdit(row: PurchaseOrder) {
     setForm({
       poNumber: row.poNumber,
-      sku: row.sku ?? "",
       productId: String(row.productId),
       factoryId: String(row.factoryId),
       quantity: String(row.quantity),
