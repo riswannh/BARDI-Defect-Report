@@ -167,9 +167,18 @@ export default function ReportPage() {
 
   const dQty = report?.totals.defectQty ?? 0;
   const dVal = report?.totals.defectValue ?? 0;
+  /**
+   * Kartu Total Defect & Nilai Defect menampilkan angka BERSIH: defect dikurangi
+   * Replacement (qty, dan Value RW yang sama-sama Rupiah). Angka mentah tetap
+   * dipakai grafik, pie, dan tabel rekap di bawahnya — dan ditampilkan di
+   * keterangan kartu supaya terlihat bahwa ada pengurangan.
+   */
+  const netDQty = report?.totals.netDefectQty ?? 0;
+  const netDVal = report?.totals.netDefectValue ?? 0;
   const sQty = report?.totals.salesQty ?? 0;
   const sVal = report?.totals.salesValue ?? 0;
-  const ratioQty = defectSalesRatio(dQty, sQty);
+  // Rasio memakai angka bersih supaya konsisten dengan kartu Total Defect.
+  const ratioQty = defectSalesRatio(netDQty, sQty);
   // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
   const replacementQty = report?.totals.replacementQty ?? 0;
 
@@ -359,15 +368,23 @@ export default function ReportPage() {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <SummaryCard
           title={t("report.totalDefect")}
-          value={formatNumber(dQty)}
-          description={t("common.quantity")}
+          value={formatNumber(netDQty)}
+          description={t("report.totalDefectNet", {
+            count: formatNumber(dQty),
+            replacement: formatNumber(replacementQty),
+          })}
           icon={AlertTriangle}
         />
         {isAdmin && (
           <SummaryCard
             title={t("report.defectValue")}
-            value={formatIDR(dVal)}
-            description={t("common.valueIdr")}
+            value={formatIDR(netDVal)}
+            description={t("report.defectValueNet", {
+              count: formatIDR(dVal),
+              replacement: formatIDR(
+                report?.totals.replacementRwValue ?? 0
+              ),
+            })}
             icon={Wallet}
           />
         )}

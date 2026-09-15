@@ -253,6 +253,16 @@ const translations = {
     en: "Replacement PO Qty",
     zh: "更换采购数量",
   },
+  "report.totalDefectNet": {
+    id: "Bersih: {count} − {replacement} Replacement",
+    en: "Net: {count} − {replacement} Replacement",
+    zh: "净额：{count} − {replacement} 更换",
+  },
+  "report.defectValueNet": {
+    id: "Bersih: {count} − {replacement} Value RW",
+    en: "Net: {count} − {replacement} RW Value",
+    zh: "净额：{count} − {replacement} RW 金额",
+  },
   "report.detailTitle": {
     id: "Detail Defect — {product}",
     en: "Defect Detail — {product}",

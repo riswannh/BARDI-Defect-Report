@@ -42,12 +42,18 @@ export interface ReportResponse {
   salesYearly: ChartBucket[];
   salesYearlyRecap: RecapRow[];
   totals: {
+    /** Angka mentah; dipakai grafik dan tabel rekap. */
     defectQty: number;
     defectValue?: number;
     salesQty: number;
     salesValue?: number;
     replacementQty: number;
     replacementValue?: number;
+    /** Value RW PO Replacement = quantity × harga master (Rupiah). */
+    replacementRwValue?: number;
+    /** Defect dikurangi Replacement — angka yang tampil di kartu ringkasan. */
+    netDefectQty: number;
+    netDefectValue?: number;
   };
   years: number[];
   products: Product[];
@@ -59,8 +65,8 @@ export interface ReportResponse {
 /**
  * Baris PO versi ringkas untuk halaman Report.
  *
- * `pricePerPcs`, `value`, dan `currency` tidak ada untuk role Pabrik — dihapus di
- * server, jadi tipenya opsional di sini.
+ * `pricePerPcs`, `value`, `currency`, dan `productPrice` tidak ada untuk role
+ * Pabrik — dihapus di server, jadi tipenya opsional di sini.
  */
 export interface ReportPoRow {
   id: number;
@@ -72,6 +78,8 @@ export interface ReportPoRow {
   pricePerPcs?: number;
   value?: number;
   currency?: string;
+  /** Harga master (Rupiah); null bila produk belum punya harga di periode PO. */
+  productPrice?: number | null;
   productName?: string | null;
   factoryName?: string | null;
 }

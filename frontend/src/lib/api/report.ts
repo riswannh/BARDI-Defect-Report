@@ -19,6 +19,7 @@ import {
   defects,
   factories,
   problems,
+  productPrices,
   products,
   purchaseOrders,
   sales,
@@ -104,9 +105,27 @@ export async function reportGET(req: NextRequest) {
       db.select().from(problems),
       db.select().from(statuses),
       db.select().from(factories),
+      // Harga master ikut di-join supaya Value RW (quantity × harga) bisa
+      // dihitung di sini tanpa query tambahan.
       db
-        .select()
+        .select({
+          id: purchaseOrders.id,
+          poNumber: purchaseOrders.poNumber,
+          poDate: purchaseOrders.poDate,
+          productId: purchaseOrders.productId,
+          factoryId: purchaseOrders.factoryId,
+          quantity: purchaseOrders.quantity,
+          pricePerPcs: purchaseOrders.pricePerPcs,
+          value: purchaseOrders.value,
+          currency: purchaseOrders.currency,
+          keterangan: purchaseOrders.keterangan,
+          productPrice: productPrices.price,
+        })
         .from(purchaseOrders)
+        .leftJoin(
+          productPrices,
+          eq(purchaseOrders.productPriceId, productPrices.id)
+        )
         .where(
           factory !== null
             ? eq(purchaseOrders.factoryId, factory)
@@ -160,7 +179,12 @@ export async function reportGET(req: NextRequest) {
       quantity: row.quantity,
       pricePerPcs: row.pricePerPcs,
       value: row.value,
-      currency: row.currency,
+      currency: row.currency,      /**
+       * Harga master (Rupiah) untuk menghitung Value RW = quantity × harga.
+       * Null bila produk itu belum punya harga di periode PO-nya — kontribusinya
+       * dihitung 0, sama seperti kolom Value RW yang tampil "-" di halaman PO.
+       */
+      productPrice: row.productPrice,
     }));
   const filteredPurchaseOrders = appPurchaseOrders.filter((row) =>
     matchesDefectPeriod(row.poDate, f)
@@ -185,19 +209,45 @@ export async function reportGET(req: NextRequest) {
     (row) => row.salesQty > 0 || row.salesValue > 0
   );
 
+  const defectQty = totalDefectQty(filteredDefects);
+  const defectValue = totalDefectValue(filteredDefects);
+  const replacementQty = filteredPurchaseOrders.reduce(
+    (sum, row) => sum + row.quantity,
+    0
+  );
+  /** Value RW = quantity × harga master (Rupiah); lihat catatan di bawah. */
+  const replacementRwValue = filteredPurchaseOrders.reduce(
+    (sum, row) => sum + row.quantity * (row.productPrice ?? 0),
+    0
+  );
+  /** Total PO biasa (pricePerPcs × quantity) — tetap dikirim untuk kolom lain. */
+  const replacementValue = filteredPurchaseOrders.reduce(
+    (sum, row) => sum + row.value,
+    0
+  );
+
   const totals = {
-    defectQty: totalDefectQty(filteredDefects),
-    defectValue: totalDefectValue(filteredDefects),
+    // Angka mentah: dipakai grafik dan tabel rekap, jangan diubah.
+    defectQty,
+    defectValue,
     salesQty: totalSalesQty(filteredSales),
     salesValue: totalSalesValue(filteredSales),
-    replacementQty: filteredPurchaseOrders.reduce(
-      (sum, row) => sum + row.quantity,
-      0
-    ),
-    replacementValue: filteredPurchaseOrders.reduce(
-      (sum, row) => sum + row.value,
-      0
-    ),
+    replacementQty,
+    replacementValue,
+    replacementRwValue,
+    /**
+     * Angka BERSIH untuk kartu ringkasan: defect dikurangi Replacement.
+     *
+     * Pengurangnya sengaja Value RW (Quantity × harga master, Rupiah) supaya
+     * sebanding dengan `defectValue` yang juga Rupiah — bukan `value` PO yang
+     * mata uangnya bisa USD/RMB. Dibuat terpisah dari angka mentah di atas agar
+     * grafik dan tabel rekap tetap menampilkan defect apa adanya.
+     *
+     * Dibatas bawah 0: Replacement yang melebihi defect tidak boleh menghasilkan
+     * angka negatif di kartu.
+     */
+    netDefectQty: Math.max(0, defectQty - replacementQty),
+    netDefectValue: Math.max(0, defectValue - replacementRwValue),
   };
 
   const years = Array.from(
