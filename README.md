@@ -5,7 +5,7 @@
 > `PRD.md` adalah dokumen kebutuhan awal; README ini adalah versi terupdate yang sudah disinkronkan dengan implementasi.
 
 - **Repo**: https://github.com/riswannh/BARDI-Defect-Report (private, branch `main`)
-- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile
+- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun (Value RW), value Defect dari harga master, dan kartu **Replacement** di Report
 
 ---
 
@@ -68,6 +68,12 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Alur input defect cepat (timestamp otomatis, simpan & tambah lagi, saran kode garansi, autofocus, konfirmasi buang isian) | ✅ Selesai |
 | + | Navigasi mobile (sidebar jadi sheet di < lg) — semua halaman bebas overflow di 390px | ✅ Selesai |
 | + | Perbaikan bug Select: nilai terpilih tidak lagi direset `null` saat popup ditutup | ✅ Selesai |
+| + | **PO Product** (`/po`) — CRUD, filter periode, PPN, Excel, akses baca-saja untuk Pabrik | ✅ Selesai |
+| + | **Harga Produk** per bulan/tahun (master) + salin periode sebelumnya | ✅ Selesai |
+| + | **Value RW** di PO & **value Defect** dihitung dari harga master | ✅ Selesai |
+| + | Kartu **Replacement** di Report + Total/Nilai Defect jadi angka bersih | ✅ Selesai |
+| + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
+| + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 
 ---
 
@@ -336,6 +342,11 @@ Berlaku untuk `products`, `problems`, `statuses`, `factories`:
 | DELETE | `/api/{module}/{id}` | admin | hapus (409 jika masih dipakai defect/sales) |
 | DELETE | `/api/{module}` | admin | **hapus semua** (backup otomatis dulu) |
 
+> **Keterangan PO bukan master.** Ketiga nilainya di-hardcode di
+> `KETERANGAN_OPTIONS` (`src/lib/api/validation.ts`): `Product Order`, `Sparepart Order`,
+> `Replacement` (default `Product Order`). Tidak ada tabel, endpoint, tab Data Master, maupun modul
+> Excel untuk keterangan; baris PO menyimpan namanya sebagai teks.
+
 **Produk punya `sku` di samping `name`** — dikelola di tab **Produk** (Data Master), ikut diekspor
 dan diimpor lewat Excel (`template-produk.xlsx` memuat kolom `Nama` + `SKU`). Master lain
 (problem/status/pabrik) tetap hanya nama. SKU kosong dikirim sebagai string kosong dan disimpan
@@ -347,7 +358,7 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/defects` | user login | daftar + `factoryName`; role Pabrik ter-scope & tanpa `value` |
+| GET | `/api/defects` | user login | daftar + `factoryName`, `problemName`, `statusName`; role Pabrik ter-scope & tanpa `value`/`productPrice*` |
 | POST | `/api/defects` | admin | tambah (validasi zod, cek `codeGaransi` unik) |
 | PATCH | `/api/defects/{id}` | admin | ubah |
 | DELETE | `/api/defects/{id}` | admin | hapus |
@@ -355,6 +366,12 @@ sebagai `NULL`.
 | POST | `/api/defects/bulk-delete` | admin | hapus banyak `{ ids: number[] }` |
 
 **Sales**: sama polanya (`/api/sales`, `/api/sales/{id}`, `/api/sales/bulk-delete`), validasi unik `productId+factoryId+month`.
+
+**`value` Defect dihitung dari harga master** (pola Value RW di PO): bila baris punya
+`productPriceId`, server menghitung `value = quantity × harga master` dan mengabaikan angka kiriman
+klien. Rujukan itu diisi otomatis dari bulan/tahun `timestamp`. Kalau produk belum punya harga di
+periode tersebut, `productPriceId` NULL dan `value` diketik manual — sehingga impor Excel defect
+tetap bekerja tanpa kolom harga. Role Pabrik tidak menerima `value` **maupun** `productPrice*`.
 
 ### PO Product
 
@@ -369,10 +386,30 @@ sebagai `NULL`.
 
 ### Report
 
-`GET /api/report` — ringkasan, bucket grafik, dan total dihitung **di server**. Selain defect/sales,
-respons memuat `replacementPos` (baris PO berketerangan `Replacement` pada periode terpilih) dan
-`totals.replacementQty` yang dipakai kartu **Replacement**. Pencocokan periodenya memakai
-`matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect.
+| Method | Path | Akses | Query params |
+|---|---|---|---|
+| GET | `/api/report` | user login | `period` (`daily/weekly/monthly/yearly/custom`), `month`, `year`, `day`, `weekEnd`, `from`, `to`, `factoryId` (admin) |
+
+Respons berisi: `period`, `defects`, `sales`, `replacementPos`, `recap`, `buckets`, `salesYearly`,
+`salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `statuses`, `factories`.
+Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
+
+`replacementPos` adalah baris PO berketerangan **`Replacement`** pada periode terpilih, dan
+`totals.replacementQty` dipakai kartu **Replacement** di halaman Report. Periodenya dicocokkan
+dengan `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect
+(`YYYY-MM-DDTHH:mm`).
+
+`totals` memuat **dua kelompok angka**:
+
+| Field | Isi |
+|---|---|
+| `defectQty`, `defectValue` | angka **mentah** — dipakai grafik, pie, dan tabel rekap |
+| `replacementQty`, `replacementValue` | dari baris PO Replacement (`replacementValue` = `pricePerPcs × quantity`) |
+| `replacementRwValue` | `Σ (quantity × harga master)` — **Rupiah**, sebanding dengan `defectValue` |
+| `netDefectQty`, `netDefectValue` | **angka kartu ringkasan**: defect dikurangi Replacement, dibatasi bawah 0 |
+
+Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`/`currency`, dan
+`totals`-nya tanpa field nilai.
 
 ### Harga Produk (per bulan & tahun)
 
@@ -412,22 +449,6 @@ Yang sudah ada di periode tujuan dilewati, jadi aman dijalankan berulang.
 | DELETE | `/api/users/{id}` | admin | hapus |
 | DELETE | `/api/users` | admin | hapus semua **kecuali akun sendiri** + backup |
 
-### Report
-
-| Method | Path | Akses | Query params |
-|---|---|---|---|
-| GET | `/api/report` | user login | `period` (`daily/weekly/monthly/yearly/custom`), `month`, `year`, `day`, `weekEnd`, `from`, `to`, `factoryId` (admin) |
-
-Respons berisi: `period`, `defects`, `sales`, `replacementPos`, `recap`, `buckets`, `salesYearly`,
-`salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `statuses`, `factories`.
-Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
-
-`replacementPos` adalah baris PO berketerangan **`Replacement`** pada periode terpilih, dan
-`totals.replacementQty` dipakai kartu **Replacement** di halaman Report. Periodenya dicocokkan
-dengan `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect
-(`YYYY-MM-DDTHH:mm`). Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa**
-`pricePerPcs`/`value`/`currency`.
-
 ### Excel
 
 Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
@@ -460,6 +481,7 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 |---|---|---|
 | POST | `/api/defects/bulk-delete` | `{ ids: number[] }` |
 | POST | `/api/sales/bulk-delete` | `{ ids: number[] }` |
+| POST | `/api/purchase-orders/bulk-delete` | `{ ids: number[] }` |
 
 ---
 
@@ -500,7 +522,17 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Rasio**: `defectQty / salesQty`; jika `salesQty = 0` dan `defectQty > 0` → **100%**; keduanya 0 → "-".
 - Badge rasio: **< 1% hijau**, **1–2% kuning**, **> 2% merah**.
 
-**Kartu ringkasan** (urut): Total Defect, Nilai Defect, Total Sales, Nilai Sales, Rasio Defect/Sales — kartu **Nilai** hanya tampil untuk admin; Total & Rasio tampil untuk semua role.
+**Kartu ringkasan** (urut): Total Defect, Nilai Defect, Total Sales, Nilai Sales, Rasio Defect/Sales,
+**Replacement**.
+
+- **Total Defect & Nilai Defect menampilkan angka BERSIH**: `defectQty − replacementQty` dan
+  `defectValue − Value RW Replacement` (Quantity × harga master, sama-sama Rupiah). Hasilnya
+  **dibatasi bawah 0** — Replacement yang melebihi defect menampilkan `0`, bukan angka negatif.
+  Rumusnya ditulis di keterangan kartu supaya pengurangannya terlihat.
+- **Rasio Defect/Sales memakai angka defect bersih** agar konsisten dengan kartu Total Defect.
+- **Kartu Replacement** = qty PO berketerangan `Replacement` pada periode terpilih.
+- Angka **mentah** tetap dipakai grafik, pie, dan tabel rekap.
+- Kartu **Nilai** (Nilai Defect, Nilai Sales) hanya tampil untuk admin; kartu lain tampil untuk semua role.
 
 **Filter pabrik** (admin): dropdown searchable; role Pabrik terkunci pada pabriknya dan hanya melihat produk yang punya data di pabriknya.
 
@@ -513,7 +545,8 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Klik baris** → dialog detail defect.
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
-- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, Value).
+- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Harga RW**, Value).
+- **Value dihitung dari harga master**: dropdown **Harga RW** terisi otomatis sesuai bulan/tahun timestamp defect (periodenya bisa diganti). Begitu harga dipilih, isian **Value dikunci** dan server menghitung `quantity × harga master`. Kalau produk belum punya harga di periode itu, Value diketik manual dan muncul keterangan bahwa harganya belum ada. Ganti produk atau timestamp akan menyesuaikan pilihan harganya. Lihat juga **Value RW** di PO Product (§8.10) — polanya sama.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
   - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
@@ -534,12 +567,21 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 
 ### 8.5 Data Master
 
-- Tab: **Produk**, **Problem**, **Status**, **Pabrik** (komponen `master-list.tsx`).
+- Tab: **Produk**, **Problem**, **Harga Produk**, **Status** (komponen `master-list.tsx` untuk
+  master nama, `price-list.tsx` untuk harga).
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
-- CRUD + paging (5/10/25/50/100) + import/export/template Excel.
-- Hapus master gagal (409) jika masih dipakai defect/sales.
+- **Tab Harga Produk** mengelola harga per produk per **bulan + tahun** (selalu Rupiah). Kolom tabel:
+  SKU · Nama Produk · Harga · Bulan · Tahun. Formulirnya memilih Produk, Harga, Bulan, Tahun.
+  Perhatikan: **ubah harga ≠ timpa harga lama**. Harga baru dibuat sebagai baris baru untuk periode
+  berikutnya, dan defect/PO lama tetap merujuk ke baris harganya masing-masing. Tombol **Salin harga
+  periode sebelumnya** menyalin seluruh harga dari periode terakhir sebelum periode tujuan (yang sudah
+  ada dilewati), jadi pergantian bulan tidak perlu mengetik ulang semua produk.
+  Tab ini tidak punya tombol Excel — impor/ekspor harga belum tersedia.
+- CRUD + paging (5/10/25/50/100) + import/export/template Excel untuk master nama.
+- Hapus master gagal (409) jika masih dipakai defect/sales; **hapus harga** gagal (409) bila masih
+  dirujuk baris PO atau defect.
 - **Hapus semua** per tab dengan dialog konfirmasi + backup otomatis.
 
 ### 8.6 User Management
@@ -551,7 +593,8 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 
 ### 8.7 Excel (Impor/Ekspor/Template)
 
-- Tersedia di semua modul: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`.
+- Tersedia di modul: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
+  **Harga Produk belum punya Excel** (tombolnya nonaktif di tab itu) — harga diisi lewat UI atau tombol salin periode.
 - Import: validasi per baris, referensi nama → id (produk/pabrik/problem/status harus ada), duplikat di-skip, hasil detail + CSV.
 - Export role Pabrik: kolom value tidak ikut.
 - Nama file export: `produk.xlsx`, `problem.xlsx`, `status.xlsx`, `pabrik.xlsx`, `defect.xlsx`, `sales.xlsx`, `users.xlsx`; template: `template-{modul}.xlsx`.
@@ -575,11 +618,45 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Brand**: warna utama `#46BBC5` (dari logo), font **Plus Jakarta Sans**, logo `frontend/public/logo.png`.
 - **i18n**: Indonesia (default), English, 中文 — hanya untuk label UI; data dari database tidak diterjemahkan. Preferensi disimpan di `localStorage` key `defect-sales-language`.
 
+### 8.10 PO Product (`/po`)
+
+Pencatatan purchase order per produk per pabrik.
+
+**Halaman**: kartu ringkasan Total Quantity PO, tabel, filter, dan tombol Template/Import/Export/Hapus
+Semua/Tambah. Halaman memakai **`AuthGuard`** (bukan `AdminGuard`) supaya role Pabrik bisa membukanya
+baca-saja.
+
+**Filter**: Produk, Pabrik, **Bulan**, **Tahun**, Keterangan, dan kotak Cari. Bulan/Tahun membaca
+`poDate`. Filter dilakukan di klien agar sama persis dengan halaman Sales.
+
+**Kolom tabel** (admin): PO Number, **Timestamp**, Keterangan, Nama Produk, Pabrik, Quantity, **PPN**,
+Price/pcs, Total Currency, **Value RW**. Role Pabrik hanya melihat 6 kolom pertama (tanpa PPN/harga).
+
+**Form**: PO Number, **Timestamp** (`datetime-local`, diisi operator, default waktu sekarang), Product
+(satu dropdown berisi **nama produk saja** — SKU tidak ditampilkan di sini), Pabrik, Quantity,
+Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Harga RW**, Total Value (otomatis), dan
+Keterangan (satu dari tiga nilai tetap).
+
+- **Value RW** = `Quantity × harga master` dan **selalu Rupiah** — kolom terpisah dari Total yang
+  mata uangnya bisa USD/RMB. **Harga RW** terisi otomatis sesuai bulan/tahun timestamp dan boleh
+  diganti ke periode lain. Kalau produk belum punya harga di periode itu, PO **tetap bisa disimpan**
+  dan Value RW ditampilkan `-`.
+- **Timestamp** adalah tanggal PO yang diisi operator (bukan waktu input); wajib diisi.
+- **`value`/Total selalu dihitung ulang di server** dari `pricePerPcs × quantity`; angka dari klien diabaikan.
+- **PPN hanya penanda** — tidak menambah Total, tidak ada kolom nilai pajak/DPP.
+- **Satu PO Number boleh diinput berkali-kali**, termasuk untuk produk yang sama: tidak ada `UNIQUE`
+  dan tidak ada validasi duplikat di POST/PATCH maupun impor Excel.
+- **SKU tidak disimpan** di baris PO (melekat pada `products.sku`); SKU tetap ikut di ekspor Excel.
+- **Keterangan di-hardcode** (`Product Order` / `Sparepart Order` / `Replacement`); nilai asing jatuh ke
+  default saat POST/PATCH, sedangkan pada impor Excel barisnya ditolak dengan alasan.
+- Role Pabrik tidak menerima `pricePerPcs`, `value`, `currency`, `ppn`, maupun `productPrice*`.
+
 ---
 
 ## 9. Ringkasan Aturan Bisnis Penting
 
-1. **Value (IDR) hanya untuk admin** — dihapus dari respons API untuk role Pabrik (`stripValue`).
+1. **Value (IDR) hanya untuk admin** — dihapus dari respons API untuk role Pabrik (`stripValue`),
+   termasuk `productPrice*` pada defect/PO karena harga satuan bisa dipakai menghitung ulang value.
 2. **Role Pabrik ter-scope** — `scopedFactoryId()` memaksa filter `factoryId` milik user; produk yang tampil di Report hanya yang punya data.
 3. **Role Pabrik hanya menu Report** — sidebar menyembunyikan menu lain + `AdminGuard` redirect.
 4. **Data sales tidak punya tahun** — pencocokan periode memakai bulan; grafik sales selalu tahunan 12 bulan.
@@ -589,6 +666,14 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 8. **Impor idempotent** — data duplikat di-skip, bukan error; error per baris dilaporkan.
 9. **Delete-all selalu backup dulu**; master yang masih dipakai tidak bisa dihapus (409).
 10. **Dropdown search**: item non-match disembunyikan, bukan dihapus (lihat 8.9).
+11. **Harga produk tidak pernah ditimpa** — satu harga per produk per bulan/tahun (unik), perubahan
+    harga = baris baru. Baris PO & Defect menyimpan **rujukan** ke baris harga, jadi nilai lama tidak
+    ikut berubah. Harga selalu Rupiah.
+12. **`value` Defect = `quantity × harga master`** bila barisnya memakai harga; kalau produk belum
+    punya harga di periode itu, `value` diketik manual.
+13. **PO tanpa `UNIQUE`** — satu PO Number boleh diinput berkali-kali, termasuk produk yang sama.
+14. **PPN hanya penanda** — tidak menambah Total, dan disembunyikan dari role Pabrik.
+15. **Keterangan PO di-hardcode** — tidak ada master/CRUD-nya.
 
 ---
 
@@ -596,14 +681,15 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 
 | Fitur | Admin | Pabrik |
 |---|---|---|
-| Report | ✅ semua pabrik | ✅ pabriknya sendiri (value disembunyikan) |
+| Report | ✅ semua pabrik | ✅ pabriknya sendiri (nilai & harga disembunyikan) |
 | Data Defect | ✅ CRUD | ❌ (hanya Report) |
 | Data Sales | ✅ CRUD | ❌ |
-| Data Master | ✅ CRUD | ❌ |
+| Data Master + Harga Produk | ✅ CRUD | ❌ |
+| PO Product (`/po`) | ✅ CRUD | ✅ baca-saja, hanya PO pabriknya, tanpa harga/PPN |
 | User Management | ✅ CRUD | ❌ |
 | Import/Export Excel | ✅ | ❌ |
 | Hapus semua data | ✅ | ❌ |
-| Lihat Value (IDR) | ✅ | ❌ |
+| Lihat Value (IDR) / harga / PPN | ✅ | ❌ |
 
 ---
 
@@ -634,15 +720,59 @@ Perintah lain:
 
 ### Docker
 
+**Di mesin development (build image):**
+
 ```bash
 cp .env.example .env        # isi BETTER_AUTH_SECRET (min 32 karakter)
 docker compose up -d --build
 ```
 
 - App: http://localhost:3000
+- Image: `bardi-defect-report:latest` (±1.3 GB)
 - Data SQLite: `./data/sqlite.db` (bind mount, tidak di-commit)
-- Saat start container: `drizzle-kit push --force` → `npm run db:seed` (idempotent) → `next start`
+- Saat start container: `drizzle-kit push --force` → `npm run db:seed` (idempotent, dilewati bila
+  database sudah berisi data) → `next start`
+- Cek status: `docker compose ps` (ada healthcheck ke `/login`, `start_period` 90 detik)
 - Log: `docker compose logs -f`; stop: `docker compose down`
+
+**Deploy ke server:**
+
+Karena server tujuan bisa berbeda arsitektur/jaringan, image dipindahkan sebagai berkas:
+
+```bash
+# di mesin development — simpan image ke satu berkas
+docker save bardi-defect-report:latest -o bardi-defect-report.tar
+
+# salin ke server (scp/rsync/USB), lalu di server:
+docker load -i bardi-defect-report.tar
+```
+
+Siapkan di server (satu folder):
+
+```
+docker-compose.yml
+.env                 # BETTER_AUTH_SECRET + BETTER_AUTH_URL publik
+data/                # folder database (boleh dikosongkan; schema dibuat otomatis)
+```
+
+Lalu:
+
+```bash
+docker compose up -d          # tanpa --build, image sudah ada dari docker load
+docker compose ps             # tunggu sampai (healthy)
+```
+
+Hal yang wajib diperhatikan saat deploy:
+
+| Hal | Keterangan |
+|---|---|
+| `BETTER_AUTH_URL` | **Ganti ke alamat publik server** (mis. `http://192.168.1.10:3000` atau `https://defect.contoh.com`). Kalau dibiarkan `localhost`, login bisa gagal dari browser lain. |
+| `BETTER_AUTH_SECRET` | Wajib diganti, minimal 32 karakter, dan **jangan di-commit**. |
+| Data lama | Untuk memakai data yang sudah ada, salin `data/sqlite.db` ke folder `data/` di server **sebelum** `up`. Tanpa itu container membuat database baru lalu mengisinya dengan data seed. |
+| Backup | Fitur "Hapus semua" otomatis membuat `data/backup-*.db`. Sertakan folder `data/` dalam jadwal backup server. |
+| Schema baru | Kalau nanti ada perubahan schema, cukup ganti image (`docker load` versi baru) lalu `docker compose up -d` — `drizzle-kit push` dijalankan otomatis saat container start. **Backup `data/sqlite.db` dulu** sebelum mengganti image yang mengubah schema. |
+| Port | `3000:3000`. Kalau di server sudah dipakai, ubah sisi kiri (mis. `8080:3000`) dan sesuaikan `BETTER_AUTH_URL`. |
+| Reverse proxy | Jalankan di belakang Nginx/Caddy untuk HTTPS; arahkan ke `127.0.0.1:3000`. Set `BETTER_AUTH_URL` ke URL HTTPS-nya. |
 
 ### PENTING: Dev vs Docker
 
@@ -751,23 +881,34 @@ Jangan lupa hapus script test & uninstall `playwright-core` setelah selesai.
 1. Admin login.
 2. Buka **User Management** → tambah **Pabrik**.
 3. Buat akun: Admin (tanpa pabrik) dan Pabrik (terhubung ke pabrik).
-4. Buka **Data Master** → atur **Produk**, **Problem**, **Status**.
-5. Aplikasi siap dipakai.
+4. Buka **Data Master** → atur **Produk** (nama + SKU), **Problem**, **Status**.
+5. Buka tab **Harga Produk** → isi harga tiap produk untuk bulan/tahun berjalan. Untuk bulan
+   berikutnya, ganti Bulan/Tahun lalu klik **Salin harga periode sebelumnya**, kemudian sunting hanya
+   produk yang harganya berubah.
+6. Aplikasi siap dipakai.
+
+> Harga boleh diisi bertahap. Produk yang belum punya harga tetap bisa di-PO maupun dicatat
+> defect-nya; nilainya saja yang dikosongkan/diisi manual sampai harganya tersedia.
 
 ### 16.2 Pencatatan Data Sales & Defect oleh Admin
 
 1. Buka **Data Sales** → Tambah (atau Import Excel).
 2. Data tampil di tabel + total quantity/value.
-3. Buka **Data Defect** → Tambah Data Defect (form lengkap termasuk link foto/video dan value).
-4. Data lama dari spreadsheet diimpor via Excel.
+3. Buka **Data Defect** → Tambah Data Defect. Pilih produk, lalu **Harga RW** terisi otomatis sesuai
+   bulan/tahun timestamp; **Value** ikut terhitung dan terkunci. Kalau produk belum punya harga di
+   periode itu, Value diketik manual.
+4. Data lama dari spreadsheet diimpor via Excel (kolom Value di berkas dipakai apa adanya).
+5. Buka **PO Product** → Tambah → isi PO Number, Timestamp, Product, Pabrik, Quantity, Price/pcs,
+   Currency, PPN, dan Keterangan. **Harga RW** menentukan Value RW.
 
 ### 16.3 Penggunaan oleh Role Pabrik
 
 1. Login username & password.
 2. Sistem memeriksa factory user.
-3. Hanya menu **Report** yang tampil.
+3. Menu **Report** dan **PO Product** yang tampil; PO dibuka dalam mode baca-saja.
 4. Seluruh tombol tambah/ubah/hapus/import tidak ada.
-5. Kolom value tidak muncul — hanya quantity.
+5. Kolom value, harga (Price/pcs, Total, Currency, Value RW), PPN, dan harga master tidak muncul —
+   hanya quantity.
 6. Data hanya milik pabriknya sendiri.
 
 ### 16.4 Melihat Laporan Analisis
