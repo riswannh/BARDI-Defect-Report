@@ -74,6 +74,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Kartu **Replacement** di Report + Total/Nilai Defect jadi angka bersih | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
+| + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
 
 ---
 
@@ -98,7 +99,12 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | Runtime script | tsx | ^4.23.13 |
 | Deployment | Docker (node:22-bookworm-slim), docker compose | — |
 
-Catatan penting: `@swc/helpers` **wajib** terpasang sebagai devDependency (tanpa ini dev server error "Panic in async function").
+Catatan dependensi:
+
+- `@swc/helpers` **wajib** terpasang sebagai devDependency (tanpa ini dev server error "Panic in async function").
+- `drizzle-kit` dan `tsx` ada di **`dependencies`** (bukan devDependencies) karena dipakai saat
+  container produksi start: `drizzle-kit push` untuk menyinkronkan schema dan `tsx` untuk `db:seed`.
+  Memindahkannya ke devDependencies akan membuat container gagal start kecuali perintah start-nya ikut diubah.
 
 ---
 
@@ -728,12 +734,18 @@ docker compose up -d --build
 ```
 
 - App: http://localhost:3000
-- Image: `bardi-defect-report:latest` (±1.3 GB)
+- Image: `bardi-defect-report:latest` (**±1,23 GB**)
 - Data SQLite: `./data/sqlite.db` (bind mount, tidak di-commit)
 - Saat start container: `drizzle-kit push --force` → `npm run db:seed` (idempotent, dilewati bila
   database sudah berisi data) → `next start`
 - Cek status: `docker compose ps` (ada healthcheck ke `/login`, `start_period` 90 detik)
 - Log: `docker compose logs -f`; stop: `docker compose down`
+
+**Isi image** (kenapa ukurannya segitu): `node_modules` **672 MB** (mayoritas `next` 202 MB +
+`@next` 93 MB + `lucide-react` 44 MB), `.next` 39 MB, sisanya OS dasar dan sumber. `drizzle-kit` dan
+`tsx` **wajib ikut** karena dipakai saat container start (`drizzle-kit push` dan `db:seed`), dan
+keduanya karena itu berada di `dependencies`, bukan `devDependencies` — jangan dipindahkan kembali
+tanpa mengganti perintah start-nya.
 
 **Deploy ke server:**
 
