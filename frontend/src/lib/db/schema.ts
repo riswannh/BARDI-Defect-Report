@@ -182,6 +182,18 @@ export const defects = sqliteTable(
       .notNull()
       .references(() => factories.id),
     value: integer("value").notNull().default(0),
+    /**
+     * Harga master (Rupiah) yang dipakai baris defect ini — sama polanya dengan PO.
+     *
+     * Rujukan ke `product_prices`, bukan salinan angkanya, sehingga
+     * `value = quantity × harga` selalu konsisten dan defect lama tidak berubah
+     * saat harga baru dibuat untuk periode berikutnya.
+     *
+     * NULL berarti produk ini belum punya harga untuk bulan/tahun defect tersebut;
+     * baris defect tetap boleh disimpan dan `value`-nya diketik manual (perilaku
+     * lama, dipakai juga oleh impor Excel).
+     */
+    productPriceId: integer("productPriceId").references(() => productPrices.id),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),

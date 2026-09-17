@@ -262,7 +262,8 @@ duplikat (keputusan pemilik produk).
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | |
 | `factoryId` | FK → factories | |
-| `value` | integer (default 0) | IDR; **disembunyikan untuk role Pabrik** |
+| `value` | integer (default 0) | IDR. Dihitung server sebagai `quantity × harga master` bila baris memakai harga, kalau tidak diisi manual; **disembunyikan untuk role Pabrik** |
+| `productPriceId` | FK → product_prices (nullable) | harga master (Rupiah) yang dipakai baris ini — pola yang sama dengan **Value RW** di PO. NULL = value diketik manual |
 | `createdAt` / `updatedAt` | timestamp | |
 
 Index: `factoryId`, `productId`, `timeStamp`.
@@ -388,6 +389,14 @@ respons memuat `replacementPos` (baris PO berketerangan `Replacement` pada perio
 (`productPriceId`), bukan salinan angkanya, sehingga menambah harga baru untuk periode lain tidak
 mengubah nilai PO lama. Bila produk belum punya harga di periode PO, Value RW dikosongkan (`-`) dan
 PO tetap boleh disimpan.
+
+**`value` pada Defect memakai pola yang sama.** Form defect punya dropdown **Harga RW** yang terisi
+otomatis dari bulan/tahun `timestamp` defect; begitu harga dipilih, server menghitung
+`value = quantity × harga master` dan mengabaikan angka kiriman klien (isian Value dikunci di form).
+Bila produk belum punya harga di periode itu, rujukannya NULL dan **Value diisi manual** seperti
+sebelumnya — inilah yang membuat impor Excel defect tetap bekerja tanpa kolom harga. Defect lama
+tidak dihitung ulang; hanya rujukannya yang ditautkan bila produknya memang punya harga di periode
+defect tersebut (`scripts/migrate-defect-price.ts`).
 
 **`carry-forward`** ada karena harga biasanya hanya berubah untuk sebagian produk: alih-alih
 mengetik ratusan baris tiap bulan, salin dulu dari periode sebelumnya lalu sunting yang berubah.

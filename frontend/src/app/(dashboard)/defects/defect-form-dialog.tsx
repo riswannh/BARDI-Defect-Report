@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { formatIDR, formatNumber, priceMonthLabel } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +31,7 @@ import {
   formHasContent,
   suggestNextCode,
 } from "./defect-form";
-import type { Factory } from "@/lib/types";
+import type { Factory, ProductPrice } from "@/lib/types";
 
 interface DefectFormDialogProps {
   open: boolean;
@@ -48,6 +49,8 @@ interface DefectFormDialogProps {
   productOptions: SelectOption[];
   problemOptions: SelectOption[];
   statusOptions: SelectOption[];
+  /** Semua harga produk (semua periode) untuk menghitung value. */
+  productPrices: ProductPrice[];
 }
 
 export function DefectFormDialog({
@@ -64,6 +67,7 @@ export function DefectFormDialog({
   productOptions,
   problemOptions,
   statusOptions,
+  productPrices,
 }: DefectFormDialogProps) {
   const { t } = useLanguage();
   const codeInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +77,32 @@ export function DefectFormDialog({
   const suggestedCode = useMemo(
     () => (isEditing ? null : suggestNextCode(defects, factories, form.factoryId)),
     [isEditing, defects, factories, form.factoryId]
+  );
+
+  /**
+   * Harga master milik produk terpilih, periode terbaru dulu. Labelnya memuat
+   * periode supaya operator tahu harga mana yang dipakai.
+   */
+  const priceOptions = useMemo(
+    () =>
+      productPrices
+        .filter(
+          (row) =>
+            form.productId !== "" && row.productId === Number(form.productId)
+        )
+        .sort(
+          (a, b) =>
+            b.year.localeCompare(a.year) || b.month.localeCompare(a.month)
+        )
+        .map((row) => ({
+          value: String(row.id),
+          label: `${priceMonthLabel(row.month)} ${row.year} — ${formatIDR(row.price)}`,
+        })),
+    [productPrices, form.productId]
+  );
+
+  const selectedPrice = productPrices.find(
+    (row) => String(row.id) === form.productPriceId
   );
 
   // Isian awal saat dialog dibuka. "Kotor" berarti berubah dari kondisi awal,
@@ -271,7 +301,23 @@ export function DefectFormDialog({
                 <Select
                   value={form.productId}
                   onValueChange={(v) =>
-                    onFormChange((f) => ({ ...f, productId: String(v) }))
+                    onFormChange((f) => {
+                      const nextProductId = String(v);
+                      // Produk berganti -> rujukan harga lama tidak relevan lagi.
+                      // Pilih harga yang cocok dengan bulan/tahun timestamp defect.
+                      const period = f.timestamp.slice(0, 7);
+                      const match =
+                        productPrices.find(
+                          (row) =>
+                            row.productId === Number(nextProductId) &&
+                            `${row.year}-${row.month}` === period
+                        ) ?? undefined;
+                      return {
+                        ...f,
+                        productId: nextProductId,
+                        productPriceId: match ? String(match.id) : "",
+                      };
+                    })
                   }
                   items={productOptions}
                 >
@@ -325,19 +371,66 @@ export function DefectFormDialog({
                 />
               </div>
               {isAdmin && (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="defect-value">{t("common.valueIdr")}</Label>
-                  <Input
-                    id="defect-value"
-                    type="number"
-                    inputMode="numeric"
-                    value={form.value}
-                    onChange={(e) =>
-                      onFormChange((f) => ({ ...f, value: e.target.value }))
-                    }
-                    placeholder="0"
-                  />
-                </div>
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t("po.priceRw")}</Label>
+                    {/* Harga master per bulan/tahun. Kalau dipilih, value dihitung
+                        server: quantity × harga (pola yang sama dengan Value RW
+                        di PO Product), jadi isian Value dikunci. */}
+                    <Select
+                      value={form.productPriceId}
+                      onValueChange={(v) =>
+                        onFormChange((f) => ({
+                          ...f,
+                          productPriceId: String(v ?? ""),
+                        }))
+                      }
+                      items={priceOptions}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t("po.selectPrice")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedPrice
+                        ? t("po.valueRwHint", {
+                            qty: formatNumber(Number(form.quantity) || 0),
+                            price: formatIDR(selectedPrice.price),
+                          })
+                        : t("defects.priceManual")}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="defect-value">{t("common.valueIdr")}</Label>
+                    <Input
+                      id="defect-value"
+                      type="number"
+                      inputMode="numeric"
+                      value={
+                        selectedPrice
+                          ? String(
+                              Math.round(
+                                (Number(form.quantity) || 0) * selectedPrice.price
+                              )
+                            )
+                          : form.value
+                      }
+                      readOnly={Boolean(selectedPrice)}
+                      className={selectedPrice ? "bg-muted/50 tabular-nums" : undefined}
+                      onChange={(e) =>
+                        onFormChange((f) => ({ ...f, value: e.target.value }))
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                </>
               )}
             </div>
             <div className="flex flex-col gap-1.5">

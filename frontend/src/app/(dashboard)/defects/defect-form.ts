@@ -24,7 +24,14 @@ export interface DefectForm {
   quantity: string;
   statusId: string;
   factoryId: string;
+  /**
+   * Diketik manual HANYA kalau tidak ada harga master yang dipakai. Begitu
+   * `productPriceId` terisi, server menghitung value = quantity × harga master
+   * (pola yang sama dengan Value RW di PO Product) dan mengabaikan angka ini.
+   */
   value: string;
+  /** Baris harga master (per bulan/tahun) yang dipakai; kosong bila belum ada. */
+  productPriceId: string;
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal mesin, bukan UTC). */
@@ -49,6 +56,7 @@ export function emptyForm(): DefectForm {
     statusId: "",
     factoryId: "",
     value: "",
+    productPriceId: "",
   };
 }
 
@@ -65,6 +73,9 @@ export function carryOverForm(previous: DefectForm): DefectForm {
     productId: previous.productId,
     factoryId: previous.factoryId,
     statusId: previous.statusId,
+    // Harga dibawa karena produknya sama, jadi periode harga yang dipilih pun
+    // besar kemungkinan masih relevan untuk entri berikutnya.
+    productPriceId: previous.productPriceId,
   };
 }
 
@@ -96,6 +107,7 @@ export function rowToForm(d: DefectRow): DefectForm {
     statusId: String(d.statusId),
     factoryId: String(d.factoryId),
     value: String(d.value ?? 0),
+    productPriceId: d.productPriceId ? String(d.productPriceId) : "",
   };
 }
 

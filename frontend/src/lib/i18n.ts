@@ -654,6 +654,11 @@ const translations = {
     en: "Ctrl+Enter to save",
     zh: "按 Ctrl+Enter 保存",
   },
+  "defects.priceManual": {
+    id: "Produk ini belum punya harga untuk periode itu — Value diisi manual.",
+    en: "This product has no price for that period — Value is entered manually.",
+    zh: "该产品在此期间没有价格 — 金额需手动填写。",
+  },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",
     en: "Saved. Ready for the next entry.",

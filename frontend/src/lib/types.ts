@@ -61,6 +61,15 @@ export interface Defect {
   statusId: number;
   factoryId: number;
   value: number;
+  /**
+   * Harga master (Rupiah) yang dipakai baris ini, sama polanya dengan Value RW
+   * di PO. Null berarti produk belum punya harga di periode defect tersebut,
+   * sehingga `value`-nya diketik manual.
+   */
+  productPriceId?: number | null;
+  productPrice?: number | null;
+  productPriceMonth?: string | null;
+  productPriceYear?: string | null;
 }
 
 export interface Sale {

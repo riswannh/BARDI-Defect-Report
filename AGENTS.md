@@ -192,6 +192,16 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     tujuan (bukan hanya bulan tepat sebelumnya) dan melewati yang sudah ada — dipakai untuk
     pergantian bulan tanpa mengetik ulang semua produk.
   - Menghapus harga yang masih dirujuk baris PO ditolak **409**.
+  - **`defects.value` memakai pola yang sama dengan Value RW**: baris defect punya `productPriceId`
+    (rujukan ke `product_prices`, bukan salinan angka). Kalau rujukan itu ada, server menghitung
+    `value = quantity × harga` dan **mengabaikan angka kiriman klien**; form mengunci isian Value.
+    Rujukan diisi otomatis dari bulan/tahun `timeStamp` defect (`findDefectPriceId`) bila operator
+    tidak memilih. Kalau produk belum punya harga di periode itu, rujukannya NULL dan value diketik
+    manual — perilaku lama ini yang membuat impor Excel defect tetap jalan tanpa kolom harga.
+    Defect lama tidak dihitung ulang; lihat `scripts/migrate-defect-price.ts`.
+  - `stripValue()` (dipakai Defect & Sales) kini juga membuang `productPrice*` untuk role Pabrik:
+    harga satuan bisa dipakai menghitung ulang value, jadi membiarkannya sama saja membocorkan angka
+    yang sedang disembunyikan.
 - **Tracing import**: respons import berisi `errors[]` & `skippedDetails[]` (baris, data, alasan) → ditampilkan di dialog `ImportResultDialog`, bisa diunduh CSV, dan dicatat di log server dengan prefix `[import:{module}]`
 - **Hapus semua data**: `DELETE /api/{module}` (admin only) — backup otomatis `backup-{module}-{timestamp}.db` dibuat dulu di folder data; master data gagal dihapus (409) jika masih dipakai defect/sales; hapus semua users mengecualikan akun sendiri
 - **Import users**: pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`

@@ -20,6 +20,7 @@ import type {
   PeriodType,
   Problem,
   Product,
+  ProductPrice,
   Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
@@ -83,6 +84,9 @@ export default function DefectsPage() {
   const { data: problemData } = useApi<Problem[]>("/api/problems");
   const { data: statusData } = useApi<Status[]>("/api/statuses");
   const { data: factoryData } = useApi<Factory[]>("/api/factories");
+  // Harga master per bulan/tahun: dipakai form defect untuk menghitung value
+  // (quantity × harga), sama seperti Value RW di PO Product.
+  const { data: priceData } = useApi<ProductPrice[]>("/api/product-prices");
 
   const products = productData ?? [];
   const problems = problemData ?? [];
@@ -328,7 +332,10 @@ export default function DefectsPage() {
       quantity: Number(form.quantity) || 0,
       statusId: Number(form.statusId),
       factoryId: Number(form.factoryId),
+      // Angka manual: hanya dipakai server kalau tidak ada harga master terpilih.
       value: Number(form.value) || 0,
+      // Kalau diisi, server menghitung value = quantity × harga master.
+      productPriceId: form.productPriceId ? Number(form.productPriceId) : null,
     };
     if (!payload.codeGaransi || !payload.productId || !payload.factoryId) return;
 
@@ -513,6 +520,7 @@ export default function DefectsPage() {
         productOptions={productOptions}
         problemOptions={problemOptions}
         statusOptions={statusOptions}
+        productPrices={priceData ?? []}
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
