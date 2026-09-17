@@ -53,7 +53,13 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl bg-popover p-4 text-sm text-popover-foreground shadow-2xl shadow-[oklch(0.648_0.1_209.8/0.12)] ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // `grid-cols-1` + `min-w-0` wajib: popup ini memakai `grid` tanpa kolom
+          // eksplisit, sehingga kolomnya memakai `auto` dan melebar mengikuti isi
+          // yang tidak bisa membungkus (mis. SelectTrigger dengan nama pabrik
+          // panjang). Akibatnya isi dialog meluber keluar kartu — terjadi di
+          // dialog Sales saat mengubah data. Kolom eksplisit `1fr` mengunci
+          // lebarnya ke lebar dialog.
+          "fixed top-1/2 left-1/2 z-50 grid w-full min-w-0 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 grid-cols-1 gap-4 rounded-2xl bg-popover p-4 text-sm text-popover-foreground shadow-2xl shadow-[oklch(0.648_0.1_209.8/0.12)] ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

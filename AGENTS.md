@@ -224,6 +224,21 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
 - Saat popup terbuka, Base UI menangkap tombol karakter (typeahead); input
   pencarian perlu `event.stopPropagation()` untuk `event.key.length === 1`.
 - `DropdownMenuLabel` harus dibungkus `DropdownMenuGroup`.
+- **`DialogContent` jangan dibiarkan memakai kolom grid `auto`.** Popup-nya memakai
+  `grid`; tanpa kolom eksplisit kolomnya `auto`, sehingga melebar mengikuti isi yang
+  tidak bisa membungkus — `SelectTrigger` ber-`whitespace-nowrap` dengan nama pabrik
+  panjang membuat isi dialog **meluber keluar kartu** (dialog 448px, isinya 499px).
+  Gejala yang dilaporkan di halaman Sales: "kartu tidak full dan text box offset".
+  Perbaikannya `grid-cols-1` + `min-w-0` di popup, ditambah `min-w-0` pada
+  `SelectTrigger` dan `SelectValue` supaya teks panjang menyusut lalu terpotong
+  elipsis. Jangan dihapus tanpa menggantinya dengan pengunci lebar lain.
+- **`onOpenChange` pada `Dialog` bukan tempat untuk navigasi.** Di halaman Sales dulu
+  `open === false` memanggil `advanceEdit()`, yang langsung `return` ketika antrean
+  edit kosong — akibatnya dialog form TAMBAH **tidak bisa ditutup sama sekali** (klik X
+  maupun Escape tidak bereaksi), dan pada mode edit X berpindah ke baris antrean
+  berikutnya alih-alih menutup. Pindah antrean hanya untuk SETELAH SIMPAN berhasil.
+  (Halaman Defects memakai pola serupa tapi aman karena antrean editnya berisi satu
+  baris; perilaku "X lanjut ke data berikutnya" di sana memang disengaja.)
 - `useApi` mengosongkan data saat URL berubah (loading) — untuk daftar yang harus
   stabil (mis. pabrik di Report), fetch terpisah dari endpoint master.
 

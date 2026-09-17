@@ -245,12 +245,25 @@ export default function SalesPage() {
     }
   }
 
+  /**
+   * Menutup dialog = benar-benar menutup.
+   *
+   * Sebelumnya fungsi ini memanggil `advanceEdit()` saat `open === false`, dan
+   * `advanceEdit()` langsung `return` ketika antrean edit kosong — sehingga
+   * dialog form TAMBAH tidak bisa ditutup sama sekali, baik lewat tombol X
+   * maupun Escape. Pada mode edit pun X berpindah ke baris antrean berikutnya
+   * alih-alih menutup. Perpindahan antrean sekarang hanya terjadi setelah
+   * SIMPAN berhasil (lihat handleSubmit), bukan saat dialog dibatalkan.
+   */
   function handleDialogOpenChange(open: boolean) {
     if (open) {
       setDialogOpen(true);
       return;
     }
-    advanceEdit();
+    setDialogOpen(false);
+    setEditQueue([]);
+    setEditIndex(0);
+    setForm(emptyForm);
   }
 
   async function handleSubmit(e: React.FormEvent) {
