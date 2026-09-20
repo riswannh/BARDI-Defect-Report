@@ -1,0 +1,33 @@
+# Reverse proxy untuk BARDI Defect Report.
+#
+# Ganti placeholder di bawah dengan domain gratis dari Hostinger, ATAU biarkan
+# begitu saja — compose mengisi {$DOMAIN} dari berkas .env, jadi file ini tidak
+# perlu disunting asal .env berisi DOMAIN=...
+#
+# Caddy menerbitkan & memperbarui sertifikat HTTPS sendiri, jadi tidak ada
+# langkah certbot dan tidak ada sertifikat yang kedaluwarsa diam-diam.
+#
+# Syarat: DNS domain sudah diarahkan ke IP VPS (A record), dan port 80 + 443
+# terbuka. Kalau DNS belum mengarah ke server, Caddy akan gagal mengambil
+# sertifikat dan situs tampil dengan peringatan keamanan.
+
+{$DOMAIN} {
+	# app = nama service di docker-compose.yml, dijangkau lewat jaringan internal
+	# Docker pada port 3000.
+	reverse_proxy app:3000
+
+	# Berkas Excel ekspor bisa beberapa MB; naikkan batas unggah agar impor
+	# berkas besar tidak ditolak.
+	request_body {
+		max_size 50MB
+	}
+
+	encode gzip zstd
+
+	log {
+		output file /data/access.log {
+			roll_size 10MB
+			roll_keep 5
+		}
+	}
+}

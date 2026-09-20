@@ -1,0 +1,64 @@
+# ============================================================================
+# Compose PRODUKSI — dipakai DI SERVER (VPS).
+# Berbeda dari docker-compose.yml di root repo yang untuk development lokal.
+#
+# Cara pakai di server:
+#   1. mkdir -p /opt/bardi && cd /opt/bardi
+#   2. salin berkas ini + Caddyfile + backup.sh ke folder itu
+#   3. buat .env berisi BETTER_AUTH_SECRET dan DOMAIN
+#   4. docker compose up -d
+#
+# Aplikasi TIDAK membuka port ke internet (tanpa "ports:") — hanya Caddy yang
+# menghadap keluar, dan app dijangkau lewat jaringan internal Docker.
+# ============================================================================
+
+services:
+  app:
+    # Image dibangun di mesin development lalu dipindah lewat docker save/load.
+    # Sengaja TANPA "build:" supaya server tidak perlu Node/npm sama sekali.
+    image: bardi-defect-report:latest
+    container_name: bardi-app
+    restart: unless-stopped
+    environment:
+      DB_FILE_NAME: /data/sqlite.db
+      # WAJIB alamat publik, bukan localhost — kalau salah, login gagal dari
+      # browser pengguna.
+      BETTER_AUTH_URL: https://${DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+    volumes:
+      # Database + backup otomatis (backup-*.db) tinggal di folder ini.
+      - ./data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # Reverse proxy + HTTPS otomatis (sertifikat diurus Caddy, tidak perlu cron
+  # certbot). Cukup arahkan domain ke IP VPS lalu Caddy menerbitkan sertifikatnya.
+  caddy:
+    image: caddy:2-alpine
+    container_name: bardi-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
