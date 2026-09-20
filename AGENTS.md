@@ -249,6 +249,13 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   berikutnya alih-alih menutup. Pindah antrean hanya untuk SETELAH SIMPAN berhasil.
   (Halaman Defects memakai pola serupa tapi aman karena antrean editnya berisi satu
   baris; perilaku "X lanjut ke data berikutnya" di sana memang disengaja.)
+- **Halaman dilindungi `AuthGuard` DAN `src/proxy.ts`.** `proxy.ts` (pengganti
+  `middleware.ts` di Next.js 16) memeriksa keberadaan cookie sesi **sebelum halaman
+  dirender**; tanpa itu pengguna melihat kedipan halaman Report dulu, baru dilempar ke
+  `/login`. Penting: proxy ini hanya memeriksa **keberadaan** cookie, bukan
+  memvalidasinya — jadi ia murni perbaikan UX, dan validasi sesungguhnya tetap di
+  `AuthGuard` + `requireUser`/`requireAdmin` pada setiap route API. Jangan menjadikan
+  proxy sebagai satu-satunya penjaga akses.
 - `useApi` mengosongkan data saat URL berubah (loading) — untuk daftar yang harus
   stabil (mis. pabrik di Report), fetch terpisah dari endpoint master.
 
