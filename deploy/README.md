@@ -1,5 +1,41 @@
 # Deploy BARDI Defect Report ke VPS Hostinger
 
+> **STATUS: SUDAH TER-DEPLOY** (20 September 2026) di
+> **https://portalbardi.cloud** — VPS Hostinger `srv1992782`
+> (Ubuntu 26.04, 2 vCPU / 7,9 GB RAM / 96 GB, IP `76.13.182.114`).
+>
+> Berkas ini tetap dipakai sebagai panduan kalau nanti perlu deploy ulang,
+> pindah server, atau menyiapkan environment baru. Bagian "Yang sudah berjalan
+> di server" di bawah merangkum kondisi nyatanya.
+
+---
+
+## Yang sudah berjalan di server
+
+| Komponen | Kondisi |
+|---|---|
+| Aplikasi | `https://portalbardi.cloud` — container `bardi-app` (healthy) |
+| HTTPS | Let's Encrypt, diterbitkan & diperpanjang otomatis oleh Caddy |
+| Database | `/opt/bardi/data/sqlite.db` (1,5 MB) berisi data produksi |
+| Backup | `/opt/bardi/backups/` + cron harian 02:00 |
+| Firewall | ufw aktif — hanya 22, 80, 443 |
+| Pemakaian | app ~92 MB RAM, caddy ~13 MB RAM (dari 7,9 GB) |
+| Berkas | `/opt/bardi/`: `docker-compose.yml`, `Caddyfile`, `backup.sh`, `.env` |
+
+Perintah harian di server:
+
+```bash
+cd /opt/bardi
+docker compose ps                  # status container
+docker compose logs -f app         # log aplikasi
+docker compose restart app         # restart aplikasi
+/opt/bardi/backup.sh               # backup manual
+```
+
+---
+
+## Panduan lengkap (untuk deploy berikutnya)
+
 Panduan langkah demi langkah. Semua perintah dijalankan **di VPS** kecuali yang
 ditandai *(di komputer Anda)*.
 
