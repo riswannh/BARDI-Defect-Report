@@ -281,9 +281,20 @@ export async function reportGET(req: NextRequest) {
     totals: user.isAdmin
       ? totals
       : {
+          // Angka kuantitas tetap dikirim ke role Pabrik — nilainya sudah
+          // diturunkan dari defectQty/replacementQty yang memang mereka terima,
+          // jadi tidak ada tambahan yang bocor.
+          //
+          // `netDefectQty` WAJIB ada di sini: kartu "Total Defect" memakainya
+          // sebagai angka utama. Sebelumnya field ini hanya dikirim ke admin,
+          // sehingga di akun Pabrik kartunya jatuh ke `?? 0` dan selalu
+          // menampilkan 0 walaupun keterangannya menyebut angka yang benar.
           defectQty: totals.defectQty,
           salesQty: totals.salesQty,
           replacementQty: totals.replacementQty,
+          netDefectQty: totals.netDefectQty,
+          // `defectValue`, `salesValue`, `replacementValue`, dan
+          // `replacementRwValue` tetap disembunyikan: itu angka Rupiah.
         },
     years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),
