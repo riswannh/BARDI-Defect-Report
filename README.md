@@ -336,6 +336,12 @@ Semua endpoint ada di `frontend/src/app/api/`. Auth via cookie session Better Au
 |---|---|---|---|
 | * | `/api/auth/[...all]` | publik | handler Better Auth (login, logout, session) |
 
+### Diagnostik Klien
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| POST | `/api/client-errors` | user login | catat kegagalan jaringan dari browser (URL, method, body, pesan + stack error, `online`, jumlah percobaan, user agent). Satu baris JSON per kejadian di `<folder database>/client-errors.log`, bergilir ke `.log.1` pada 2 MB |
+
 ### Data Master (CRUD)
 
 Berlaku untuk `products`, `problems`, `statuses`, `factories`:
@@ -877,6 +883,28 @@ const browser = await chromium.launch({
 ```
 
 Jangan lupa hapus script test & uninstall `playwright-core` setelah selesai.
+
+### "Failed to fetch" saat menyimpan
+
+Gejalanya: menekan simpan gagal dengan `TypeError: Failed to fetch`, padahal **log Caddy tidak memuat
+request itu sama sekali** — artinya request tidak pernah sampai ke server. Jadi ini bukan bug server,
+bukan validasi, dan bukan 401: koneksi browser → server yang putus-nyambung (sering terjadi di
+lapangan, dan request non-GET tidak diulang sendiri oleh browser).
+
+Penanganannya:
+
+- `src/lib/api-client.ts` — request **GET/PATCH** diulang sekali otomatis. PATCH di aplikasi ini
+  menulis nilai tetap (`name`/`sku`, dsb.) sehingga aman diulang; **POST/DELETE/upload tidak diulang**
+  supaya baris tidak tergandakan. Kalau tetap gagal, detailnya dikirim ke `/api/client-errors`
+  (disimpan dulu di `localStorage` bila pengirimannya ikut gagal, lalu dikirim lagi begitu ada
+  request yang berhasil).
+- `src/components/master-list.tsx` — saat penyimpanan gagal, formulir **tidak** mengosongkan isian:
+  baris tetap dalam mode edit dan teksnya tinggal disimpan ulang. Handler `onAdd`/`onRename` karena
+  itu mengembalikan `false` ketika gagal.
+- `src/app/(dashboard)/master/page.tsx` — pesan galat jaringan diganti kalimat yang jelas
+  (`describeError`), bukan "Failed to fetch" mentah.
+
+Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 
 ### Hal lain
 

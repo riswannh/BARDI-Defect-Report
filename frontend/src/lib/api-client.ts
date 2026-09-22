@@ -20,38 +20,173 @@ async function parse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
+/**
+ * Kegagalan jaringan (bukan balasan server) tidak bisa dibaca dari pesannya —
+ * `fetch` hanya memberi `TypeError: Failed to fetch`. Jadi detailnya dikumpulkan
+ * di sini lalu dikirim ke `/api/client-errors` supaya bisa diperiksa dari server.
+ *
+ * Log disimpan dulu di localStorage; kalau pengirimannya ikut gagal (koneksinya
+ * memang sedang putus) isinya dikirim lagi begitu ada request yang berhasil.
+ */
+const PENDING_KEY = "bardi:client-errors";
+const MAX_PENDING = 30;
+const RETRY_DELAY_MS = 400;
+
+function pendingList(): unknown[] {
+  try {
+    const raw = window.localStorage.getItem(PENDING_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePending(list: unknown[]) {
+  try {
+    window.localStorage.setItem(
+      PENDING_KEY,
+      JSON.stringify(list.slice(-MAX_PENDING))
+    );
+  } catch {
+    // localStorage penuh atau diblokir: catatannya hilang, tapi aplikasi jangan terganggu.
+  }
+}
+
+function text(value: unknown): string | null {
+  try {
+    const json = JSON.stringify(value);
+    return json === undefined ? null : json;
+  } catch {
+    return null;
+  }
+}
+
+/** Info timing: membedakan gagal seketika (koneksi ditolak) vs menggantung (timeout). */
+function timing(url: string) {
+  try {
+    const entries = performance.getEntriesByName(url, "resource");
+    const last = entries[entries.length - 1] as
+      | (PerformanceResourceTiming & { responseStatus?: number })
+      | undefined;
+    if (!last) return {};
+    return {
+      durationMs: Math.round(last.duration),
+      protocol: last.nextHopProtocol || null,
+      responseStatus: last.responseStatus ?? null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function buildFailure(
+  url: string,
+  init: RequestInit,
+  body: unknown,
+  err: unknown,
+  attempts: number
+) {
+  return {
+    url,
+    method: init.method ?? "GET",
+    requestBody: text(body),
+    errorName: err instanceof Error ? err.name : typeof err,
+    errorMessage: err instanceof Error ? err.message : String(err),
+    errorStack: err instanceof Error ? (err.stack ?? null) : null,
+    online: navigator.onLine,
+    page: window.location.href,
+    attempts,
+    ...timing(url),
+  };
+}
+
+async function sendFailure(entry: unknown) {
+  const res = await fetch("/api/client-errors", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(entry),
+  });
+  if (!res.ok) throw new Error(`client-errors -> ${res.status}`);
+}
+
+/** Kirim log yang menunggu. Dipanggil setelah request berhasil (koneksi hidup lagi). */
+async function flushFailures() {
+  const pending = pendingList();
+  if (pending.length === 0) return;
+  savePending([]);
+  for (const entry of pending) {
+    try {
+      await sendFailure(entry);
+    } catch {
+      savePending([...pendingList(), entry]);
+    }
+  }
+}
+
+function jsonInit(method: string, body: unknown): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  };
+}
+
+async function request<T>(
+  url: string,
+  init: RequestInit,
+  body: unknown,
+  retryNetwork: boolean
+): Promise<T> {
+  for (let attempts = 1; ; attempts += 1) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) void flushFailures();
+      return await parse<T>(res);
+    } catch (err) {
+      // ApiError = server menjawab; itu bukan masalah jaringan, jangan diulang.
+      if (err instanceof ApiError) throw err;
+
+      // ponytail: sekali ulang saja, dan hanya untuk GET/PATCH yang menulis nilai
+      // tetap. Request yang gagal di sini terbukti tidak sampai ke server (log Caddy
+      // kosong), jadi mengulang tidak menggandakan data. Naikkan jadi 3 kalau
+      // koneksinya masih sering putus.
+      if (retryNetwork && attempts < 2) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        continue;
+      }
+
+      savePending([
+        ...pendingList(),
+        buildFailure(url, init, body, err, attempts),
+      ]);
+      void flushFailures();
+      throw err;
+    }
+  }
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
-  return parse<T>(await fetch(url));
+  return request<T>(url, {}, undefined, true);
 }
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
-  return parse<T>(
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
+  return request<T>(url, jsonInit("POST", body), body, false);
 }
 
 export async function apiPatch<T>(url: string, body?: unknown): Promise<T> {
-  return parse<T>(
-    await fetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
+  return request<T>(url, jsonInit("PATCH", body), body, true);
 }
 
 export async function apiDelete<T>(url: string): Promise<T> {
-  return parse<T>(await fetch(url, { method: "DELETE" }));
+  return request<T>(url, { method: "DELETE" }, undefined, false);
 }
 
 export async function apiUpload<T>(url: string, file: File): Promise<T> {
+  // Tidak diulang: body FormData sudah terpakai setelah percobaan pertama.
   const form = new FormData();
   form.append("file", file);
-  return parse<T>(await fetch(url, { method: "POST", body: form }));
+  return request<T>(url, { method: "POST", body: form }, null, false);
 }
 
 export function downloadUrl(url: string) {

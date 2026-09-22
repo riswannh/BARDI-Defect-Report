@@ -123,6 +123,41 @@ rm bardi-defect-report.tar            # hemat 1,2 GB
 
 ---
 
+### Alternatif: build di VPS (dipakai 22 September 2026)
+
+Cara di atas memindahkan image ±1,2 GB. Kalau koneksi ke VPS sedang tidak stabil, unggahan sebesar
+itu rawan putus di tengah. Alternatifnya kirim source saja (±0,25 MB) lalu build di server:
+
+```bash
+# di komputer Anda
+tar -czf bardi-src.tar.gz --exclude=node_modules --exclude=.next --exclude=".env*" \
+  --exclude="*.db*" --exclude=.git -C frontend .
+scp -i ~/.ssh/bardi-vps bardi-src.tar.gz root@IP_VPS:/tmp/
+
+# di VPS
+docker tag bardi-defect-report:latest bardi-defect-report:sebelum-fix    # jaring pengaman
+mkdir -p /opt/bardi/src && tar -xzf /tmp/bardi-src.tar.gz -C /opt/bardi/src
+cd /opt/bardi/src && docker build -t bardi-defect-report:baru .
+docker tag bardi-defect-report:baru bardi-defect-report:latest
+/opt/bardi/backup.sh                        # backup database dulu
+cd /opt/bardi && docker compose up -d app   # jalankan image baru
+docker image prune                          # opsional: buang image <none>
+```
+
+Yang perlu diketahui:
+
+- `docker build` berjalan **di dalam container**, jadi Node/npm tetap tidak dipasang di host —
+  peringatan di bagian 0 tetap berlaku.
+- Base image `node:22-bookworm-slim` sudah ada di server karena ikut saat image pertama dimuat;
+  tahap build butuh akses ke repo Debian (apt) dan npmjs.org.
+- Tool build (python3/make/g++) hanya dipakai di tahap `builder`, tidak ikut ke image akhir.
+- Build memakan 5–15 menit di 2 vCPU. Aplikasi lama tetap melayani permintaan sampai
+  `docker compose up -d app` dijalankan.
+- **Rollback**: `docker tag bardi-defect-report:sebelum-fix bardi-defect-report:latest && docker compose up -d app`.
+
+Kalau `.env` sampai ikut di tarball, tidak apa-apa untuk build (`.dockerignore` mengecualikannya),
+tapi sebaiknya tetap dikecualikan: berkas itu berisi `BETTER_AUTH_SECRET`.
+
 ## 3. Salin berkas deploy
 
 Salin `docker-compose.yml`, `Caddyfile`, dan `backup.sh` dari folder `deploy/`

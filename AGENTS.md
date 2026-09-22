@@ -149,7 +149,10 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - Excel: `template-produk.xlsx` dan ekspor `produk.xlsx` memakai kolom `Nama` + `SKU`;
     impor melewati baris dengan SKU yang sudah dipakai (termasuk bentrok antar-baris di berkas
     yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap satu kolom `Nama`.
-- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template` (module: products, problems, statuses, factories, defects, sales, users, purchase-orders)
+- **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template`
+- **Diagnostik klien**: `POST /api/client-errors` (route `src/app/api/client-errors/route.ts`) mencatat
+  kegagalan jaringan dari browser ke `<folder database>/client-errors.log`. Hanya user login yang boleh
+  menulis dan tiap kolom dipotong panjangnya — tanpa itu siapa pun bisa membanjiri berkas log. (module: products, problems, statuses, factories, defects, sales, users, purchase-orders)
 - **PO Product** (`/po`, modul `purchase-orders`) — lihat `SPEC-po-product.md` untuk spec lengkapnya:
   - Tabel `purchase_orders`: `poNumber` (boleh berulang), `poDate` (tanggal PO, DIISI MANUAL, format
     `YYYY-MM-DDTHH:mm`), `productId`, `factoryId`, `quantity`, `pricePerPcs` (real, boleh pecahan),
@@ -218,6 +221,15 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 ## Frontend (Base UI) — JEBAKAN YANG SUDAH TERJADI
 
 Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/` atau form.
+
+- **Formulir TIDAK boleh mengosongkan isian saat penyimpanan gagal.** `onAdd`/`onRename` pada
+  `MasterList` mengembalikan `false` bila gagal dan baris tetap dalam mode edit, sehingga teks yang
+  sudah diketik tinggal disimpan ulang. Handler di halaman master (`addItem`/`renameItem`) meneruskan
+  hasil itu sebagai `true`/`false`. Sebelumnya satu kegagalan jaringan menghapus SKU yang baru diketik.
+- **Kegagalan jaringan ditangani sekali di `src/lib/api-client.ts`**, jangan diulang di tiap halaman:
+  GET/PATCH diulang sekali otomatis (POST/DELETE/upload tidak, supaya data tidak tergandakan), dan
+  detail kegagalannya dikirim ke `POST /api/client-errors` karena `fetch` cuma memberi
+  `TypeError: Failed to fetch`. Catatan lengkap ada di README bagian "Failed to fetch" saat menyimpan.
 
 - **JANGAN memberi `key` yang berubah mengikuti status buka/tutup pada daftar item
   Select.** `SelectSearch` di `src/components/ui/select.tsx` pernah memakai

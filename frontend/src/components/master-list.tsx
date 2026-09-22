@@ -12,10 +12,16 @@ interface MasterItem {
   sku?: string | null;
 }
 
+/**
+ * `false` berarti penyimpanan gagal. Formulir memakai itu untuk MENAHAN isian
+ * supaya pengguna bisa klik simpan lagi tanpa mengetik ulang.
+ */
+type SubmitResult = void | boolean | Promise<void | boolean>;
+
 interface MasterListProps {
   items: MasterItem[];
-  onAdd: (name: string, sku?: string) => void;
-  onRename: (id: number, name: string, sku?: string) => void;
+  onAdd: (name: string, sku?: string) => SubmitResult;
+  onRename: (id: number, name: string, sku?: string) => SubmitResult;
   onDelete: (id: number) => void;
   addPlaceholder?: string;
   readOnly?: boolean;
@@ -42,10 +48,14 @@ export function MasterList({
   const [editingName, setEditingName] = useState("");
   const [editingSku, setEditingSku] = useState("");
 
-  function submitAdd(e: React.FormEvent) {
+  async function submitAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!newName.trim()) return;
-    onAdd(newName.trim(), withSku ? newSku.trim() : undefined);
+    const ok = await onAdd(
+      newName.trim(),
+      withSku ? newSku.trim() : undefined
+    );
+    if (ok === false) return; // gagal -> isian tetap ada, bisa klik Tambah lagi
     setNewName("");
     setNewSku("");
   }
@@ -56,14 +66,14 @@ export function MasterList({
     setEditingSku(item.sku ?? "");
   }
 
-  function submitEdit() {
-    if (editingId !== null && editingName.trim()) {
-      onRename(
-        editingId,
-        editingName.trim(),
-        withSku ? editingSku.trim() : undefined
-      );
-    }
+  async function submitEdit() {
+    if (editingId === null || !editingName.trim()) return;
+    const ok = await onRename(
+      editingId,
+      editingName.trim(),
+      withSku ? editingSku.trim() : undefined
+    );
+    if (ok === false) return; // gagal -> tetap mode edit, teks tidak hilang
     setEditingId(null);
   }
 

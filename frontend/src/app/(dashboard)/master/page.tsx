@@ -3,7 +3,14 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
-import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
+import {
+  ApiError,
+  apiDelete,
+  apiPatch,
+  apiPost,
+  apiUpload,
+  downloadUrl,
+} from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type {
   ImportResult,
@@ -23,6 +30,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
+
+/**
+ * Kegagalan jaringan pesannya cuma `TypeError: Failed to fetch` dari browser.
+ * Ganti dengan kalimat yang menjelaskan bahwa isian masih ada dan bisa disimpan
+ * ulang — detail lengkapnya sudah dicatat api-client ke /api/client-errors.
+ */
+function describeError(err: unknown) {
+  if (err instanceof ApiError) return err.message;
+  return "Koneksi ke server terputus. Isian Anda masih ada — klik simpan sekali lagi.";
+}
 
 export default function MasterPage() {
   const { t } = useLanguage();
@@ -72,8 +89,10 @@ export default function MasterPage() {
     try {
       await apiPost(endpoint, sku === undefined ? { name } : { name, sku });
       reload();
+      return true;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menambah.");
+      toast.error(describeError(err));
+      return false;
     }
   }
 
@@ -90,8 +109,10 @@ export default function MasterPage() {
         sku === undefined ? { name } : { name, sku }
       );
       reload();
+      return true;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal mengubah.");
+      toast.error(describeError(err));
+      return false;
     }
   }
 
@@ -100,7 +121,7 @@ export default function MasterPage() {
       await apiDelete(`${endpoint}/${id}`);
       reload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
+      toast.error(describeError(err));
     }
   }
 
