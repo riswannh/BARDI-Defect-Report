@@ -389,56 +389,8 @@ export async function listSaleRows(user: SessionUser, params: URLSearchParams) {
 export { stripValue };
 
 /* ============================== Defects ============================== */
-
-/**
- * Hitung `value` defect dari harga master bila harganya dipakai.
- *
- * Sama seperti Value RW di PO: kalau `productPriceId` diisi, value = quantity ×
- * harga master dan angka kiriman klien diabaikan. Kalau tidak ada harga (produk
- * belum punya harga di periode itu), value diketik manual seperti sebelumnya —
- * perilaku lama dipertahankan supaya impor Excel dan baris lama tetap jalan.
- */
-async function defectValueFromPrice(
-  productPriceId: number | null | undefined,
-  quantity: number,
-  fallbackValue: number
-): Promise<number> {
-  if (productPriceId === null || productPriceId === undefined) {
-    return fallbackValue;
-  }
-  const rows = await db
-    .select({ price: productPrices.price })
-    .from(productPrices)
-    .where(eq(productPrices.id, productPriceId));
-  if (rows.length === 0) return fallbackValue;
-  return Math.round(quantity * rows[0].price);
-}
-
-/**
- * Cari harga master untuk produk tertentu pada bulan/tahun timestamp defect.
- *
- * Sama dengan versi PO: bulan/tahun dibaca langsung dari string
- * `YYYY-MM-DDTHH:mm`, bukan lewat Date, supaya tidak bergeser karena zona waktu.
- */
-export async function findDefectPriceId(
-  productId: number,
-  timestamp: string
-): Promise<number | null> {
-  const year = timestamp.slice(0, 4);
-  const month = timestamp.slice(5, 7);
-  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return null;
-  const rows = await db
-    .select({ id: productPrices.id })
-    .from(productPrices)
-    .where(
-      and(
-        eq(productPrices.productId, productId),
-        eq(productPrices.year, year),
-        eq(productPrices.month, month)
-      )
-    );
-  return rows[0]?.id ?? null;
-}
+/* Nilai defect disimpan apa adanya dari isian operator atau impor Excel, jadi
+   tidak ada lagi penghitungan `quantity × harga master` di sini. */
 
 export async function defectsGET(req: NextRequest) {
   const guard = await requireUser();
@@ -466,22 +418,17 @@ export async function defectsPOST(req: NextRequest) {
   }
 
   const { timestamp, ...rest } = parsed.data;
-  // Harga master: pakai yang dipilih operator, atau cari otomatis sesuai
-  // bulan/tahun timestamp defect. Boleh null bila produk belum punya harga.
-  const productPriceId =
-    parsed.data.productPriceId !== undefined &&
-    parsed.data.productPriceId !== null
-      ? parsed.data.productPriceId
-      : await findDefectPriceId(parsed.data.productId, timestamp);
-  const value = await defectValueFromPrice(
-    productPriceId,
-    parsed.data.quantity ?? 0,
-    parsed.data.value ?? 0
-  );
-
+  // Nilai defect disimpan apa adanya dan tautan ke harga master tidak diisi lagi
+  // (keputusan user: satu isian "Value RW" saja, angka di kotak itu yang masuk
+  // database). Harga master tetap dipakai form sebagai isian awal.
   const [row] = await db
     .insert(defects)
-    .values({ ...rest, timeStamp: timestamp, productPriceId, value })
+    .values({
+      ...rest,
+      timeStamp: timestamp,
+      productPriceId: null,
+      value: parsed.data.value ?? 0,
+    })
     .returning();
   return jsonOk(row, 201);
 }
@@ -518,25 +465,7 @@ export async function defectsPATCH(
 
   const { timestamp, ...rest } = parsed.data;
 
-  /**
-   * Harga master: kalau operator memilih sendiri, hormati pilihannya (termasuk
-   * memilih kosong). Kalau tidak dikirim, cari ulang otomatis — perlu karena
-   * produk atau timestamp-nya mungkin ikut berubah sehingga rujukan harga lama
-   * bisa jadi tidak nyambung lagi.
-   */
-  const finalProductId = parsed.data.productId ?? current[0].productId;
-  const finalTimestamp =
-    timestamp ?? current[0].timeStamp;
-  const productPriceId =
-    parsed.data.productPriceId !== undefined
-      ? parsed.data.productPriceId
-      : await findDefectPriceId(finalProductId, finalTimestamp);
   const finalQuantity = parsed.data.quantity ?? current[0].quantity;
-  const value = await defectValueFromPrice(
-    productPriceId,
-    finalQuantity,
-    parsed.data.value ?? current[0].value
-  );
 
   const [row] = await db
     .update(defects)
@@ -544,8 +473,10 @@ export async function defectsPATCH(
       ...rest,
       ...(timestamp ? { timeStamp: timestamp } : {}),
       quantity: finalQuantity,
-      value,
-      productPriceId,
+      // Nilai disimpan apa adanya; tautan harga master tidak dipakai lagi untuk
+      // defect, jadi dikosongkan juga saat baris lama disunting.
+      value: parsed.data.value ?? current[0].value,
+      productPriceId: null,
       updatedAt: new Date(),
     })
     .where(eq(defects.id, rowId))

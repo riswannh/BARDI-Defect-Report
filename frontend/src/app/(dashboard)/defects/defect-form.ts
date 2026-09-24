@@ -25,13 +25,12 @@ export interface DefectForm {
   statusId: string;
   factoryId: string;
   /**
-   * Diketik manual HANYA kalau tidak ada harga master yang dipakai. Begitu
-   * `productPriceId` terisi, server menghitung value = quantity × harga master
-   * (pola yang sama dengan Value RW di PO Product) dan mengabaikan angka ini.
+   * Nilai defect (Rupiah) yang disimpan APA ADANYA ke database — tidak dihitung
+   * ulang di server dan tidak lagi merujuk baris harga master. Form mengisinya
+   * otomatis dari harga master periode ini sebagai isian awal, tapi angkanya boleh
+   * diubah dan yang tersimpan adalah isi kotak ini.
    */
   value: string;
-  /** Baris harga master (per bulan/tahun) yang dipakai; kosong bila belum ada. */
-  productPriceId: string;
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal mesin, bukan UTC). */
@@ -56,7 +55,6 @@ export function emptyForm(): DefectForm {
     statusId: "",
     factoryId: "",
     value: "",
-    productPriceId: "",
   };
 }
 
@@ -65,7 +63,7 @@ export function emptyForm(): DefectForm {
  *
  * Produk, Pabrik, dan Status dibawa dari entri sebelumnya karena satu shift
  * biasanya mencatat beberapa defect pada produk/pabrik yang sama. Kode garansi,
- * timestamp, qty, value, dan detail dikosongkan supaya tidak ikut terduplikasi.
+ * timestamp, qty, dan detail dikosongkan supaya tidak ikut terduplikasi.
  */
 export function carryOverForm(previous: DefectForm): DefectForm {
   return {
@@ -73,9 +71,9 @@ export function carryOverForm(previous: DefectForm): DefectForm {
     productId: previous.productId,
     factoryId: previous.factoryId,
     statusId: previous.statusId,
-    // Harga dibawa karena produknya sama, jadi periode harga yang dipilih pun
-    // besar kemungkinan masih relevan untuk entri berikutnya.
-    productPriceId: previous.productPriceId,
+    // Produknya sama dan periodenya biasanya masih sama, jadi nilai tadi dibawa
+    // sebagai isian awal entri berikutnya (masih bisa diubah).
+    value: previous.value,
   };
 }
 
@@ -107,7 +105,6 @@ export function rowToForm(d: DefectRow): DefectForm {
     statusId: String(d.statusId),
     factoryId: String(d.factoryId),
     value: String(d.value ?? 0),
-    productPriceId: d.productPriceId ? String(d.productPriceId) : "",
   };
 }
 

@@ -666,10 +666,10 @@ const translations = {
     en: "Ctrl+Enter to save",
     zh: "按 Ctrl+Enter 保存",
   },
-  "defects.priceManual": {
-    id: "Produk ini belum punya harga untuk periode itu — Value diisi manual.",
-    en: "This product has no price for that period — Value is entered manually.",
-    zh: "该产品在此期间没有价格 — 金额需手动填写。",
+  "defects.valueHint": {
+    id: "Terisi otomatis dari harga master periode ini saat produk dipilih. Angkanya boleh diubah — yang disimpan adalah isi kotak ini.",
+    en: "Filled automatically from this period's master price when a product is picked. Editable — this number is what gets saved.",
+    zh: "选择产品后自动填入本期主价格。可修改 — 保存的就是这里的数字。",
   },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",

@@ -332,10 +332,9 @@ export default function DefectsPage() {
       quantity: Number(form.quantity) || 0,
       statusId: Number(form.statusId),
       factoryId: Number(form.factoryId),
-      // Angka manual: hanya dipakai server kalau tidak ada harga master terpilih.
+      // Nilai defect (Rupiah), disimpan apa adanya — server tidak menghitung ulang
+      // dari harga master dan tidak mengisi productPriceId lagi.
       value: Number(form.value) || 0,
-      // Kalau diisi, server menghitung value = quantity × harga master.
-      productPriceId: form.productPriceId ? Number(form.productPriceId) : null,
     };
     if (!payload.codeGaransi || !payload.productId || !payload.factoryId) return;
 

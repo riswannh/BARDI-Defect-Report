@@ -81,13 +81,12 @@ export const defectFields = {
   statusId: z.coerce.number().int().positive(),
   factoryId: z.coerce.number().int().positive(),
   /**
-   * Angka manual. Kalau `productPriceId` diisi, server menghitung ulang
-   * `value = quantity × harga master` dan mengabaikan angka ini — sama seperti
-   * pola Value RW di PO Product.
+   * Nilai defect (Rupiah), disimpan APA ADANYA — dari isian operator maupun kolom
+   * Value pada impor Excel. Server tidak lagi menghitung `quantity × harga master`
+   * dan tidak mengisi `productPriceId`; harga master hanya dipakai form sebagai
+   * isian awal (lihat `defect-form-dialog.tsx`).
    */
   value: z.coerce.number().int().min(0),
-  /** Harga master (Rupiah) untuk menghitung value; boleh kosong. */
-  productPriceId: z.coerce.number().int().positive().nullable(),
 } satisfies z.ZodRawShape;
 
 export const defectSchema = buildCreate(defectFields, {
@@ -96,7 +95,6 @@ export const defectSchema = buildCreate(defectFields, {
   problemDetail: z.string().trim().default(""),
   quantity: z.coerce.number().int().min(0).default(0),
   value: z.coerce.number().int().min(0).default(0),
-  productPriceId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export const defectUpdateSchema = buildUpdate(defectFields);

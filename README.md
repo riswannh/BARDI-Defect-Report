@@ -5,7 +5,7 @@
 > `PRD.md` adalah dokumen kebutuhan awal; README ini adalah versi terupdate yang sudah disinkronkan dengan implementasi.
 
 - **Repo**: https://github.com/riswannh/BARDI-Defect-Report (private, branch `main`)
-- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun (Value RW), value Defect dari harga master, dan kartu **Replacement** di Report
+- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun (Value RW), value Defect disimpan apa adanya dari isian **Value RW** (harga master hanya isian awal), dan kartu **Replacement** di Report
 
 ---
 
@@ -70,11 +70,13 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Perbaikan bug Select: nilai terpilih tidak lagi direset `null` saat popup ditutup | ✅ Selesai |
 | + | **PO Product** (`/po`) — CRUD, filter periode, PPN, Excel, akses baca-saja untuk Pabrik | ✅ Selesai |
 | + | **Harga Produk** per bulan/tahun (master) + salin periode sebelumnya | ✅ Selesai |
-| + | **Value RW** di PO & **value Defect** dihitung dari harga master | ✅ Selesai |
+| + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
+| + | **Value RW** di Defect jadi satu isian nilai (disimpan apa adanya, impor Excel memakai angka Excel) | ✅ Selesai |
 | + | Kartu **Replacement** di Report + Total/Nilai Defect jadi angka bersih | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
+| + | Value RW Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
 
 ---
 
@@ -274,8 +276,8 @@ duplikat (keputusan pemilik produk).
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | |
 | `factoryId` | FK → factories | |
-| `value` | integer (default 0) | IDR. Dihitung server sebagai `quantity × harga master` bila baris memakai harga, kalau tidak diisi manual; **disembunyikan untuk role Pabrik** |
-| `productPriceId` | FK → product_prices (nullable) | harga master (Rupiah) yang dipakai baris ini — pola yang sama dengan **Value RW** di PO. NULL = value diketik manual |
+| `value` | integer (default 0) | IDR. Disimpan **apa adanya** dari isian operator atau kolom Value saat impor Excel — server tidak menghitung ulang; **disembunyikan untuk role Pabrik** |
+| `productPriceId` | FK → product_prices (nullable) | Kolom warisan. Tidak diisi lagi untuk defect (selalu NULL pada baris baru, dan ikut dikosongkan saat baris lama disunting). Harga master kini hanya jadi **isian awal** di form — lihat §8.9 |
 | `createdAt` / `updatedAt` | timestamp | |
 
 Index: `factoryId`, `productId`, `timeStamp`.
@@ -379,11 +381,13 @@ sebagai `NULL`.
 
 **Sales**: sama polanya (`/api/sales`, `/api/sales/{id}`, `/api/sales/bulk-delete`), validasi unik `productId+factoryId+month`.
 
-**`value` Defect dihitung dari harga master** (pola Value RW di PO): bila baris punya
-`productPriceId`, server menghitung `value = quantity × harga master` dan mengabaikan angka kiriman
-klien. Rujukan itu diisi otomatis dari bulan/tahun `timestamp`. Kalau produk belum punya harga di
-periode tersebut, `productPriceId` NULL dan `value` diketik manual — sehingga impor Excel defect
-tetap bekerja tanpa kolom harga. Role Pabrik tidak menerima `value` **maupun** `productPrice*`.
+**`value` Defect disimpan apa adanya**: satu isian **Value RW** di form (dan kolom `Value` saat impor
+Excel) langsung masuk ke `defects.value`; server tidak menghitung `quantity × harga master` dan tidak
+mengisi `productPriceId`. Harga master produk untuk periode `timestamp` hanya dipakai form sebagai
+**isian awal** saat produk dipilih — angkanya boleh ditimpa operator. Karena tidak ada rujukan harga,
+mengubah `quantity` tidak mengubah `value`, dan impor Excel tetap bekerja tanpa kolom harga. Role
+Pabrik tidak menerima `value` **maupun** `productPrice*`. Modul **PO Product** masih memakai pola
+lama (Value RW = `quantity × harga master` lewat `productPriceId`) — lihat §8.10.
 
 ### PO Product
 
@@ -439,13 +443,12 @@ Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`
 mengubah nilai PO lama. Bila produk belum punya harga di periode PO, Value RW dikosongkan (`-`) dan
 PO tetap boleh disimpan.
 
-**`value` pada Defect memakai pola yang sama.** Form defect punya dropdown **Harga RW** yang terisi
-otomatis dari bulan/tahun `timestamp` defect; begitu harga dipilih, server menghitung
-`value = quantity × harga master` dan mengabaikan angka kiriman klien (isian Value dikunci di form).
-Bila produk belum punya harga di periode itu, rujukannya NULL dan **Value diisi manual** seperti
-sebelumnya — inilah yang membuat impor Excel defect tetap bekerja tanpa kolom harga. Defect lama
-tidak dihitung ulang; hanya rujukannya yang ditautkan bila produknya memang punya harga di periode
-defect tersebut (`scripts/migrate-defect-price.ts`).
+**`value` pada Defect tidak lagi memakai pola itu.** Satu isian **Value RW** di form defect (dan
+kolom `Value` pada impor Excel) langsung disimpan apa adanya ke `defects.value`; server tidak
+menghitung `quantity × harga master` dan tidak mengisi `productPriceId`. Harga master hanya dipakai
+form sebagai **isian awal** saat produk dipilih dan angkanya boleh ditimpa. Nilai `value` yang sudah
+tersimpan tidak pernah dihitung ulang — termasuk saat `quantity` diubah. Skrip satu kali
+`scripts/migrate-defect-price.ts` (menautkan defect lama ke harga master) jadi tidak diperlukan lagi.
 
 **`carry-forward`** ada karena harga biasanya hanya berubah untuk sebagian produk: alih-alih
 mengetik ratusan baris tiap bulan, salin dulu dari periode sebelumnya lalu sunting yang berubah.
@@ -557,8 +560,8 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Klik baris** → dialog detail defect.
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
-- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Harga RW**, Value).
-- **Value dihitung dari harga master**: dropdown **Harga RW** terisi otomatis sesuai bulan/tahun timestamp defect (periodenya bisa diganti). Begitu harga dipilih, isian **Value dikunci** dan server menghitung `quantity × harga master`. Kalau produk belum punya harga di periode itu, Value diketik manual dan muncul keterangan bahwa harganya belum ada. Ganti produk atau timestamp akan menyesuaikan pilihan harganya. Lihat juga **Value RW** di PO Product (§8.10) — polanya sama.
+- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Value RW**).
+- **Value RW = satu isian nilai**: saat produk dipilih, kotaknya terisi awal dari harga master produk itu untuk bulan/tahun `timestamp` defect (kalau ada), tapi angkanya boleh ditimpa. Yang disimpan adalah isi kotak itu — server tidak menghitung `quantity × harga master` dan tidak mengisi `productPriceId`. Konsekuensinya menambah harga master baru tidak mengubah baris defect lama, dan kolom `Value` pada impor Excel selalu dipakai apa adanya. Pola `quantity × harga master` hanya dipakai modul **PO Product** (§8.10).
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
   - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
@@ -690,8 +693,8 @@ Keterangan (satu dari tiga nilai tetap).
 11. **Harga produk tidak pernah ditimpa** — satu harga per produk per bulan/tahun (unik), perubahan
     harga = baris baru. Baris PO & Defect menyimpan **rujukan** ke baris harga, jadi nilai lama tidak
     ikut berubah. Harga selalu Rupiah.
-12. **`value` Defect = `quantity × harga master`** bila barisnya memakai harga; kalau produk belum
-    punya harga di periode itu, `value` diketik manual.
+12. **`value` Defect disimpan apa adanya** — satu isian Value RW (dan kolom `Value` saat impor Excel)
+    langsung masuk database; harga master hanya isian awal, `productPriceId` tidak diisi lagi.
 13. **PO tanpa `UNIQUE`** — satu PO Number boleh diinput berkali-kali, termasuk produk yang sama.
 14. **PPN hanya penanda** — tidak menambah Total, dan disembunyikan dari role Pabrik.
 15. **Keterangan PO di-hardcode** — tidak ada master/CRUD-nya.
