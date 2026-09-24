@@ -47,6 +47,7 @@ export function PriceList({
   onDelete,
   onCarryForward,
   readOnly = false,
+  emptyLabel,
 }: {
   items: ProductPrice[];
   products: ProductOption[];
@@ -63,6 +64,8 @@ export function PriceList({
   onDelete: (id: number) => void;
   onCarryForward?: (input: { month: string; year: string }) => void;
   readOnly?: boolean;
+  /** Dipakai saat daftar kosong karena filter, bukan karena belum ada data. */
+  emptyLabel?: string;
 }) {
   const { t } = useLanguage();
   const [productId, setProductId] = useState<string>("");
@@ -350,7 +353,7 @@ export function PriceList({
                   colSpan={readOnly ? 5 : 6}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
-                  {t("price.empty")}
+                  {emptyLabel ?? t("price.empty")}
                 </TableCell>
               </TableRow>
             )}

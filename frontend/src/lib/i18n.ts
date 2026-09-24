@@ -409,6 +409,18 @@ const translations = {
     en: "No product prices yet. Add one with the form above.",
     zh: "暂无产品价格，请使用上方表单添加。",
   },
+  "price.searchPlaceholder": {
+    id: "Cari nama produk atau SKU",
+    en: "Search product name or SKU",
+    zh: "搜索产品名称或 SKU",
+  },
+  "price.allMonths": { id: "Semua bulan", en: "All months", zh: "所有月份" },
+  "price.allYears": { id: "Semua tahun", en: "All years", zh: "所有年份" },
+  "price.emptyFiltered": {
+    id: "Tidak ada harga yang cocok dengan filter.",
+    en: "No prices match the filter.",
+    zh: "没有符合筛选条件的价格。",
+  },
   "price.carryHint": {
     id: "Menyalin semua harga dari periode sebelum {month} {year} ke periode itu.",
     en: "Copies every price from the period before {month} {year} into that period.",

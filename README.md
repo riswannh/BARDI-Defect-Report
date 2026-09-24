@@ -590,6 +590,10 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
   berikutnya, dan defect/PO lama tetap merujuk ke baris harganya masing-masing. Tombol **Salin harga
   periode sebelumnya** menyalin seluruh harga dari periode terakhir sebelum periode tujuan (yang sudah
   ada dilewati), jadi pergantian bulan tidak perlu mengetik ulang semua produk.
+  Di atas tabel ada **filter**: kotak cari (nama produk atau SKU), pilihan **bulan**, dan pilihan
+  **tahun**. Pilihan bulan/tahun diambil dari data yang ada (tidak ada periode kosong yang bisa
+  dipilih), hasil filter langsung memengaruhi jumlah halaman, dan bila tidak ada yang cocok muncul
+  pesan "Tidak ada harga yang cocok dengan filter."
   Tab ini tidak punya tombol Excel — impor/ekspor harga belum tersedia.
 - CRUD + paging (5/10/25/50/100) + import/export/template Excel untuk master nama.
 - Hapus master gagal (409) jika masih dipakai defect/sales; **hapus harga** gagal (409) bila masih

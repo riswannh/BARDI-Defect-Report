@@ -12,6 +12,8 @@ import type {
   ProductPrice,
   Status,
 } from "@/lib/types";
+import { MONTHS_FULL } from "@/lib/format";
+import { PRICE_MONTHS } from "@/lib/api/validation";
 import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
@@ -22,6 +24,15 @@ import { PriceList } from "@/components/price-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
 
 export default function MasterPage() {
@@ -46,6 +57,43 @@ export default function MasterPage() {
   const statuses = statusData ?? [];
   const prices = priceData ?? [];
 
+  // Filter tab Harga Produk. Pilihan bulan & tahun diambil dari data yang ada,
+  // jadi tidak ada periode kosong yang bisa dipilih.
+  const [priceSearch, setPriceSearch] = useState("");
+  const [priceMonth, setPriceMonth] = useState("all");
+  const [priceYear, setPriceYear] = useState("all");
+  const priceFilterActive =
+    priceSearch.trim() !== "" || priceMonth !== "all" || priceYear !== "all";
+
+  const filteredPrices = prices.filter((item) => {
+    if (priceMonth !== "all" && item.month !== priceMonth) return false;
+    if (priceYear !== "all" && item.year !== priceYear) return false;
+    const q = priceSearch.trim().toLowerCase();
+    if (!q) return true;
+    const product = products.find((p) => p.id === item.productId);
+    const name = item.productName ?? product?.name ?? "";
+    const sku = item.sku ?? product?.sku ?? "";
+    return `${name} ${sku}`.toLowerCase().includes(q);
+  });
+
+  const priceMonthOptions = [
+    { value: "all", label: t("price.allMonths") },
+    ...[...new Set(prices.map((item) => item.month))].sort().map((value) => ({
+      value,
+      label:
+        MONTHS_FULL[
+          PRICE_MONTHS.indexOf(value as (typeof PRICE_MONTHS)[number])
+        ] ?? value,
+    })),
+  ];
+  const priceYearOptions = [
+    { value: "all", label: t("price.allYears") },
+    ...[...new Set(prices.map((item) => item.year))]
+      .sort()
+      .reverse()
+      .map((value) => ({ value, label: value })),
+  ];
+
   const [pageSize, setPageSize] = useState(10);
   const [pageState, setPageState] = useState({ signature: tab, page: 1 });
   const page = pageState.signature === tab ? pageState.page : 1;
@@ -61,7 +109,7 @@ export default function MasterPage() {
       : tab === "problems"
         ? problems
         : tab === "prices"
-          ? prices
+          ? filteredPrices
           : statuses;
   const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -70,7 +118,7 @@ export default function MasterPage() {
   const pagedProducts = products.slice(start, end);
   const pagedProblems = problems.slice(start, end);
   const pagedStatuses = statuses.slice(start, end);
-  const pagedPrices = prices.slice(start, end);
+  const pagedPrices = filteredPrices.slice(start, end);
 
   async function addItem(
     endpoint: string,
@@ -342,6 +390,68 @@ export default function MasterPage() {
               )}
             </TabsContent>
             <TabsContent value="prices">
+              <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border p-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="price-filter-search">{t("common.search")}</Label>
+                  <Input
+                    id="price-filter-search"
+                    value={priceSearch}
+                    onChange={(e) => {
+                      setPriceSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder={t("price.searchPlaceholder")}
+                    className="w-64"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t("price.month")}</Label>
+                  <Select
+                    value={priceMonth}
+                    onValueChange={(value) => {
+                      if (value === null) return;
+                      setPriceMonth(String(value));
+                      setPage(1);
+                    }}
+                    items={priceMonthOptions}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priceMonthOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t("price.year")}</Label>
+                  <Select
+                    value={priceYear}
+                    onValueChange={(value) => {
+                      if (value === null) return;
+                      setPriceYear(String(value));
+                      setPage(1);
+                    }}
+                    items={priceYearOptions}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priceYearOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <PriceList
                 items={pagedPrices}
                 products={products}
@@ -349,11 +459,14 @@ export default function MasterPage() {
                 onUpdate={updatePrice}
                 onDelete={deletePrice}
                 onCarryForward={carryForwardPrices}
+                emptyLabel={
+                  priceFilterActive ? t("price.emptyFiltered") : undefined
+                }
               />
-              {prices.length > 0 && (
+              {filteredPrices.length > 0 && (
                 <div className="mt-4">
                   <Pagination
-                    totalItems={prices.length}
+                    totalItems={filteredPrices.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}
