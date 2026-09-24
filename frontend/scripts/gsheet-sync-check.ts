@@ -221,4 +221,25 @@ assert.equal(resolved.index.problemDetail, 13);
 assert.equal(resolved.index.statusId, 14);
 assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 10);
 
-console.log("SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 9 pemeriksaan mapping");
+// Timestamp: sel tanggal di "Big Data" format tampilannya campur, jadi semua
+// bentuk yang pernah muncul harus dikenali (dan yang aneh -> kosong, bukan jam ngawur).
+assert.equal(parseSheetTimestamp("2026-01-03 13:51:39"), "2026-01-03T13:51");
+assert.equal(parseSheetTimestamp("2026-01-03T13:51"), "2026-01-03T13:51");
+assert.equal(parseSheetTimestamp("9/9/2026 23:10:4"), "2026-09-09T23:10");
+assert.equal(parseSheetTimestamp("03/09/2026 23:10"), "2026-03-09T23:10");
+assert.equal(parseSheetTimestamp("13/09/2026 8:05"), "2026-09-13T08:05");
+assert.equal(parseSheetTimestamp("3 Sep 2026 13:51"), "2026-09-03T13:51");
+assert.equal(parseSheetTimestamp("Sep 3, 2026 13:51"), "2026-09-03T13:51");
+assert.equal(parseSheetTimestamp("2026-09-09"), "2026-09-09T00:00");
+assert.equal(parseSheetTimestamp(46274), "2026-09-09T00:00");
+assert.equal(parseSheetTimestamp(46274.5), "2026-09-09T12:00");
+assert.equal(parseSheetTimestamp("abc"), "");
+assert.equal(parseSheetTimestamp(""), "");
+assert.equal(parseSheetTimestamp(null), "");
+assert.equal(parseSheetNumber("31,185,000"), 31185000);
+assert.equal(parseSheetNumber(123.6), 124);
+assert.equal(parseSheetNumber("1.234,5"), 1235);
+
+console.log(
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping"
+);

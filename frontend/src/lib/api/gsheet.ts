@@ -14,6 +14,7 @@ import {
   normalizeName,
   parseSheetNumber,
   parseSheetTimestamp,
+  shortHash,
   quoteTab,
   resolveHeaderIndex,
   type GsheetField,
@@ -59,6 +60,8 @@ type LocalRow = {
   code: string;
   fields: RowFields;
   baseline: Record<string, string> | null;
+  /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
+  rawTimeStamp: string;
 };
 
 type NameField = "problemId" | "statusId" | "factoryId" | "productId";
@@ -114,7 +117,10 @@ const text = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim()
 
 /** Baca tab sheet: header + baris (nomor baris asli ikut disimpan untuk pesan error). */
 async function readSheet(spreadsheetId: string, tab: string) {
-  const [first] = await batchGetValues(spreadsheetId, [`${quoteTab(tab)}!A1:O`]);
+  // UNFORMATTED_VALUE: sel tanggal di "Big Data" format tampilannya campur
+  // ("2026-01-03 13:51:39" vs "9/9/2026 23:10:4"), jadi lebih aman membaca
+  // angka serialnya dan mengubahnya sendiri (lihat parseSheetTimestamp).
+  const [first] = await batchGetValues(spreadsheetId, [`${quoteTab(tab)}!A1:O`], "UNFORMATTED_VALUE");
   const values = first?.values ?? [];
   if (values.length === 0) throw new GsheetError("empty-sheet", `Tab "${tab}" kosong.`);
   const header = (values[0] ?? []).map((cell) => text(cell));
@@ -200,6 +206,8 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
     code: normalizeCode(row.codeGaransi),
     fields: localFieldsFromRow(row, masters),
     baseline: parseBaseline(row.sheetFields),
+    /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
+    rawTimeStamp: row.timeStamp,
   }));
 }
 
@@ -261,6 +269,8 @@ async function runSync(options: {
   };
   const issues: { row?: number; code?: string; reason: string }[] = [];
   const conflicts: ConflictRow[] = [];
+  /** Timestamp lama yang formatnya tidak dikenali dan diperbaiki otomatis. */
+  let repairedTimestamps = 0;
   const now = new Date();
 
   const localUpdates = new Map<number, Partial<typeof defects.$inferInsert>>();
@@ -272,6 +282,18 @@ async function runSync(options: {
     if (!row.code) continue;
     seenCodes.add(row.code);
     const sheetFields = sheetFieldsFromRow(row.cells, sheet.resolved.index);
+    // Format timestamp yang tidak dikenal jangan ditulis asal-asalan — lebih baik
+    // dilaporkan supaya kelihatan daripada menyimpan jam yang salah.
+    const rawTimestamp = row.cells[sheet.resolved.index.timeStamp];
+    if (!sheetFields.timeStamp && String(rawTimestamp ?? "").trim() !== "") {
+      if (issues.length < MAX_ISSUES) {
+        issues.push({
+          row: row.sheetRow,
+          code: row.code,
+          reason: `Time Stamp "${String(rawTimestamp).slice(0, 40)}" formatnya tidak dikenali.`,
+        });
+      }
+    }
     for (const field of NAME_FIELDS) {
       sheetFields[field] = canonicalName(masters, field, sheetFields[field] ?? "", NAME_DEFAULT[field]);
     }
@@ -381,6 +403,19 @@ async function runSync(options: {
       applied += 1;
     };
 
+    // Perbaikan otomatis: nilai app yang TIDAK berbentuk baku (YYYY-MM-DDTHH:mm)
+    // pasti bukan hasil edit operator — form app selalu menulis format itu.
+    // Sisanya adalah data yang tersimpan waktu parser timestamp masih salah
+    // (mis. "9/9/2026T23:10:4"), jadi diratakan dari sheet tanpa perlu ditanya.
+    const storedStamp = local.rawTimeStamp ?? "";
+    if (storedStamp && sheetFields.timeStamp && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(storedStamp)) {
+      plan.apply = plan.apply.filter((d) => d.field !== "timeStamp");
+      plan.conflicts = plan.conflicts.filter((d) => d.field !== "timeStamp");
+      plan.baseline.timeStamp = shortHash(sheetFields.timeStamp);
+      plan.apply.push({ field: "timeStamp", sheet: sheetFields.timeStamp, app: storedStamp });
+      repairedTimestamps += 1;
+    }
+
     for (const diff of plan.apply) applyFromSheet(diff);
 
     // Konflik yang sudah diputuskan (termasuk pilihan "pakai app": nilai app
@@ -404,6 +439,12 @@ async function runSync(options: {
     } else if (plan.apply.length === 0 && plan.appOnly.length === 0) {
       summary.unchanged += 1;
     }
+  }
+
+  if (repairedTimestamps > 0) {
+    issues.unshift({
+      reason: `${repairedTimestamps} baris dengan timestamp format lama diperbaiki otomatis dari sheet.`,
+    });
   }
 
   summary.onlyInApp = localRows.filter((row) => !seenCodes.has(row.code)).length;
