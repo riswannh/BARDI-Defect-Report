@@ -206,9 +206,14 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - **Aturan memilih harga master** (dipakai form Defect *dan* PO, satu implementasi di
     `src/lib/prices.ts` → `pickProductPrice`): harga pada periode `YYYY-MM` yang diminta; kalau produk
     itu belum punya harga di periode tersebut, pakai **harga terbarunya**. Dipicu saat produk berganti
-    dan saat timestamp/`poDate` berpindah bulan — operator tetap bisa mengetik sendiri (Defect) atau
-    memilih baris harga lain dari daftar. Jangan kembalikan logika cocok-periode yang lama (yang
-    membiarkan pilihan harga sebelumnya menempel saat periode barunya kosong).
+    dan saat timestamp/`poDate` berpindah bulan — di kedua form penggantinya adalah **dropdown harga**
+    (bukan isian angka bebas). Jangan kembalikan logika cocok-periode yang lama (yang membiarkan
+    pilihan harga sebelumnya menempel saat periode barunya kosong).
+  - **Susunan field harga di form Defect = form PO** (permintaan user: lebih compact): grid dua kolom
+    berisi **Harga RW** (dropdown harga master + hint `po.valueRwHint`/`po.priceMissing`) dan **Total
+    Value** (kolom baca-saja `bg-muted/50 font-medium tabular-nums` + hint `po.totalHint`), keduanya
+    memakai kunci i18n `po.*` supaya labelnya benar-benar sama. Jangan kembali menaruh isian angka
+    bebas atau label "Value RW" di form Defect.
   - **Tombol Tambah selalu membuka form kosong** (Defect). Dulu `openCreate()` membenihi form dari
     entri terakhir lewat `lastEntryRef`, dan itu bocor: setelah mengubah baris dengan pensil, nilai
     baris itu ikut muncul di form Tambah. Membawa produk/pabrik/status/harga ke entri berikutnya

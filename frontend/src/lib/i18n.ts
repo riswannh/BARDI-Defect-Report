@@ -380,9 +380,9 @@ const translations = {
     zh: "选择价格（月/年）",
   },
   "po.priceMissing": {
-    id: "Produk ini belum punya harga untuk periode PO. Tambahkan di Data Master → Harga Produk.",
-    en: "This product has no price for the PO period yet. Add it in Data Master → Product Prices.",
-    zh: "该产品在此采购期间尚无价格，请在数据主档 → 产品价格中添加。",
+    id: "Produk ini belum punya harga sama sekali. Tambahkan dulu di Data Master → Harga Produk.",
+    en: "This product has no price at all yet. Add one in Data Master → Product Prices.",
+    zh: "该产品目前没有任何价格，请先在数据主档 → 产品价格中添加。",
   },
   "po.valueRwHint": {
     id: "{qty} × {price}",
@@ -665,11 +665,6 @@ const translations = {
     id: "Ctrl+Enter untuk menyimpan",
     en: "Ctrl+Enter to save",
     zh: "按 Ctrl+Enter 保存",
-  },
-  "defects.valueHint": {
-    id: "Terisi otomatis dari harga master periode ini (kalau belum ada, harga terbaru produk ini). Bisa diketik manual atau dipilih dari daftar harga.",
-    en: "Filled from this period's master price (or the product's latest price if this period has none). Type your own or pick from the price list.",
-    zh: "自动填入本期主价格（若本期无价格则用该产品最新价格）。可手动输入或从价格列表中选择。",
   },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",

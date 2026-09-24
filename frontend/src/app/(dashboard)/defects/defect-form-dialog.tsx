@@ -395,22 +395,12 @@ export function DefectFormDialog({
               {isAdmin && (
                 <>
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="defect-price">{t("po.priceRw")}</Label>
-                    {/* Harga satuan (Rupiah per pcs), bukan nilai barisnya. Isian
-                        awal dari harga master: periode timestamp defect, kalau
-                        tidak ada pakai harga terbaru produk ini. Operator tetap
-                        bisa mengetik sendiri atau memilih dari daftar di bawah. */}
-                    <Input
-                      id="defect-price"
-                      type="number"
-                      inputMode="numeric"
-                      value={form.priceRw}
-                      onChange={(e) =>
-                        onFormChange((f) => ({ ...f, priceRw: e.target.value }))
-                      }
-                      placeholder="0"
-                      className="tabular-nums"
-                    />
+                    <Label>{t("po.priceRw")}</Label>
+                    {/* Susunan sama dengan form PO: Harga RW = dropdown harga master
+                        per bulan/tahun, Total Value = kolom baca-saja di sebelahnya.
+                        Isian awalnya harga periode timestamp defect, atau harga
+                        terbaru produk itu kalau periodenya belum ada; operator tetap
+                        bisa memilih baris harga lain dari daftar. */}
                     <Select
                       value={pickedPriceId}
                       onValueChange={(v) => {
@@ -437,22 +427,27 @@ export function DefectFormDialog({
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      {t("defects.valueHint")}
+                      {rwPrice > 0
+                        ? t("po.valueRwHint", {
+                            qty: formatNumber(rwQty),
+                            price: formatIDR(rwPrice),
+                          })
+                        : t("po.priceMissing")}
                     </p>
                   </div>
+                  {/* Total inilah yang disimpan ke defects.value. */}
                   <div className="flex flex-col gap-1.5">
-                    <Label>{t("po.valueRw")}</Label>
-                    {/* Total inilah yang disimpan ke defects.value. */}
-                    <div
+                    <Label htmlFor="defect-total">{t("po.totalValue")}</Label>
+                    <Input
                       id="defect-total"
-                      className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm tabular-nums"
-                    >
-                      {formatIDR(defectTotalValue(form))}
-                    </div>
+                      value={formatIDR(defectTotalValue(form))}
+                      readOnly
+                      className="bg-muted/50 font-medium tabular-nums"
+                    />
                     <p className="text-xs text-muted-foreground">
-                      {t("po.valueRwHint", {
+                      {t("po.totalHint", {
+                        price: formatNumber(rwPrice),
                         qty: formatNumber(rwQty),
-                        price: formatIDR(rwPrice),
                       })}
                     </p>
                   </div>
