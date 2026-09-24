@@ -227,9 +227,14 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   sudah diketik tinggal disimpan ulang. Handler di halaman master (`addItem`/`renameItem`) meneruskan
   hasil itu sebagai `true`/`false`. Sebelumnya satu kegagalan jaringan menghapus SKU yang baru diketik.
 - **Kegagalan jaringan ditangani sekali di `src/lib/api-client.ts`**, jangan diulang di tiap halaman:
-  GET/PATCH diulang sekali otomatis (POST/DELETE/upload tidak, supaya data tidak tergandakan), dan
-  detail kegagalannya dikirim ke `POST /api/client-errors` karena `fetch` cuma memberi
-  `TypeError: Failed to fetch`. Catatan lengkap ada di README bagian "Failed to fetch" saat menyimpan.
+  GET/PATCH diulang sampai 3 percobaan (POST/DELETE/upload tidak, supaya data tidak tergandakan),
+  dan `TypeError: Failed to fetch` diterjemahkan di sana menjadi pesan yang jelas. **Pemuatan daftar
+  WAJIB lewat `useApi`** (`src/lib/use-api.ts`) supaya ikut diulang — jangan pakai `fetch` mentah di
+  halaman. Catatan lengkap ada di README bagian "Failed to fetch" saat menyimpan.
+- **Halaman Data Master: `activeItems` harus memuat SEMUA tab.** Rantai ternary-nya dulu melewatkan
+  `prices`, sehingga jumlah halaman dihitung dari `statuses` (1 baris di produksi) dan tombol
+  "Berikutnya" di tab Harga Produk tidak pernah bisa pindah halaman. Setiap kali menambah tab baru,
+  tambahkan juga ke `activeItems` di `src/app/(dashboard)/master/page.tsx`.
 
 - **JANGAN memberi `key` yang berubah mengikuti status buka/tutup pada daftar item
   Select.** `SelectSearch` di `src/components/ui/select.tsx` pernah memakai

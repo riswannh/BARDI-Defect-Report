@@ -3,14 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
-import {
-  ApiError,
-  apiDelete,
-  apiPatch,
-  apiPost,
-  apiUpload,
-  downloadUrl,
-} from "@/lib/api-client";
+import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type {
   ImportResult,
@@ -30,16 +23,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
-
-/**
- * Kegagalan jaringan pesannya cuma `TypeError: Failed to fetch` dari browser.
- * Ganti dengan kalimat yang menjelaskan bahwa isian masih ada dan bisa disimpan
- * ulang — detail lengkapnya sudah dicatat api-client ke /api/client-errors.
- */
-function describeError(err: unknown) {
-  if (err instanceof ApiError) return err.message;
-  return "Koneksi ke server terputus. Isian Anda masih ada — klik simpan sekali lagi.";
-}
 
 export default function MasterPage() {
   const { t } = useLanguage();
@@ -69,8 +52,17 @@ export default function MasterPage() {
   const setPage = (next: number) =>
     setPageState({ signature: tab, page: next });
 
+  // Daftar yang sedang tampil menentukan jumlah halaman. Tab "prices" WAJIB ikut
+  // di sini: dulu dia jatuh ke `statuses` (cuma 1 baris di produksi), sehingga
+  // totalPages selalu 1 dan tombol "Berikutnya" tidak pernah bisa pindah.
   const activeItems =
-    tab === "products" ? products : tab === "problems" ? problems : statuses;
+    tab === "products"
+      ? products
+      : tab === "problems"
+        ? problems
+        : tab === "prices"
+          ? prices
+          : statuses;
   const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
@@ -91,7 +83,7 @@ export default function MasterPage() {
       reload();
       return true;
     } catch (err) {
-      toast.error(describeError(err));
+      toast.error(err instanceof Error ? err.message : "Gagal menambah.");
       return false;
     }
   }
@@ -111,7 +103,7 @@ export default function MasterPage() {
       reload();
       return true;
     } catch (err) {
-      toast.error(describeError(err));
+      toast.error(err instanceof Error ? err.message : "Gagal mengubah.");
       return false;
     }
   }
@@ -121,7 +113,7 @@ export default function MasterPage() {
       await apiDelete(`${endpoint}/${id}`);
       reload();
     } catch (err) {
-      toast.error(describeError(err));
+      toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
   }
 

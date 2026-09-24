@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "@/lib/api-client";
 
 interface ApiState<T> {
   url: string;
@@ -8,6 +9,11 @@ interface ApiState<T> {
   error: string | null;
 }
 
+/**
+ * Memuat satu endpoint. Semua halaman memakai ini, jadi permintaannya lewat
+ * `apiGet` — bukan `fetch` mentah — supaya ikut diulang saat gagal jaringan dan
+ * ikut tercatat ke `/api/client-errors`.
+ */
 export function useApi<T>(url: string | null) {
   const [result, setResult] = useState<ApiState<T> | null>(null);
   const [version, setVersion] = useState(0);
@@ -16,30 +22,22 @@ export function useApi<T>(url: string | null) {
     if (!url) return;
     let cancelled = false;
 
-    fetch(url)
-      .then(async (res) => {
-        const text = await res.text();
-        const json = text ? JSON.parse(text) : null;
-        if (!res.ok) {
-          throw new Error(
-            (json as { error?: string } | null)?.error ?? "Gagal memuat data."
-          );
-        }
-        return json as T;
-      })
+    apiGet<T>(url)
       .then((json) => {
         if (!cancelled) {
           setResult({ url, data: json, error: null });
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setResult({
-            url,
-            data: null,
-            error: err instanceof Error ? err.message : "Gagal memuat data.",
-          });
-        }
+        if (cancelled) return;
+        // Data yang sudah tampil DIPERTAHANKAN saat memuat ulang gagal. Dulu baris
+        // ini mengosongkannya, sehingga gangguan jaringan sesaat membuat tabel di
+        // layar mendadak kosong seolah datanya hilang.
+        setResult((prev) => ({
+          url,
+          data: prev && prev.url === url ? prev.data : null,
+          error: err instanceof Error ? err.message : "Gagal memuat data.",
+        }));
       });
 
     return () => {

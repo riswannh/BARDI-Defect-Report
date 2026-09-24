@@ -30,7 +30,12 @@ async function parse<T>(res: Response): Promise<T> {
  */
 const PENDING_KEY = "bardi:client-errors";
 const MAX_PENDING = 30;
-const RETRY_DELAY_MS = 400;
+/**
+ * Jeda sebelum tiap percobaan ulang; panjangnya menentukan berapa kali diulang.
+ * Terukur di produksi: pada sesi yang buruk sekitar 1 dari 4 request hilang tanpa
+ * jejak di log server, jadi sekali ulangan belum cukup.
+ */
+const RETRY_DELAYS_MS = [400, 1200];
 
 function pendingList(): unknown[] {
   try {
@@ -147,12 +152,14 @@ async function request<T>(
       // ApiError = server menjawab; itu bukan masalah jaringan, jangan diulang.
       if (err instanceof ApiError) throw err;
 
-      // ponytail: sekali ulang saja, dan hanya untuk GET/PATCH yang menulis nilai
-      // tetap. Request yang gagal di sini terbukti tidak sampai ke server (log Caddy
-      // kosong), jadi mengulang tidak menggandakan data. Naikkan jadi 3 kalau
-      // koneksinya masih sering putus.
-      if (retryNetwork && attempts < 2) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      // Hanya GET/PATCH yang diulang: keduanya menulis nilai tetap, dan request
+      // yang gagal di sini terbukti tidak sampai ke server (log Caddy kosong),
+      // jadi mengulang tidak menggandakan data. POST/DELETE/upload tidak diulang
+      // supaya baris tidak tercatat dua kali.
+      if (retryNetwork && attempts <= RETRY_DELAYS_MS.length) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAYS_MS[attempts - 1])
+        );
         continue;
       }
 
@@ -161,7 +168,15 @@ async function request<T>(
         buildFailure(url, init, body, err, attempts),
       ]);
       void flushFailures();
-      throw err;
+      // `TypeError: Failed to fetch` tidak bisa ditindaklanjuti pengguna, sementara
+      // semua halaman menampilkan `err.message` apa adanya — jadi diterjemahkan di
+      // sini sekali, bukan di puluhan tempat pemanggil.
+      throw new ApiError(
+        init.method && init.method !== "GET"
+          ? "Koneksi ke server terputus. Data belum terkirim — coba klik simpan sekali lagi."
+          : "Koneksi ke server terputus. Coba muat ulang halaman sebentar lagi.",
+        0
+      );
     }
   }
 }

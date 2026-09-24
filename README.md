@@ -893,16 +893,22 @@ lapangan, dan request non-GET tidak diulang sendiri oleh browser).
 
 Penanganannya:
 
-- `src/lib/api-client.ts` — request **GET/PATCH** diulang sekali otomatis. PATCH di aplikasi ini
-  menulis nilai tetap (`name`/`sku`, dsb.) sehingga aman diulang; **POST/DELETE/upload tidak diulang**
-  supaya baris tidak tergandakan. Kalau tetap gagal, detailnya dikirim ke `/api/client-errors`
-  (disimpan dulu di `localStorage` bila pengirimannya ikut gagal, lalu dikirim lagi begitu ada
-  request yang berhasil).
+- `src/lib/api-client.ts` — request **GET/PATCH** diulang sampai **3 percobaan** (jeda 0,4 s lalu 1,2 s).
+  Angka itu dari pengukuran: pada sesi buruk sekitar **1 dari 4 request hilang** tanpa jejak di log
+  server, jadi sekali ulangan belum cukup. PATCH di aplikasi ini menulis nilai tetap (`name`/`sku`,
+  dsb.) sehingga aman diulang; **POST/DELETE/upload tidak diulang** supaya baris tidak tergandakan.
+  Kalau tetap gagal: detailnya dikirim ke `/api/client-errors` (disimpan dulu di `localStorage` bila
+  pengirimannya ikut gagal, lalu dikirim lagi begitu ada request yang berhasil), dan pesan
+  `TypeError: Failed to fetch` diterjemahkan di sini menjadi kalimat yang bisa ditindaklanjuti —
+  jadi halaman tidak perlu menanganinya sendiri-sendiri.
+- `src/lib/use-api.ts` — **semua** pemuatan daftar (master, defects, sales, PO, report, users, header)
+  lewat `apiGet`, jadi ikut diulang dan ikut tercatat. Saat pemuatan ulang gagal, data yang sudah
+  tampil **dipertahankan**; dulu barisnya dikosongkan sehingga gangguan sesaat membuat tabel mendadak
+  kosong seolah datanya hilang.
 - `src/components/master-list.tsx` — saat penyimpanan gagal, formulir **tidak** mengosongkan isian:
   baris tetap dalam mode edit dan teksnya tinggal disimpan ulang. Handler `onAdd`/`onRename` karena
-  itu mengembalikan `false` ketika gagal.
-- `src/app/(dashboard)/master/page.tsx` — pesan galat jaringan diganti kalimat yang jelas
-  (`describeError`), bukan "Failed to fetch" mentah.
+  itu mengembalikan `false` ketika gagal. Form defect/sales/PO sudah begitu sejak awal (dialog baru
+  ditutup setelah `await` berhasil), jadi jangan diubah.
 
 Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 
