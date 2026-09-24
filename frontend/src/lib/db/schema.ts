@@ -183,15 +183,14 @@ export const defects = sqliteTable(
       .references(() => factories.id),
     value: integer("value").notNull().default(0),
     /**
-     * Harga master (Rupiah) yang dipakai baris defect ini — sama polanya dengan PO.
+     * WARISAN — tidak dipakai lagi oleh jalur defect.
      *
-     * Rujukan ke `product_prices`, bukan salinan angkanya, sehingga
-     * `value = quantity × harga` selalu konsisten dan defect lama tidak berubah
-     * saat harga baru dibuat untuk periode berikutnya.
-     *
-     * NULL berarti produk ini belum punya harga untuk bulan/tahun defect tersebut;
-     * baris defect tetap boleh disimpan dan `value`-nya diketik manual (perilaku
-     * lama, dipakai juga oleh impor Excel).
+     * Dulu baris defect merujuk ke `product_prices` supaya `value = quantity × harga`;
+     * sekarang `value` disimpan apa adanya dari isian operator / kolom Value impor
+     * Excel, `productPriceId` selalu NULL untuk baris baru, dan ikut dikosongkan saat
+     * baris lama disunting. Kolomnya sengaja tidak dihapus supaya baris lama yang
+     * masih menyimpan rujukan tidak kehilangan datanya. Pola `quantity × harga`
+     * sekarang hanya dipakai modul PO Product.
      */
     productPriceId: integer("productPriceId").references(() => productPrices.id),
     createdAt: integer("createdAt", { mode: "timestamp" })
