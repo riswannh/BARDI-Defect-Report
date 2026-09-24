@@ -30,6 +30,8 @@ interface MasterListProps {
    * Saat aktif, formulir dan baris menampilkan kolom SKU.
    */
   withSku?: boolean;
+  /** Dipakai saat daftar kosong karena pencarian, bukan karena belum ada data. */
+  emptyLabel?: string;
 }
 
 export function MasterList({
@@ -40,6 +42,7 @@ export function MasterList({
   addPlaceholder,
   readOnly = false,
   withSku = false,
+  emptyLabel,
 }: MasterListProps) {
   const { t } = useLanguage();
   const [newName, setNewName] = useState("");
@@ -167,7 +170,7 @@ export function MasterList({
         ))}
         {items.length === 0 && (
           <li className="py-4 text-center text-sm text-muted-foreground">
-            {t("masterList.empty")}
+            {emptyLabel ?? t("masterList.empty")}
           </li>
         )}
       </ul>

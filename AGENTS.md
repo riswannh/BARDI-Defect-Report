@@ -234,8 +234,9 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
 - **Halaman Data Master: `activeItems` harus memuat SEMUA tab.** Rantai ternary-nya dulu melewatkan
   `prices`, sehingga jumlah halaman dihitung dari `statuses` (1 baris di produksi) dan tombol
   "Berikutnya" di tab Harga Produk tidak pernah bisa pindah halaman. Setiap kali menambah tab baru,
-  tambahkan juga ke `activeItems` di `src/app/(dashboard)/master/page.tsx` — dan khusus tab Harga
-  Produk isinya `filteredPrices`, bukan `prices`, supaya paging ikut hasil filter.
+  tambahkan juga ke `activeItems` di `src/app/(dashboard)/master/page.tsx` — dan isinya harus daftar
+  yang SUDAH disaring (`filteredProducts`, `filteredProblems`, `filteredPrices`, `filteredStatuses`),
+  bukan daftar mentah, supaya paging ikut hasil pencarian di tiap tab.
 
 - **JANGAN memberi `key` yang berubah mengikuti status buka/tutup pada daftar item
   Select.** `SelectSearch` di `src/components/ui/select.tsx` pernah memakai

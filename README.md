@@ -584,6 +584,11 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
+- **Tab Produk, Problem, dan Status punya kotak pencarian** di atas daftarnya: menyaring berdasarkan
+  nama (tab Produk juga mencocokkan SKU), tidak peka huruf besar/kecil, dan cocok sebagian kata.
+  Penyaringan dilakukan di `master/page.tsx` supaya jumlah halaman ikut hasil pencarian, dan bila
+  tidak ada yang cocok muncul pesan "Tidak ada yang cocok dengan pencarian." (prop `emptyLabel` di
+  `master-list.tsx` — tanpa itu pesannya "Belum ada data." yang menyesatkan).
 - **Tab Harga Produk** mengelola harga per produk per **bulan + tahun** (selalu Rupiah). Kolom tabel:
   SKU · Nama Produk · Harga · Bulan · Tahun. Formulirnya memilih Produk, Harga, Bulan, Tahun.
   Perhatikan: **ubah harga ≠ timpa harga lama**. Harga baru dibuat sebagai baris baru untuk periode

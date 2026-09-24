@@ -35,6 +35,38 @@ import {
 } from "@/components/ui/select";
 import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
 
+/**
+ * Kotak pencarian untuk tab Produk/Problem/Status. Penyaringannya dilakukan di
+ * `MasterPage` karena paging ikut dihitung di sana.
+ */
+function SearchBox({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border p-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{t("common.search")}</Label>
+        <Input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-64"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function MasterPage() {
   const { t } = useLanguage();
   const [tab, setTab] = useState("products");
@@ -56,6 +88,26 @@ export default function MasterPage() {
   const problems = problemData ?? [];
   const statuses = statusData ?? [];
   const prices = priceData ?? [];
+
+  // Pencarian tab Produk/Problem/Status. Penyaringan ada di halaman ini karena
+  // paging juga dihitung di sini — jumlah halaman harus ikut hasil pencarian.
+  const [productSearch, setProductSearch] = useState("");
+  const [problemSearch, setProblemSearch] = useState("");
+  const [statusSearch, setStatusSearch] = useState("");
+
+  const matchSearch = (query: string, ...fields: (string | null | undefined)[]) => {
+    const q = query.trim().toLowerCase();
+    return !q || fields.some((field) => (field ?? "").toLowerCase().includes(q));
+  };
+  const filteredProducts = products.filter((item) =>
+    matchSearch(productSearch, item.name, item.sku)
+  );
+  const filteredProblems = problems.filter((item) =>
+    matchSearch(problemSearch, item.name)
+  );
+  const filteredStatuses = statuses.filter((item) =>
+    matchSearch(statusSearch, item.name)
+  );
 
   // Filter tab Harga Produk. Pilihan bulan & tahun diambil dari data yang ada,
   // jadi tidak ada periode kosong yang bisa dipilih.
@@ -105,19 +157,19 @@ export default function MasterPage() {
   // totalPages selalu 1 dan tombol "Berikutnya" tidak pernah bisa pindah.
   const activeItems =
     tab === "products"
-      ? products
+      ? filteredProducts
       : tab === "problems"
-        ? problems
+        ? filteredProblems
         : tab === "prices"
           ? filteredPrices
-          : statuses;
+          : filteredStatuses;
   const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
-  const pagedProducts = products.slice(start, end);
-  const pagedProblems = problems.slice(start, end);
-  const pagedStatuses = statuses.slice(start, end);
+  const pagedProducts = filteredProducts.slice(start, end);
+  const pagedProblems = filteredProblems.slice(start, end);
+  const pagedStatuses = filteredStatuses.slice(start, end);
   const pagedPrices = filteredPrices.slice(start, end);
 
   async function addItem(
@@ -333,10 +385,22 @@ export default function MasterPage() {
         <Card size="sm" className="mt-4">
           <CardContent className="pt-4">
             <TabsContent value="products">
+              <SearchBox
+                id="master-search-products"
+                value={productSearch}
+                onChange={(value) => {
+                  setProductSearch(value);
+                  setPage(1);
+                }}
+                placeholder={t("masterList.searchNameSku")}
+              />
               <MasterList
                 items={pagedProducts}
                 withSku
                 addPlaceholder={t("master.newProduct")}
+                emptyLabel={
+                  productSearch.trim() ? t("masterList.emptyFiltered") : undefined
+                }
                 onAdd={(name, sku) =>
                   addItem("/api/products", name, reloadProducts, sku)
                 }
@@ -347,10 +411,10 @@ export default function MasterPage() {
                   deleteItem("/api/products", id, reloadProducts)
                 }
               />
-              {products.length > 0 && (
+              {filteredProducts.length > 0 && (
                 <div className="mt-4">
                   <Pagination
-                    totalItems={products.length}
+                    totalItems={filteredProducts.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}
@@ -363,9 +427,21 @@ export default function MasterPage() {
               )}
             </TabsContent>
             <TabsContent value="problems">
+              <SearchBox
+                id="master-search-problems"
+                value={problemSearch}
+                onChange={(value) => {
+                  setProblemSearch(value);
+                  setPage(1);
+                }}
+                placeholder={t("masterList.searchName")}
+              />
               <MasterList
                 items={pagedProblems}
                 addPlaceholder={t("master.newProblem")}
+                emptyLabel={
+                  problemSearch.trim() ? t("masterList.emptyFiltered") : undefined
+                }
                 onAdd={(name) => addItem("/api/problems", name, reloadProblems)}
                 onRename={(id, name) =>
                   renameItem("/api/problems", id, name, reloadProblems)
@@ -374,10 +450,10 @@ export default function MasterPage() {
                   deleteItem("/api/problems", id, reloadProblems)
                 }
               />
-              {problems.length > 0 && (
+              {filteredProblems.length > 0 && (
                 <div className="mt-4">
                   <Pagination
-                    totalItems={problems.length}
+                    totalItems={filteredProblems.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}
@@ -479,9 +555,21 @@ export default function MasterPage() {
               )}
             </TabsContent>
             <TabsContent value="statuses">
+              <SearchBox
+                id="master-search-statuses"
+                value={statusSearch}
+                onChange={(value) => {
+                  setStatusSearch(value);
+                  setPage(1);
+                }}
+                placeholder={t("masterList.searchName")}
+              />
               <MasterList
                 items={pagedStatuses}
                 addPlaceholder={t("master.newStatus")}
+                emptyLabel={
+                  statusSearch.trim() ? t("masterList.emptyFiltered") : undefined
+                }
                 onAdd={(name) => addItem("/api/statuses", name, reloadStatuses)}
                 onRename={(id, name) =>
                   renameItem("/api/statuses", id, name, reloadStatuses)
@@ -490,10 +578,10 @@ export default function MasterPage() {
                   deleteItem("/api/statuses", id, reloadStatuses)
                 }
               />
-              {statuses.length > 0 && (
+              {filteredStatuses.length > 0 && (
                 <div className="mt-4">
                   <Pagination
-                    totalItems={statuses.length}
+                    totalItems={filteredStatuses.length}
                     page={currentPage}
                     pageSize={pageSize}
                     onPageChange={setPage}

@@ -716,6 +716,17 @@ const translations = {
     en: "No data yet.",
     zh: "暂无数据。",
   },
+  "masterList.searchName": { id: "Cari nama", en: "Search name", zh: "搜索名称" },
+  "masterList.searchNameSku": {
+    id: "Cari nama atau SKU",
+    en: "Search name or SKU",
+    zh: "搜索名称或 SKU",
+  },
+  "masterList.emptyFiltered": {
+    id: "Tidak ada yang cocok dengan pencarian.",
+    en: "Nothing matches your search.",
+    zh: "没有匹配的搜索结果。",
+  },
 
   // Users
   "users.title": {
