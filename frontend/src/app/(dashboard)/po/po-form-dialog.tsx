@@ -18,6 +18,7 @@ import {
   type PpnStatus,
 } from "@/lib/api/validation";
 import type { Factory, Product, ProductPrice } from "@/lib/types";
+import { pickProductPrice } from "@/lib/prices";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -249,17 +250,18 @@ export function PoFormDialog({
                     onFormChange((f) => {
                       const poDate = e.target.value;
                       // Tanggal PO berpindah bulan/tahun -> harga yang dipilih ikut
-                      // menyesuaikan selama produk itu punya harga di periode baru.
-                      const period = poDate.slice(0, 7);
-                      const match = productPrices.find(
-                        (row) =>
-                          row.productId === Number(f.productId) &&
-                          `${row.year}-${row.month}` === period
+                      // menyesuaikan. Kalau produk belum punya harga di periode itu,
+                      // dipakai harga terbarunya (aturan sama dengan form Defect);
+                      // operator tetap bisa memilih harga lain dari daftar.
+                      const match = pickProductPrice(
+                        productPrices,
+                        Number(f.productId),
+                        poDate.slice(0, 7)
                       );
                       return {
                         ...f,
                         poDate,
-                        ...(match ? { productPriceId: String(match.id) } : {}),
+                        productPriceId: match ? String(match.id) : "",
                       };
                     })
                   }
@@ -276,23 +278,13 @@ export function PoFormDialog({
                   onValueChange={(v) =>
                     onFormChange((f) => {
                       const nextProductId = String(v);
-                      // Produk berganti -> harga periode PO sebelumnya tidak lagi
-                      // relevan, jadi pilih harga yang cocok dengan bulan/tahun PO
-                      // untuk produk baru itu.
-                      const period = f.poDate.slice(0, 7);
-                      const match =
-                        productPrices.find(
-                          (row) =>
-                            row.productId === Number(nextProductId) &&
-                            `${row.year}-${row.month}` === period
-                        ) ??
-                        productPrices
-                          .filter((row) => row.productId === Number(nextProductId))
-                          .sort(
-                            (a, b) =>
-                              b.year.localeCompare(a.year) ||
-                              b.month.localeCompare(a.month)
-                          )[0];
+                      // Produk berganti -> pilih harga periode PO untuk produk baru
+                      // itu; kalau periodenya belum ada, pakai harga terbarunya.
+                      const match = pickProductPrice(
+                        productPrices,
+                        Number(nextProductId),
+                        f.poDate.slice(0, 7)
+                      );
                       return {
                         ...f,
                         productId: nextProductId,

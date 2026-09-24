@@ -69,6 +69,7 @@ import {
   type DefectForm,
   type DefectRow,
   carryOverForm,
+  defectTotalValue,
   emptyForm,
   localDateTimeValue,
   rowToForm,
@@ -151,8 +152,6 @@ export default function DefectsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Entri terakhir yang tersimpan/diubah → sumber nilai yang dibawa ke entri baru.
-  const lastEntryRef = useRef<DefectForm | null>(null);
 
   const filterSignature = [
     filterProduct,
@@ -250,20 +249,18 @@ export default function DefectsPage() {
   function loadForm(id: number) {
     const d = (defectData ?? []).find((row) => row.id === id);
     if (!d) return;
-    const next = rowToForm(d);
-    lastEntryRef.current = next;
-    setForm(next);
+    setForm(rowToForm(d));
   }
 
   function openCreate() {
     setEditQueue([]);
     setEditIndex(0);
-    // Satu shift biasanya mencatat beberapa defect pada produk/pabrik yang sama,
-    // jadi pilihan terakhir dibawa lagi; sisanya dikosongkan dan timestamp diisi
-    // waktu sekarang. Tanpa ini operator mengulang pilihan yang sama tiap entri.
-    const seeded = lastEntryRef.current
-      ? carryOverForm(lastEntryRef.current)
-      : emptyForm();
+    // Tombol Tambah SELALU mulai dari form kosong + timestamp sekarang. Dulu form
+    // dibenihi dari entri terakhir, dan itu bocor: setelah mengubah (pensil) sebuah
+    // baris, nilai baris itu ikut muncul di form Tambah. Untuk mencatat beberapa
+    // defect pada shift yang sama, pakai "Simpan & tambah lagi" (di situ produk,
+    // pabrik, status, dan harga memang sengaja dibawa).
+    const seeded = emptyForm();
     seeded.timestamp = localDateTimeValue();
     setForm(seeded);
     setDialogOpen(true);
@@ -332,17 +329,15 @@ export default function DefectsPage() {
       quantity: Number(form.quantity) || 0,
       statusId: Number(form.statusId),
       factoryId: Number(form.factoryId),
-      // Nilai defect (Rupiah), disimpan apa adanya — server tidak menghitung ulang
-      // dari harga master dan tidak mengisi productPriceId lagi.
-      value: Number(form.value) || 0,
+      // Nilai baris defect = Harga RW × Quantity, dihitung di form. Server tetap
+      // menyimpannya apa adanya dan tidak mengisi productPriceId.
+      value: defectTotalValue(form),
     };
     if (!payload.codeGaransi || !payload.productId || !payload.factoryId) return;
 
     try {
       if (editingId === null) {
         await apiPost("/api/defects", payload);
-        // Simpan sebagai acuan untuk entri berikutnya.
-        lastEntryRef.current = form;
         if (mode === "saveAndAddAnother") {
           // Tetap di dialog, siap untuk defect berikutnya pada shift yang sama.
           const next = carryOverForm(form);
@@ -356,7 +351,6 @@ export default function DefectsPage() {
         reload();
       } else {
         await apiPatch(`/api/defects/${editingId}`, payload);
-        lastEntryRef.current = form;
         advanceEdit();
       }
     } catch (err) {

@@ -667,9 +667,9 @@ const translations = {
     zh: "按 Ctrl+Enter 保存",
   },
   "defects.valueHint": {
-    id: "Terisi otomatis dari harga master periode ini saat produk dipilih. Angkanya boleh diubah — yang disimpan adalah isi kotak ini.",
-    en: "Filled automatically from this period's master price when a product is picked. Editable — this number is what gets saved.",
-    zh: "选择产品后自动填入本期主价格。可修改 — 保存的就是这里的数字。",
+    id: "Terisi otomatis dari harga master periode ini (kalau belum ada, harga terbaru produk ini). Bisa diketik manual atau dipilih dari daftar harga.",
+    en: "Filled from this period's master price (or the product's latest price if this period has none). Type your own or pick from the price list.",
+    zh: "自动填入本期主价格（若本期无价格则用该产品最新价格）。可手动输入或从价格列表中选择。",
   },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",

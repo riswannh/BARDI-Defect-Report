@@ -25,12 +25,24 @@ export interface DefectForm {
   statusId: string;
   factoryId: string;
   /**
-   * Nilai defect (Rupiah) yang disimpan APA ADANYA ke database — tidak dihitung
-   * ulang di server dan tidak lagi merujuk baris harga master. Form mengisinya
-   * otomatis dari harga master periode ini sebagai isian awal, tapi angkanya boleh
-   * diubah dan yang tersimpan adalah isi kotak ini.
+   * Harga RW = harga satuan (Rupiah per pcs), bukan nilai barisnya.
+   *
+   * Isian awal datang dari harga master produk (periode `timestamp`; kalau tidak
+   * ada, harga terbaru produk itu — lihat `pickProductPrice`) dan masih bisa
+   * ditimpa operator atau dipilih dari daftar harga produk. Yang disimpan ke
+   * `defects.value` adalah totalnya (`defectTotalValue` = harga ini × Quantity),
+   * dihitung di klien — server tetap menyimpan apa adanya.
    */
-  value: string;
+  priceRw: string;
+}
+
+/** Nilai baris defect = Harga RW × Quantity (Rupiah, dibulatkan). */
+export function defectTotalValue(form: DefectForm): number {
+  const price = Number(form.priceRw) || 0;
+  const qty = Number(form.quantity) || 0;
+  // Quantity 0 diperlakukan sebagai 1 supaya baris lama tanpa qty tidak kehilangan
+  // nilainya saat disunting.
+  return Math.round(price * (qty > 0 ? qty : 1));
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal mesin, bukan UTC). */
@@ -54,7 +66,7 @@ export function emptyForm(): DefectForm {
     quantity: "",
     statusId: "",
     factoryId: "",
-    value: "",
+    priceRw: "",
   };
 }
 
@@ -71,9 +83,9 @@ export function carryOverForm(previous: DefectForm): DefectForm {
     productId: previous.productId,
     factoryId: previous.factoryId,
     statusId: previous.statusId,
-    // Produknya sama dan periodenya biasanya masih sama, jadi nilai tadi dibawa
+    // Produknya sama dan periodenya biasanya masih sama, jadi harga tadi dibawa
     // sebagai isian awal entri berikutnya (masih bisa diubah).
-    value: previous.value,
+    priceRw: previous.priceRw,
   };
 }
 
@@ -85,7 +97,7 @@ export function formHasContent(form: DefectForm): boolean {
     form.statusId !== "" ||
     form.factoryId !== "" ||
     form.quantity.trim() !== "" ||
-    form.value.trim() !== "" ||
+    form.priceRw.trim() !== "" ||
     form.problemDetail.trim() !== "" ||
     form.photosLink.trim() !== "" ||
     form.videosLink.trim() !== ""
@@ -93,6 +105,8 @@ export function formHasContent(form: DefectForm): boolean {
 }
 
 export function rowToForm(d: DefectRow): DefectForm {
+  const qty = Number(d.quantity) || 0;
+  const value = d.value ?? 0;
   return {
     codeGaransi: d.codeGaransi,
     timestamp: d.timestamp,
@@ -104,7 +118,10 @@ export function rowToForm(d: DefectRow): DefectForm {
     quantity: String(d.quantity),
     statusId: String(d.statusId),
     factoryId: String(d.factoryId),
-    value: String(d.value ?? 0),
+    // Harga per pcs direkonstruksi dari nilai baris ÷ quantity. ponytail: baris
+    // hasil impor Excel yang nilainya bukan kelipatan qty bisa membulat beberapa
+    // rupiah saat disunting; kalau itu mengganggu, simpan harga per pcs-nya di DB.
+    priceRw: String(qty > 0 ? Math.round(value / qty) : value),
   };
 }
 

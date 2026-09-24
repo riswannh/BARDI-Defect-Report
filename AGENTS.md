@@ -195,14 +195,25 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     tujuan (bukan hanya bulan tepat sebelumnya) dan melewati yang sudah ada — dipakai untuk
     pergantian bulan tanpa mengetik ulang semua produk.
   - Menghapus harga yang masih dirujuk baris PO ditolak **409**.
-  - **`defects.value` disimpan apa adanya**: satu isian **Value RW** di form defect (dan kolom `Value`
-    pada impor Excel) langsung masuk ke `defects.value`; server tidak menghitung
-    `quantity × harga master` dan **tidak mengisi `productPriceId`** (kolomnya masih ada demi baris
-    lama, dan ikut dikosongkan begitu baris lama disunting). Harga master hanya dipakai form sebagai
-    **isian awal** saat produk dipilih, dan angkanya boleh ditimpa operator. Mengubah `quantity`
-    tidak menghitung ulang `value`, dan menambah harga master baru tidak mengubah baris defect lama.
-    Pola `quantity × harga` sekarang **hanya** untuk modul PO Product — jangan dihidupkan lagi di
-    jalur defect (helper `defectValueFromPrice`/`findDefectPriceId` sudah dihapus).
+  - **`defects.value` = Harga RW × Quantity, dihitung di form**: isian **Harga RW** berisi harga
+    satuan (per pcs) dan **Total Value** menampilkan hasil kalinya sebagai preview; total itulah yang
+    dikirim ke `defects.value`. Server menyimpannya apa adanya — tidak menghitung ulang dan **tidak
+    mengisi `productPriceId`** (kolomnya masih ada demi baris lama, dan ikut dikosongkan begitu baris
+    lama disunting). Helper lama `defectValueFromPrice`/`findDefectPriceId` sudah dihapus; pola
+    `quantity × harga` di server **hanya** untuk PO Product, jangan dihidupkan lagi di jalur defect.
+    Di form, `rowToForm()` merekonstruksi Harga RW dari `value ÷ quantity` — baris impor Excel yang
+    nilainya bukan kelipatan qty bisa membulat beberapa rupiah saat disunting.
+  - **Aturan memilih harga master** (dipakai form Defect *dan* PO, satu implementasi di
+    `src/lib/prices.ts` → `pickProductPrice`): harga pada periode `YYYY-MM` yang diminta; kalau produk
+    itu belum punya harga di periode tersebut, pakai **harga terbarunya**. Dipicu saat produk berganti
+    dan saat timestamp/`poDate` berpindah bulan — operator tetap bisa mengetik sendiri (Defect) atau
+    memilih baris harga lain dari daftar. Jangan kembalikan logika cocok-periode yang lama (yang
+    membiarkan pilihan harga sebelumnya menempel saat periode barunya kosong).
+  - **Tombol Tambah selalu membuka form kosong** (Defect). Dulu `openCreate()` membenihi form dari
+    entri terakhir lewat `lastEntryRef`, dan itu bocor: setelah mengubah baris dengan pensil, nilai
+    baris itu ikut muncul di form Tambah. Membawa produk/pabrik/status/harga ke entri berikutnya
+    sekarang hanya tugas `carryOverForm()` lewat tombol **Simpan & tambah lagi** — jangan pasang lagi
+    benih dari entri terakhir di `openCreate()`.
   - `stripValue()` (dipakai Defect & Sales) kini juga membuang `productPrice*` untuk role Pabrik:
     harga satuan bisa dipakai menghitung ulang value, jadi membiarkannya sama saja membocorkan angka
     yang sedang disembunyikan.

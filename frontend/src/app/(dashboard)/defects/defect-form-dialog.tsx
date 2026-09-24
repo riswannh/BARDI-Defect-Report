@@ -27,10 +27,13 @@ import {
   type DefectForm,
   type DefectRow,
   type SelectOption,
+  defectTotalValue,
   formHasContent,
   suggestNextCode,
 } from "./defect-form";
 import type { Factory, ProductPrice } from "@/lib/types";
+import { pickProductPrice } from "@/lib/prices";
+import { formatIDR, formatNumber, priceMonthLabel } from "@/lib/format";
 
 interface DefectFormDialogProps {
   open: boolean;
@@ -92,6 +95,38 @@ export function DefectFormDialog({
   const changed = open && JSON.stringify(form) !== baseline;
 
   const dirty = formHasContent(form);
+
+  /**
+   * Daftar harga milik produk terpilih (periode terbaru dulu) untuk memilih harga
+   * secara manual. Kotak Harga RW sendiri berisi harga satuan (Rupiah per pcs).
+   */
+  const priceOptions = useMemo(
+    () =>
+      productPrices
+        .filter(
+          (row) =>
+            form.productId !== "" && row.productId === Number(form.productId)
+        )
+        .sort(
+          (a, b) =>
+            b.year.localeCompare(a.year) || b.month.localeCompare(a.month)
+        )
+        .map((row) => ({
+          value: String(row.id),
+          price: row.price,
+          label: `${priceMonthLabel(row.month)} ${row.year} — ${formatIDR(row.price)}`,
+        })),
+    [productPrices, form.productId]
+  );
+
+  // Baris harga yang sedang terpakai dicocokkan dari angkanya, jadi mengetik harga
+  // master secara manual pun tetap menandai barisnya di dropdown.
+  const pickedPriceId =
+    priceOptions.find((option) => String(option.price) === form.priceRw.trim())
+      ?.value ?? "";
+
+  const rwPrice = Number(form.priceRw) || 0;
+  const rwQty = Number(form.quantity) || 0;
 
   function handleOpenChange(next: boolean) {
     if (next) {
@@ -201,7 +236,22 @@ export function DefectFormDialog({
                   type="datetime-local"
                   value={form.timestamp}
                   onChange={(e) =>
-                    onFormChange((f) => ({ ...f, timestamp: e.target.value }))
+                    onFormChange((f) => {
+                      const timestamp = e.target.value;
+                      // Periode defect berpindah bulan/tahun -> harga master ikut
+                      // menyesuaikan; kalau produk belum punya harga di periode itu
+                      // dipakai harga terbarunya.
+                      const match = pickProductPrice(
+                        productPrices,
+                        Number(f.productId),
+                        timestamp.slice(0, 7)
+                      );
+                      return {
+                        ...f,
+                        timestamp,
+                        ...(match ? { priceRw: String(match.price) } : {}),
+                      };
+                    })
                   }
                 />
               </div>
@@ -276,19 +326,18 @@ export function DefectFormDialog({
                   onValueChange={(v) =>
                     onFormChange((f) => {
                       const nextProductId = String(v);
-                      // Produk berganti -> isian awal nilainya diambil dari harga
-                      // master periode timestamp defect, kalau produknya punya.
-                      // Angkanya tetap boleh diubah; yang disimpan isi kotak itu.
-                      const period = f.timestamp.slice(0, 7);
-                      const match = productPrices.find(
-                        (row) =>
-                          row.productId === Number(nextProductId) &&
-                          `${row.year}-${row.month}` === period
+                      // Produk berganti -> isian awal Harga RW diambil dari harga
+                      // master produk itu untuk periode timestamp defect; kalau
+                      // periodenya belum ada, pakai harga terbaru produk tersebut.
+                      const match = pickProductPrice(
+                        productPrices,
+                        Number(nextProductId),
+                        f.timestamp.slice(0, 7)
                       );
                       return {
                         ...f,
                         productId: nextProductId,
-                        value: match ? String(match.price) : f.value,
+                        priceRw: match ? String(match.price) : "",
                       };
                     })
                   }
@@ -344,28 +393,70 @@ export function DefectFormDialog({
                 />
               </div>
               {isAdmin && (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="defect-value">{t("po.priceRw")}</Label>
-                  {/* Satu isian nilai saja. Angkanya disimpan APA ADANYA ke
-                      `defects.value`; server tidak lagi menghitung
-                      quantity × harga master dan tidak mengisi `productPriceId`.
-                      Harga master periode ini cuma jadi isian awal saat produk
-                      dipilih (lihat onChange produk di atas). */}
-                  <Input
-                    id="defect-value"
-                    type="number"
-                    inputMode="numeric"
-                    value={form.value}
-                    onChange={(e) =>
-                      onFormChange((f) => ({ ...f, value: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="tabular-nums"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("defects.valueHint")}
-                  </p>
-                </div>
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="defect-price">{t("po.priceRw")}</Label>
+                    {/* Harga satuan (Rupiah per pcs), bukan nilai barisnya. Isian
+                        awal dari harga master: periode timestamp defect, kalau
+                        tidak ada pakai harga terbaru produk ini. Operator tetap
+                        bisa mengetik sendiri atau memilih dari daftar di bawah. */}
+                    <Input
+                      id="defect-price"
+                      type="number"
+                      inputMode="numeric"
+                      value={form.priceRw}
+                      onChange={(e) =>
+                        onFormChange((f) => ({ ...f, priceRw: e.target.value }))
+                      }
+                      placeholder="0"
+                      className="tabular-nums"
+                    />
+                    <Select
+                      value={pickedPriceId}
+                      onValueChange={(v) => {
+                        const option = priceOptions.find(
+                          (item) => item.value === String(v ?? "")
+                        );
+                        if (!option) return;
+                        onFormChange((f) => ({
+                          ...f,
+                          priceRw: String(option.price),
+                        }));
+                      }}
+                      items={priceOptions}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder={t("po.selectPrice")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t("defects.valueHint")}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t("po.valueRw")}</Label>
+                    {/* Total inilah yang disimpan ke defects.value. */}
+                    <div
+                      id="defect-total"
+                      className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm tabular-nums"
+                    >
+                      {formatIDR(defectTotalValue(form))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t("po.valueRwHint", {
+                        qty: formatNumber(rwQty),
+                        price: formatIDR(rwPrice),
+                      })}
+                    </p>
+                  </div>
+                </>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
