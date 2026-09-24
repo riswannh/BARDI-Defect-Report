@@ -22,9 +22,12 @@ export type GsheetConflictField = {
 };
 
 export type GsheetConflict = {
-  codeGaransi: string;
+  /** Kunci stabil baris di app (dipakai saat mengirim pilihan resolve). */
+  rowKey: string;
+  /** Label enak dibaca untuk popup; kalau tidak ada dipakai rowKey. */
+  label?: string;
   sheetRow: number;
-  localId: number;
+  localId: number | null;
   fields: GsheetConflictField[];
 };
 
@@ -41,6 +44,8 @@ export type GsheetSyncSummary = {
   appOnlyChanges: number;
   onlyInApp: number;
   skipped: number;
+  /** Bulan yang di sheet 0 semua dan dilewati (khusus modul sales). */
+  emptyMonths?: number;
 };
 
 export type GsheetSyncResult = {
@@ -54,7 +59,7 @@ export type GsheetSyncResult = {
 
 export type GsheetResolvePayload = {
   defaultChoice?: "sheet" | "app";
-  items?: { codeGaransi: string; choices: Record<string, "sheet" | "app"> }[];
+  items?: { rowKey: string; choices: Record<string, "sheet" | "app"> }[];
 };
 
 interface GsheetSyncDialogProps {
@@ -63,9 +68,12 @@ interface GsheetSyncDialogProps {
   result: GsheetSyncResult | null;
   busy: boolean;
   onResolve: (payload: GsheetResolvePayload) => void;
+  /** Judul & deskripsi sudah diterjemahkan pemanggil (beda per modul). */
+  title?: string;
+  description?: string;
 }
 
-const key = (code: string, field: string) => `${code}::${field}`;
+const key = (rowKey: string, field: string) => `${rowKey}::${field}`;
 
 const shorten = (value: string, max = 120) => {
   const text = value.replace(/\s+/g, " ").trim();
@@ -78,6 +86,8 @@ export function GsheetSyncDialog({
   result,
   busy,
   onResolve,
+  title,
+  description,
 }: GsheetSyncDialogProps) {
   const { t } = useLanguage();
   // Override pilihan user per field; default "pakai Sheet" (sumber datanya).
@@ -100,7 +110,12 @@ export function GsheetSyncDialog({
               label: t("gsheet.statInserted"),
               value: summary.inserted,
               tone: "text-emerald-600 dark:text-emerald-400",
-              hint: t("gsheet.statInsertedHint"),
+              hint:
+                summary.emptyMonths && summary.emptyMonths > 0
+                  ? `${t("gsheet.statInsertedHint")} · ${t("gsheet.zeroSkipped", {
+                      count: summary.emptyMonths,
+                    })}`
+                  : t("gsheet.statInsertedHint"),
             },
             {
               label: t("gsheet.statConflicts"),
@@ -127,14 +142,12 @@ export function GsheetSyncDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>{t("gsheet.title")}</DialogTitle>
-          <DialogDescription>
-            {t("gsheet.description", {
-              tab: result.tab,
-              sheetRows: result.summary.sheetRows,
-              appRows: result.summary.localRows,
-            })}
-          </DialogDescription>
+          <DialogTitle>{title ?? t("gsheet.title")}</DialogTitle>
+          <DialogDescription>{description ?? t("gsheet.description", {
+            tab: result.tab,
+            sheetRows: result.summary.sheetRows,
+            appRows: result.summary.localRows,
+          })}</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -203,9 +216,11 @@ export function GsheetSyncDialog({
               )}
 
               {result.conflicts.map((conflict) => (
-                <div key={`${conflict.codeGaransi}-${conflict.sheetRow}`} className="rounded-lg border">
+                <div key={`${conflict.rowKey}-${conflict.sheetRow}`} className="rounded-lg border">
                   <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-                    <div className="font-mono text-xs font-medium">{conflict.codeGaransi}</div>
+                    <div className="font-mono text-xs font-medium">
+                      {conflict.label ?? conflict.rowKey}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">
                       {t("gsheet.sheetRow", { row: conflict.sheetRow })}
                     </div>
@@ -221,7 +236,7 @@ export function GsheetSyncDialog({
                     </TableHeader>
                     <TableBody>
                       {conflict.fields.map((field) => {
-                        const chosen = choices[key(conflict.codeGaransi, field.field)] ?? "sheet";
+                        const chosen = choices[key(conflict.rowKey, field.field)] ?? "sheet";
                         return (
                           <TableRow key={field.field}>
                             <TableCell className="align-top text-xs font-medium">{field.label}</TableCell>
@@ -237,7 +252,7 @@ export function GsheetSyncDialog({
                                   onClick={() =>
                                     setChoices((c) => ({
                                       ...c,
-                                      [key(conflict.codeGaransi, field.field)]: "sheet",
+                                      [key(conflict.rowKey, field.field)]: "sheet",
                                     }))
                                   }
                                 >
@@ -251,7 +266,7 @@ export function GsheetSyncDialog({
                                   onClick={() =>
                                     setChoices((c) => ({
                                       ...c,
-                                      [key(conflict.codeGaransi, field.field)]: "app",
+                                      [key(conflict.rowKey, field.field)]: "app",
                                     }))
                                   }
                                 >
@@ -298,9 +313,9 @@ export function GsheetSyncDialog({
               for (const conflict of result.conflicts) {
                 const choiceMap: Record<string, "sheet" | "app"> = {};
                 for (const field of conflict.fields) {
-                  choiceMap[field.field] = choices[key(conflict.codeGaransi, field.field)] ?? "sheet";
+                  choiceMap[field.field] = choices[key(conflict.rowKey, field.field)] ?? "sheet";
                 }
-                items.push({ codeGaransi: conflict.codeGaransi, choices: choiceMap });
+                items.push({ rowKey: conflict.rowKey, choices: choiceMap });
               }
               onResolve({ items });
             }}

@@ -79,6 +79,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
 | + | Value RW Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Big Data") satu arah sheet → aplikasi, konflik per field lewat popup | ✅ Selesai |
+| + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
 
 ---
 
@@ -539,6 +540,43 @@ Aturannya:
   yang disepakati) + `defects.sheetSyncedAt`, jadi sync berikutnya tahu sisi mana
   yang berubah.
 
+### Sync Google Sheet (Sales)
+
+Menarik angka penjualan dari tab **Data Penjualan** spreadsheet yang sama.
+**Satu arah: sheet → aplikasi** — semua sel datanya rumus
+(`=INDEX('Raw Penjualan'!…, MATCH(…))`), jadi aplikasi hanya membaca.
+
+Bentuk tabnya tabel lebar (pivot), bukan tabel datar seperti "Big Data":
+
+| Baris | Isi |
+|---|---|
+| 1 | `A` Nama Data Penjualan, `B` **Official Name** (acuan produk), `C` Factory, lalu `D`, `F`, `H`, … label bulan ("January 2026" … "December 2026") |
+| 2 | sub-header `QTY` / `Value` untuk tiap bulan (satu bulan = 2 kolom bersebelahan) |
+| 3 | baris `Total` — dilewati karena Official Name-nya kosong |
+| 4+ | satu baris per produk (112 baris), 12 pasang kolom `QTY`/`Value` |
+
+Satu baris sheet melebar jadi sampai 12 baris tabel `sales` di app, dengan kunci
+**produk + pabrik + bulan** (sama dengan unique index `sales`). Bulan mengikuti
+format app (`"January 2026"` → `Jan`); kolom `Value` dibulatkan ke rupiah bulat.
+
+| Method | Path | Akses | Body |
+|---|---|---|---|
+| POST | `/api/sales/gsheet/sync` | admin | `{}` |
+| POST | `/api/sales/gsheet/resolve` | admin | `{ defaultChoice?: "sheet"\|"app", items?: [{ rowKey, choices: {quantity\|value: "sheet"\|"app"}}] }` |
+
+Aturannya sama dengan sync defect (perbandingan per field, popup pilihan, tombol
+borong **Semua dari Sheet** / **Semua dari App**, perubahan yang cuma ada di app
+cuma dihitung sebagai informasi), dengan tambahan:
+
+- **Bulan yang di sheet masih 0 semua dan belum ada barisnya di app dilewati** —
+  tidak dibuatkan baris nol (keputusan user, mis. Oktober–Desember yang belum ada
+  penjualan). Baris app yang sudah ada tetap dibandingkan dan bisa dikoreksi.
+- Produk dicocokkan lewat kolom **Official Name**; pabrik lewat kolom **Factory**.
+  Nama yang belum ada di Data Master dilaporkan di daftar catatan, bukan dibuat
+  otomatis.
+- Baris app yang produk + pabrik + bulannya tidak ada di sheet (mis. produk yang
+  sama dari pabrik lain) dibiarkan dan cuma dihitung sebagai `onlyInApp`.
+
 ### Bulk (hapus banyak)
 
 | Method | Path | Body |
@@ -885,6 +923,10 @@ Hal yang wajib diperhatikan saat deploy:
 | Variabel | Nilai | Keterangan |
 |---|---|---|
 | `GOOGLE_SERVICE_ACCOUNT_FILE` | `/run/secrets/gsheet-sa.json` | kunci service account Google untuk fitur Sync Google Sheet (mount read-only dari `deploy/secrets/service-account.json`) |
+
+Env opsional untuk sync: `GSHEET_ID` (default spreadsheet `Data Garansi Produk`),
+`GSHEET_TAB` (default `Big Data`, untuk defect), dan `GSHEET_SALES_TAB`
+(default `Data Penjualan`, untuk sales).
 
 Spreadsheet harus di-share ke email service account itu (minimal **Viewer**) —
 aplikasi tidak butuh izin tulis dan tidak pernah memakainya.

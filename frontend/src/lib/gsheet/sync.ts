@@ -1,69 +1,54 @@
 import { GSHEET_FIELDS, shortHash, type GsheetField, type RowFields } from "./mapping";
 
-export type DiffField = { field: GsheetField; sheet: string; app: string };
+export type DiffField<F extends string = string> = { field: F; sheet: string; app: string };
 
 export type FieldChoice = "sheet" | "app";
 
 /**
- * Rencana sync satu baris (SATU ARAH: sheet -> app). Keputusan PER FIELD:
+ * Hasil perbandingan beberapa field (sheet vs app) memakai baseline hash.
  * - `apply`     : sheet berubah, app belum ikut -> nilainya dipakai di app
  * - `conflicts` : dua-duanya berubah (atau belum pernah disinkron) -> user memilih
  * - `resolved`  : konflik yang sudah diputuskan user di popup
  * - `appOnly`   : app berubah, sheet tidak -> tidak ada yang ditulis ke mana pun
- *                 (tab "Big Data" kolom A:H diisi ARRAYFORMULA, jadi read-only);
- *                 dicatat cuma sebagai informasi.
+ *                 (sheet read-only); dicatat cuma sebagai informasi
  */
-export type RowPlan = {
-  code: string;
-  sheetRow: number;
-  localId: number;
-  apply: DiffField[];
-  conflicts: DiffField[];
-  resolved: DiffField[];
-  appOnly: DiffField[];
+export type FieldPlan<F extends string> = {
+  apply: DiffField<F>[];
+  conflicts: DiffField<F>[];
+  resolved: DiffField<F>[];
+  appOnly: DiffField<F>[];
   /** Hash nilai sheet terakhir yang disepakati — pembanding sync berikutnya. */
   baseline: Record<string, string>;
 };
 
 /**
- * Bandingkan satu baris app dengan satu baris sheet memakai baseline hash hasil
- * sync terakhir. Tanpa baseline (baris belum pernah disinkron) perbedaan
- * dianggap konflik: lebih aman bertanya daripada menimpa data.
+ * Aturan inti sync satu arah (sheet -> app), dipakai baris defect (tab "Big Data")
+ * maupun sel sales (tab "Data Penjualan").
  *
  * Baseline sebuah field hanya maju kalau field itu sudah sepakat (nilainya sama,
- * sheet menang, app menang, atau user sudah memutuskan). Field yang masih
- * konflik sengaja tidak dicatat, supaya konfliknya muncul lagi di sync berikutnya
- * sampai benar-benar diputuskan.
+ * sheet menang, app menang, atau user sudah memutuskan). Field yang masih konflik
+ * sengaja tidak dicatat, supaya konfliknya muncul lagi di sync berikutnya sampai
+ * benar-benar diputuskan.
  */
-export function planRowSync(input: {
-  code: string;
-  sheetRow: number;
-  localId: number;
-  sheet: RowFields;
-  app: RowFields;
+export function planFields<F extends string>(input: {
+  fields: readonly F[];
+  sheet: Partial<Record<F, string>>;
+  app: Partial<Record<F, string>>;
   baseline: Record<string, string> | null;
   choices?: Record<string, FieldChoice> | null;
-}): RowPlan {
-  const { code, sheetRow, localId, sheet, app, baseline, choices } = input;
-  const plan: RowPlan = {
-    code,
-    sheetRow,
-    localId,
-    apply: [],
-    conflicts: [],
-    resolved: [],
-    appOnly: [],
-    baseline: {},
-  };
+  /** Field yang cuma jadi kunci/pembanding, tidak pernah dianggap berubah. */
+  ignore?: readonly F[];
+}): FieldPlan<F> {
+  const { fields, sheet, app, baseline, choices, ignore } = input;
+  const plan: FieldPlan<F> = { apply: [], conflicts: [], resolved: [], appOnly: [], baseline: {} };
 
-  for (const field of GSHEET_FIELDS) {
+  for (const field of fields) {
     const sheetValue = sheet[field] ?? "";
     const appValue = app[field] ?? "";
     const sheetHash = shortHash(sheetValue);
-    const diff: DiffField = { field, sheet: sheetValue, app: appValue };
+    const diff: DiffField<F> = { field, sheet: sheetValue, app: appValue };
 
-    // Code Garansi cuma kunci pencocokan; beda huruf besar/kecil bukan perubahan.
-    if (field === "codeGaransi" || sheetValue === appValue) {
+    if (ignore?.includes(field) || sheetValue === appValue) {
       plan.baseline[field] = sheetHash;
       continue;
     }
@@ -105,10 +90,41 @@ export function planRowSync(input: {
   return plan;
 }
 
-/** Baseline untuk baris yang baru masuk dari sheet. */
-export function baselineFromSheet(fields: RowFields): Record<string, string> {
+export type RowPlan = FieldPlan<GsheetField> & {
+  code: string;
+  sheetRow: number;
+  localId: number;
+};
+
+/** Rencana sync satu baris defect (kunci: Code Garansi). */
+export function planRowSync(input: {
+  code: string;
+  sheetRow: number;
+  localId: number;
+  sheet: RowFields;
+  app: RowFields;
+  baseline: Record<string, string> | null;
+  choices?: Record<string, FieldChoice> | null;
+}): RowPlan {
+  const plan = planFields<GsheetField>({
+    fields: GSHEET_FIELDS,
+    sheet: input.sheet,
+    app: input.app,
+    baseline: input.baseline,
+    choices: input.choices,
+    // Code Garansi cuma kunci pencocokan; beda huruf besar/kecil bukan perubahan.
+    ignore: ["codeGaransi"],
+  });
+  return { code: input.code, sheetRow: input.sheetRow, localId: input.localId, ...plan };
+}
+
+/** Baseline untuk sel/baris yang baru masuk dari sheet. */
+export function baselineFromSheet(
+  fields: Partial<Record<string, string | undefined>>,
+  fieldList: readonly string[] = GSHEET_FIELDS
+): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const field of GSHEET_FIELDS) out[field] = shortHash(fields[field] ?? "");
+  for (const field of fieldList) out[field] = shortHash(fields[field] ?? "");
   return out;
 }
 

@@ -231,6 +231,16 @@ export const sales = sqliteTable(
     month: text("month").notNull(),
     quantity: integer("quantity").notNull().default(0),
     value: integer("value").notNull().default(0),
+    /**
+     * Pembukuan sync Google Sheet (tab "Data Penjualan") — pola sama dengan
+     * `defects.sheetFields`: hash nilai sheet terakhir yang disepakati per field
+     * ({"quantity": hash, "value": hash}). Dipakai untuk membedakan "berubah di
+     * app" dan "berubah di sheet", jadi konflik cuma muncul kalau dua-duanya
+     * berubah. Tab itu read-only (semua selnya rumus INDEX), jadi tidak ada
+     * penulisan balik ke sheet.
+     */
+    sheetFields: text("sheetFields"),
+    sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" }),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),

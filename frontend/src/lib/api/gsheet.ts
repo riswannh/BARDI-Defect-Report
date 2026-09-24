@@ -354,7 +354,7 @@ async function runSync(options: {
     const patch: Partial<typeof defects.$inferInsert> = {};
     let applied = 0;
 
-    const applyFromSheet = (diff: DiffField) => {
+    const applyFromSheet = (diff: DiffField<GsheetField>) => {
       const field = diff.field;
       if (field === "quantity" || field === "value") {
         patch[field] = Number.parseInt(diff.sheet || "0", 10) || 0;
@@ -494,7 +494,7 @@ export async function defectsGsheetResolve(req: NextRequest) {
 
   const parsed = (await req.json().catch(() => ({}))) as {
     defaultChoice?: "sheet" | "app";
-    items?: { codeGaransi?: string; choices?: Record<string, "sheet" | "app"> }[];
+    items?: { rowKey?: string; codeGaransi?: string; choices?: Record<string, "sheet" | "app"> }[];
   };
   if (parsed.defaultChoice !== "sheet" && parsed.defaultChoice !== "app" && !parsed.items?.length) {
     return jsonError("Tidak ada pilihan resolusi yang dikirim.", 422);
@@ -502,7 +502,8 @@ export async function defectsGsheetResolve(req: NextRequest) {
 
   const only = new Map<string, Record<string, "sheet" | "app">>();
   for (const item of parsed.items ?? []) {
-    const code = normalizeCode(item.codeGaransi ?? "");
+    // rowKey dipakai dialog bersama (dipakai juga modul sales); codeGaransi nama lama.
+    const code = normalizeCode(item.rowKey ?? item.codeGaransi ?? "");
     if (!code || !item.choices) continue;
     const choices: Record<string, "sheet" | "app"> = {};
     for (const [field, choice] of Object.entries(item.choices)) {

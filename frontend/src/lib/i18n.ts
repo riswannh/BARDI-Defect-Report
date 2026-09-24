@@ -822,6 +822,21 @@ const translations = {
     en: "Google Sheet sync failed.",
     zh: "Google Sheet 同步失败。",
   },
+  "gsheet.zeroSkipped": {
+    id: "{count} bulan bernilai 0 dilewati",
+    en: "{count} zero months skipped",
+    zh: "跳过 {count} 个为 0 的月份",
+  },
+  "gsheet.salesTitle": {
+    id: "Sync dari Google Sheet (Data Penjualan)",
+    en: "Sync from Google Sheet (Sales)",
+    zh: "从 Google Sheet 同步（销售数据）",
+  },
+  "gsheet.salesDescription": {
+    id: "Tab {tab} — satu arah: sheet → aplikasi. Acuan produk: kolom Official Name. Sheet {sheetRows} baris produk, aplikasi {appRows} baris sales.",
+    en: "Tab {tab} — one way: sheet → app. Products matched by the Official Name column. Sheet has {sheetRows} product rows, app has {appRows} sales rows.",
+    zh: "工作表 {tab} — 单向：表格 → 应用。产品以 Official Name 列为准。表格 {sheetRows} 个产品行，应用 {appRows} 行销售数据。",
+  },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",
     en: "Saved. Ready for the next entry.",
