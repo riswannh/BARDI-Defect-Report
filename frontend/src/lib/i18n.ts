@@ -14,6 +14,7 @@ const translations = {
   // Common
   "common.save": { id: "Simpan", en: "Save", zh: "保存" },
   "common.cancel": { id: "Batal", en: "Cancel", zh: "取消" },
+  "common.close": { id: "Tutup", en: "Close", zh: "关闭" },
   "common.update": { id: "Perbarui", en: "Update", zh: "更新" },
   "common.add": { id: "Tambah", en: "Add", zh: "添加" },
   "common.search": { id: "Cari", en: "Search", zh: "搜索" },
@@ -665,6 +666,161 @@ const translations = {
     id: "Ctrl+Enter untuk menyimpan",
     en: "Ctrl+Enter to save",
     zh: "按 Ctrl+Enter 保存",
+  },
+  "gsheet.button": {
+    id: "Sync Google Sheet",
+    en: "Sync Google Sheet",
+    zh: "同步 Google Sheet",
+  },
+  "gsheet.title": {
+    id: "Sync dari Google Sheet",
+    en: "Sync from Google Sheet",
+    zh: "从 Google Sheet 同步",
+  },
+  "gsheet.description": {
+    id: "Tab {tab} — satu arah: sheet → aplikasi. Sheet dibaca {sheetRows} baris, aplikasi {appRows} baris.",
+    en: "Tab {tab} — one way: sheet → app. Sheet has {sheetRows} rows, app has {appRows} rows.",
+    zh: "工作表 {tab} — 单向：表格 → 应用。表格 {sheetRows} 行，应用 {appRows} 行。",
+  },
+  "gsheet.statFromSheet": {
+    id: "Masuk ke app",
+    en: "Applied to app",
+    zh: "已应用到应用",
+  },
+  "gsheet.statFromSheetHint": {
+    id: "{rows} baris diperbarui dari sheet",
+    en: "{rows} rows updated from sheet",
+    zh: "{rows} 行已从表格更新",
+  },
+  "gsheet.statInserted": {
+    id: "Baris baru",
+    en: "New rows",
+    zh: "新增行",
+  },
+  "gsheet.statInsertedHint": {
+    id: "ada di sheet, belum ada di app",
+    en: "in sheet but not in app",
+    zh: "表格有、应用没有",
+  },
+  "gsheet.statConflicts": {
+    id: "Konflik",
+    en: "Conflicts",
+    zh: "冲突",
+  },
+  "gsheet.statConflictsHint": {
+    id: "{resolved} field sudah diputuskan",
+    en: "{resolved} fields already decided",
+    zh: "已决定 {resolved} 个字段",
+  },
+  "gsheet.statOnlyApp": {
+    id: "Hanya di app",
+    en: "App only",
+    zh: "仅在应用",
+  },
+  "gsheet.statOnlyAppHint": {
+    id: "{fields} field beda, tidak dikirim ke sheet",
+    en: "{fields} fields differ, not sent to sheet",
+    zh: "{fields} 个字段不同，不会写回表格",
+  },
+  "gsheet.readOnly": {
+    id: "Sheet hanya dibaca (kolomnya formula)",
+    en: "Sheet is read-only (its columns are formulas)",
+    zh: "表格只读（列为公式）",
+  },
+  "gsheet.skippedBadge": {
+    id: "{count} baris dilewati",
+    en: "{count} rows skipped",
+    zh: "{count} 行已跳过",
+  },
+  "gsheet.noConflict": {
+    id: "Tidak ada konflik — semua perubahan dari sheet sudah masuk.",
+    en: "No conflicts — every sheet change has been applied.",
+    zh: "没有冲突 — 表格的更改都已应用。",
+  },
+  "gsheet.conflictTitle": {
+    id: "{count} field bentrok",
+    en: "{count} conflicting fields",
+    zh: "{count} 个冲突字段",
+  },
+  "gsheet.conflictHint": {
+    id: "Pilih data yang benar untuk tiap field.",
+    en: "Pick the correct value for each field.",
+    zh: "为每个字段选择正确的值。",
+  },
+  "gsheet.allSheet": {
+    id: "Semua dari Sheet",
+    en: "All from Sheet",
+    zh: "全部用表格",
+  },
+  "gsheet.allApp": {
+    id: "Semua dari App",
+    en: "All from App",
+    zh: "全部用应用",
+  },
+  "gsheet.truncated": {
+    id: "Menampilkan {shown} dari {total} field yang bentrok. Sisanya bisa diputuskan sekaligus lewat tombol Semua dari Sheet / Semua dari App.",
+    en: "Showing {shown} of {total} conflicting fields. Decide the rest with All from Sheet / All from App.",
+    zh: "显示 {shown} / {total} 个冲突字段。其余可用“全部用表格/全部用应用”一次决定。",
+  },
+  "gsheet.sheetRow": {
+    id: "baris sheet {row}",
+    en: "sheet row {row}",
+    zh: "表格第 {row} 行",
+  },
+  "gsheet.columnField": {
+    id: "Field",
+    en: "Field",
+    zh: "字段",
+  },
+  "gsheet.columnSheet": {
+    id: "Google Sheet",
+    en: "Google Sheet",
+    zh: "Google 表格",
+  },
+  "gsheet.columnApp": {
+    id: "Aplikasi",
+    en: "App",
+    zh: "应用",
+  },
+  "gsheet.columnPick": {
+    id: "Pakai",
+    en: "Use",
+    zh: "采用",
+  },
+  "gsheet.pickSheet": {
+    id: "Sheet",
+    en: "Sheet",
+    zh: "表格",
+  },
+  "gsheet.pickApp": {
+    id: "App",
+    en: "App",
+    zh: "应用",
+  },
+  "gsheet.issueTitle": {
+    id: "{count} catatan",
+    en: "{count} notes",
+    zh: "{count} 条说明",
+  },
+  "gsheet.apply": {
+    id: "Terapkan pilihan",
+    en: "Apply choices",
+    zh: "应用选择",
+  },
+  "gsheet.running": {
+    id: "Menyinkronkan dengan Google Sheet…",
+    en: "Syncing with Google Sheet…",
+    zh: "正在与 Google Sheet 同步…",
+  },
+  "gsheet.done": {
+    id: "Sync selesai: {fields} field dari sheet, {inserted} baris baru, {conflicts} konflik.",
+    en: "Sync done: {fields} fields from sheet, {inserted} new rows, {conflicts} conflicts.",
+    zh: "同步完成：来自表格 {fields} 个字段，新增 {inserted} 行，冲突 {conflicts} 个。",
+  },
+  "gsheet.failed": {
+    id: "Sync Google Sheet gagal.",
+    en: "Google Sheet sync failed.",
+    zh: "Google Sheet 同步失败。",
   },
   "defects.savedNext": {
     id: "Tersimpan. Lanjut entri berikutnya.",

@@ -193,6 +193,17 @@ export const defects = sqliteTable(
      * sekarang hanya dipakai modul PO Product.
      */
     productPriceId: integer("productPriceId").references(() => productPrices.id),
+    /**
+     * Pembukuan sync Google Sheet (tab "Big Data").
+     *
+     * `sheetFields` menyimpan hash nilai tiap field yang terakhir kali disepakati
+     * kedua sisi (JSON {field: hash}). Dari situ sync bisa membedakan "berubah di
+     * app" dan "berubah di sheet", sehingga popup konflik hanya muncul kalau
+     * memang dua-duanya berubah. `sheetSyncedAt` menandai sync terakhir yang
+     * menyentuh baris ini.
+     */
+    sheetFields: text("sheetFields"),
+    sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" }),
     createdAt: integer("createdAt", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),

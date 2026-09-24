@@ -25,9 +25,14 @@ services:
       # browser pengguna.
       BETTER_AUTH_URL: https://${DOMAIN}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      # Kunci service account Google untuk fitur "Sync Google Sheet" (tab
+      # "Big Data"). Aplikasi hanya MEMBACA sheet itu — kolom A:H diisi
+      # ARRAYFORMULA, jadi tidak ada jalur tulis sama sekali.
+      GOOGLE_SERVICE_ACCOUNT_FILE: /run/secrets/gsheet-sa.json
     volumes:
       # Database + backup otomatis (backup-*.db) tinggal di folder ini.
       - ./data:/data
+      - ./secrets/service-account.json:/run/secrets/gsheet-sa.json:ro
     healthcheck:
       test:
         [

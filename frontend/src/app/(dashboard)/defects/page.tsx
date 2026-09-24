@@ -27,6 +27,11 @@ import { productName } from "@/lib/analytics";
 import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
+import {
+  GsheetSyncDialog,
+  type GsheetResolvePayload,
+  type GsheetSyncResult,
+} from "@/components/gsheet-sync-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
@@ -57,6 +62,8 @@ import {
   FileDown,
   History,
   Pencil,
+  Loader2,
+  RefreshCw,
   Plus,
   Trash2,
   Upload,
@@ -150,6 +157,9 @@ export default function DefectsPage() {
   const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncResult, setSyncResult] = useState<GsheetSyncResult | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -438,6 +448,51 @@ export default function DefectsPage() {
     e.target.value = "";
   }
 
+  /**
+   * Tarik perubahan dari tab "Big Data" Google Sheet. Satu arah: sheet → app —
+   * kolom sheet itu diisi formula, jadi tidak ada yang ditulis balik.
+   */
+  async function runSheetSync() {
+    setSyncOpen(true);
+    setSyncBusy(true);
+    try {
+      const result = await apiPost<GsheetSyncResult>("/api/defects/gsheet/sync", {});
+      setSyncResult(result);
+      if (result.summary.inserted > 0 || result.summary.appliedFields > 0) reload();
+      toast.success(
+        t("gsheet.done", {
+          fields: result.summary.appliedFields,
+          inserted: result.summary.inserted,
+          conflicts: result.summary.conflicts,
+        })
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("gsheet.failed"));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
+  async function resolveSheetSync(payload: GsheetResolvePayload) {
+    setSyncBusy(true);
+    try {
+      const result = await apiPost<GsheetSyncResult>("/api/defects/gsheet/resolve", payload);
+      setSyncResult(result);
+      reload();
+      toast.success(
+        t("gsheet.done", {
+          fields: result.summary.appliedFields,
+          inserted: result.summary.inserted,
+          conflicts: result.summary.conflicts,
+        })
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("gsheet.failed"));
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+
   return (
     <AdminGuard>
       <div>
@@ -484,6 +539,14 @@ export default function DefectsPage() {
                   <History className="size-4" /> {t("import.lastResult")}
                 </Button>
               )}
+              <Button variant="outline" size="sm" onClick={runSheetSync} disabled={syncBusy}>
+                {syncBusy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                {t("gsheet.button")}
+              </Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -921,6 +984,14 @@ export default function DefectsPage() {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         result={importResult}
+      />
+
+      <GsheetSyncDialog
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        result={syncResult}
+        busy={syncBusy}
+        onResolve={resolveSheetSync}
       />
 
       <DeleteAllDialog

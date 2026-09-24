@@ -78,6 +78,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
 | + | Value RW Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
+| + | **Sync Google Sheet** (tab "Big Data") satu arah sheet → aplikasi, konflik per field lewat popup | ✅ Selesai |
 
 ---
 
@@ -496,6 +497,48 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 - `skippedDetails[]` — baris dilewati karena duplikat.
 - Dialog `ImportResultDialog` menampilkan hasil + bisa unduh CSV; server mencatat log prefix `[import:{module}]`.
 
+### Sync Google Sheet (Defect)
+
+Menarik perubahan dari spreadsheet `Data Garansi Produk`, tab **Big Data**.
+**Satu arah: sheet → aplikasi.** Kolom A:H tab itu diisi
+`=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat IMPORTRANGE), jadi aplikasi
+hanya membaca — tidak ada jalur tulis ke sheet sama sekali.
+
+Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
+`timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
+`Problem` → `problemId`, `Translate` → `problemDetail`, `Offical Name` →
+`productId`, `Quantity` → `quantity`, `Status Defect` → `statusId`, `Pabrik` →
+`factoryId`, `Value` → `value`. Kolom `Keterangan Kendala`, `Produk`, `Status`,
+dan `Month` tidak dipakai.
+
+| Method | Path | Akses | Body |
+|---|---|---|---|
+| POST | `/api/defects/gsheet/sync` | admin | `{}` |
+| POST | `/api/defects/gsheet/resolve` | admin | `{ defaultChoice?: "sheet"\|"app", items?: [{ codeGaransi, choices: {field: "sheet"\|"app"} }] }` |
+
+Respons: `{ ok, tab, summary, conflicts[], issues[], conflictsTruncated }` dengan
+`summary = { sheetRows, localRows, matched, inserted, appliedFields, rowsUpdated,
+conflicts, conflictsResolved, unchanged, appOnlyChanges, onlyInApp, skipped }`.
+
+Aturannya:
+
+- Baris dicocokkan lewat **Code Garansi** (tanpa peduli huruf besar/kecil).
+- Nama master (Problem, Status Defect, Pabrik, Offical Name) dicocokkan ke Data
+  Master dan ditulis memakai ejaan master; sel kosong jadi `Kosong` (problem) /
+  `Open` (status), sama seperti jalur impor Excel.
+- Perubahan yang hanya ada di sheet langsung dipakai di aplikasi. Perubahan yang
+  hanya ada di aplikasi **tidak dikirim ke sheet** — cuma dihitung dan
+  ditampilkan sebagai informasi.
+- Perubahan di **dua** sisi untuk field yang sama → muncul di `conflicts[]` dan
+  ditampilkan popup pilihan per field (Sheet / App), lengkap dengan tombol borong
+  **Semua dari Sheet** / **Semua dari App**. Field yang masih bentrok tidak
+  pernah ditimpa diam-diam dan akan ditanya lagi pada sync berikutnya.
+- Baris yang hanya ada di sheet dibuat di aplikasi (`productPriceId` NULL, harga
+  tidak diisi); baris yang hanya ada di aplikasi dibiarkan.
+- Pilihan terakhir dicatat per baris di `defects.sheetFields` (hash nilai sheet
+  yang disepakati) + `defects.sheetSyncedAt`, jadi sync berikutnya tahu sisi mana
+  yang berubah.
+
 ### Bulk (hapus banyak)
 
 | Method | Path | Body |
@@ -576,6 +619,7 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
   - Menutup dialog yang masih berisi isian **meminta konfirmasi** lebih dulu.
 - **Bulk**: checkbox baris → **Ubah massal** (dialog edit berurutan per data, judul `(1/N)`; Perbarui = simpan & lanjut ke data berikutnya) dan **Hapus massal**.
 - **Excel**: import (duplikat `codeGaransi` di-skip), export, template.
+- **Sync Google Sheet** (admin, tombol di samping Impor/Export): menarik perubahan dari tab **Big Data** spreadsheet `Data Garansi Produk`. **Satu arah sheet → aplikasi** — kolom A:H tab itu formula (`ARRAYFORMULA`/`IMPORTRANGE`) sehingga aplikasi tidak pernah menulis ke sheet. Perubahan di sheet langsung masuk; perubahan yang hanya ada di aplikasi cuma dihitung sebagai informasi; field yang berubah di dua sisi ditanyakan lewat popup (pilih **Sheet** atau **App**, ada tombol borong). Detail aturan + pemetaan kolom: §7 *Sync Google Sheet*.
 
 ### 8.4 Data Sales
 
@@ -835,6 +879,15 @@ Hal yang wajib diperhatikan saat deploy:
 |---|---|---|
 | `BETTER_AUTH_SECRET` | — | wajib diisi |
 | `BETTER_AUTH_URL` | `http://localhost:3000` | ganti jika diakses via domain/IP |
+
+**Env container** (diatur di `deploy/docker-compose.yml`, bukan `.env`):
+
+| Variabel | Nilai | Keterangan |
+|---|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_FILE` | `/run/secrets/gsheet-sa.json` | kunci service account Google untuk fitur Sync Google Sheet (mount read-only dari `deploy/secrets/service-account.json`) |
+
+Spreadsheet harus di-share ke email service account itu (minimal **Viewer**) —
+aplikasi tidak butuh izin tulis dan tidak pernah memakainya.
 
 ---
 
