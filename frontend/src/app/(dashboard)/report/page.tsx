@@ -365,7 +365,10 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* Dua kartu nilai (Defect Value & Sales Value) isinya rupiah panjang, jadi
+          enam kolom baru dipakai di layar sangat lebar — di bawah itu 3 kolom
+          supaya angkanya tidak berdesakan. */}
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         <SummaryCard
           title={t("report.totalDefect")}
           value={formatNumber(netDQty)}

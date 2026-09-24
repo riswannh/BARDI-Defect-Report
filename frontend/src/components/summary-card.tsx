@@ -7,6 +7,21 @@ interface SummaryCardProps {
   icon?: React.ComponentType<{ className?: string }>;
 }
 
+/**
+ * Nilai rupiah bisa panjang ("Rp 1.234.567.890") sementara di halaman Report
+ * kartunya hanya selebar ~240 px pada grid 6 kolom, sehingga teksnya dulu
+ * terpotong. Ukuran hurufnya turun satu tingkat setiap nilainya bertambah panjang,
+ * dan `break-words` dipasang sebagai jaring terakhir supaya tidak ada yang hilang.
+ */
+function valueTextClass(value: React.ReactNode) {
+  const text =
+    typeof value === "string" || typeof value === "number" ? String(value) : "";
+  if (text.length >= 18) return "text-base";
+  if (text.length >= 15) return "text-lg";
+  if (text.length >= 12) return "text-xl";
+  return "text-2xl";
+}
+
 export function SummaryCard({
   title,
   value,
@@ -26,7 +41,9 @@ export function SummaryCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5">
-        <span className="font-heading text-2xl font-semibold tracking-tight tabular-nums">
+        <span
+          className={`font-heading font-semibold tracking-tight break-words tabular-nums ${valueTextClass(value)}`}
+        >
           {value}
         </span>
         {description && (

@@ -918,6 +918,14 @@ Penanganannya:
   baris tetap dalam mode edit dan teksnya tinggal disimpan ulang. Handler `onAdd`/`onRename` karena
   itu mengembalikan `false` ketika gagal. Form defect/sales/PO sudah begitu sejak awal (dialog baru
   ditutup setelah `await` berhasil), jadi jangan diubah.
+- `src/components/summary-card.tsx` — nilai rupiah bisa 17 karakter (`Rp 25.925.925.690`) sementara
+  kartunya di halaman Report hanya selebar ~240 px. Ukuran huruf nilainya karena itu turun satu
+  tingkat setiap nilainya bertambah panjang (≥12 karakter `text-xl`, ≥15 `text-lg`, ≥18 `text-base`)
+  dan `break-words` dipasang sebagai jaring terakhir, jadi tidak ada angka yang terpotong. Kartu ini
+  dipakai juga di halaman Defects, Sales, dan PO.
+- **Halaman Report: grid kartu ringkasan memakai `2xl:grid-cols-6`, bukan `xl:grid-cols-6`.** Di
+  layar 1280–1535 px enam kolom membuat kartu nilai berdesakan; sekarang rentang itu memakai 3 kolom
+  dan enam kolom baru dipakai mulai 1536 px.
 
 Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 
