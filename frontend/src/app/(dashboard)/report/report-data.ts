@@ -21,7 +21,7 @@ export type RecapSortKey =
   | "salesQty"
   | "salesValue"
   | "replacementQty"
-  | "selisihQty"
+  | "selisihDefect"
   | "ratio";
 
 export interface RecapRow {
@@ -121,7 +121,9 @@ export function sortRecap(
   const dir = sortDir === "asc" ? 1 : -1;
   /** Selisih Defect tidak dikirim server: Replacement − Qty Defect. */
   const pick = (r: RecapRow): number => {
-    if (sortKey === "selisihQty") return r.replacementQty - r.defectQty;
+    // Kolom rekap = Replacement − Qty Defect (kartu Selisih memakai arah
+    // sebaliknya: defect yang belum ada Replacement-nya).
+    if (sortKey === "selisihDefect") return r.replacementQty - r.defectQty;
     if (sortKey === "productName") return 0;
     return r[sortKey] ?? -1;
   };

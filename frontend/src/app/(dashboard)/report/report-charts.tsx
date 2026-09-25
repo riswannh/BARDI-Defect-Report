@@ -53,8 +53,11 @@ export function ratioTextClass(ratio: number | null): string {
 }
 
 /**
- * Selisih Defect = Replacement − Defect: plus (Replacement lebih banyak)
- * hijau, minus (defect belum tertutup Replacement) merah, nol abu-abu.
+ * Warna selisih mengikuti ARTI angkanya, bukan sekadar tandanya: plus =
+ * "Replacement lebih banyak dari defect" (hijau), minus = "defect belum
+ * tertutup Replacement" (merah), nol abu-abu. Karena kolom rekap memakai
+ * Replacement − Defect sedangkan kartu Selisih memakai arah sebaliknya
+ * (defect − Replacement), pemanggil kartu mengirim nilai arah kolom.
  */
 export function selisihTextClass(value: number): string {
   if (value > 0) return "text-emerald-600 dark:text-emerald-400";

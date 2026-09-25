@@ -73,7 +73,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
 | + | **Harga RW** Defect jadi Harga + Total Value (harga × qty), Harga RW otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
 | + | Susunan field **Harga RW + Total Value** di form Defect disamakan dengan form PO (dropdown harga + kolom baca-saja), label "Value RW" diganti "Total Value" | ✅ Selesai |
-| + | Kartu **Replacement** + kartu **Selisih Defect Quantity** & **Selisih Defect Value** (Replacement − Defect, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
+| + | Kartu **Replacement** + **Nilai Replacement** (Value RW) + **Selisih Defect Quantity** & **Selisih Defect Value** (defect yang belum ada Replacement, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
@@ -424,8 +424,10 @@ dengan `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp def
 `totals` memuat angka **mentah**: `defectQty`/`defectValue` (kartu Total Defect & Nilai Defect,
 grafik, pie, tabel rekap), `replacementQty`/`replacementValue` dari baris PO Replacement
 (`replacementValue` = `pricePerPcs × quantity`), dan `replacementRwValue` = Σ (quantity × harga
-master) dalam Rupiah. Angka kartu **Selisih Defect Quantity** (`replacementQty − defectQty`) dan
-**Selisih Defect Value** (`replacementRwValue − defectValue`, admin saja) **tidak dikirim server** —
+master) dalam Rupiah. Kartu **Nilai Replacement** menampilkan `replacementRwValue` itu apa adanya,
+sedangkan kartu **Selisih Defect Quantity** (`defectQty − replacementQty`) dan **Selisih Defect
+Value** (`defectValue − replacementRwValue`, admin saja) menjawab "berapa defect yang belum ada
+Replacement-nya" — arahnya kebalikan dari kolom rekap. Angka-angka itu **tidak dikirim server** —
 klien menghitungnya dari totals di atas, jadi tidak ada lagi field angka bersih seperti dulu.
 
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan

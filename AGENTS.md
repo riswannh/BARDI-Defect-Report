@@ -337,17 +337,21 @@ Catatan perilaku Report yang harus dijaga:
   dijumlahkan `summarizeByProduct()` (`analytics.ts`) dari daftar PO Replacement yang sama dengan
   kartu — jumlah seluruh `recap[].replacementQty` harus sama dengan `totals.replacementQty`.
   Angka selisih **tidak dikirim server**: klien menghitung `replacementQty − defectQty`
-  (`RecapSortKey` `selisihQty` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
-  (`report-charts.tsx`) — minus merah, plus hijau, nol abu-abu.
+  (`RecapSortKey` `selisihDefect` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
+  (`report-charts.tsx`) — plus (Replacement lebih banyak) hijau, minus (defect belum tertutup
+  Replacement) merah, nol abu-abu.
 - Kartu ringkasan halaman Report disusun **2 kolom** (`grid-cols-2`, menurun ke bawah) sejak
-  25 Sep 2026 — sebelumnya satu baris lebar (`2xl:grid-cols-6`). Kartu **Selisih Defect Quantity**
-  (`report.selisihQty`) = `replacementQty − defectQty`, dan kartu **Selisih Defect Value**
-  (`report.selisihValue`, admin saja) = `totals.replacementRwValue − defectValue`, dengan Value RW
-  = Σ (quantity × harga master) dalam Rupiah — server mengirim `totals.replacementRwValue`.
-  Keduanya dihitung di klien dari totals mentah dan diwarnai `selisihTextClass()`.
-  Keterangan kecil di bawah angkanya menyebut pengurangannya
-  (`report.selisihQtyDesc` = "Replacement − Qty Defect", `report.selisihValueDesc` =
-  "Value RW Replacement − Nilai Defect").
+  25 Sep 2026 — sebelumnya satu baris lebar (`2xl:grid-cols-6`). Kartu **Nilai Replacement**
+  (`report.replacementValue`, admin saja) = `totals.replacementRwValue`, yaitu Value RW PO Replacement
+  = Σ (quantity × harga master) dalam Rupiah. Kartu **Selisih Defect Quantity** (`report.selisihQty`)
+  = `defectQty − replacementQty` dan kartu **Selisih Defect Value** (`report.selisihValue`, admin
+  saja) = `defectValue − totals.replacementRwValue` — keduanya menjawab "berapa defect yang BELUM
+  ada Replacement-nya", arahnya KEBALIKAN dari kolom rekap (25 Sep 2026). Karena itu warnanya
+  dihitung dari nilai arah kolom (`selisihTextClass(-nilai)`) supaya arti hijau/merah tetap sama di
+  kartu dan di tabel. Keterangan kecil di bawah angkanya menyebut pengurangannya
+  (`report.selisihQtyDesc` = "Qty Defect − Replacement", `report.selisihValueDesc` =
+  "Nilai Defect − Value RW Replacement", `report.replacementValueDesc` = "Value RW: qty × harga
+  master"). Angka bertanda plus kalau positif (`formatSelisih()` di `report-data.ts`).
 
 ### Aturan alur input defect
 

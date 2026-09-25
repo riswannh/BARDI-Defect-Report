@@ -36,6 +36,7 @@ import {
   Coins,
   Package,
   Percent,
+  Receipt,
   Scale,
   ShoppingCart,
   Wallet,
@@ -176,9 +177,9 @@ export default function ReportPage() {
   const ratioQty = defectSalesRatio(dQty, sQty);
   // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
   const replacementQty = report?.totals.replacementQty ?? 0;
-  // Selisih Replacement − Defect (qty & Rupiah); minus merah, plus hijau.
-  const selisihQty = replacementQty - dQty;
-  const selisihValue = (report?.totals.replacementRwValue ?? 0) - dVal;
+  // Selisih Defect = defect yang BELUM ada Replacement (qty & Rupiah).
+  const selisihQty = dQty - replacementQty;
+  const selisihValue = dVal - (report?.totals.replacementRwValue ?? 0);
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -416,11 +417,21 @@ export default function ReportPage() {
           description={t("report.replacementDesc")}
           icon={Package}
         />
-        {/* Selisih Replacement − Defect pada periode terpilih. */}
+        {isAdmin && (
+          <SummaryCard
+            title={t("report.replacementValue")}
+            value={formatIDR(report?.totals.replacementRwValue ?? 0)}
+            description={t("report.replacementValueDesc")}
+            icon={Receipt}
+          />
+        )}
+        {/* Selisih Defect = defect yang belum ada Replacement-nya. Warna kedua
+            kartu di bawah memakai arah kolom rekap (selisihTextClass), bukan
+            tanda kartunya: Replacement lebih banyak = hijau. */}
         <SummaryCard
           title={t("report.selisihQty")}
           value={
-            <span className={selisihTextClass(selisihQty)}>
+            <span className={selisihTextClass(-selisihQty)}>
               {formatSelisih(selisihQty)}
             </span>
           }
@@ -431,7 +442,7 @@ export default function ReportPage() {
           <SummaryCard
             title={t("report.selisihValue")}
             value={
-              <span className={selisihTextClass(selisihValue)}>
+              <span className={selisihTextClass(-selisihValue)}>
                 {formatSelisih(selisihValue, formatIDR)}
               </span>
             }
@@ -613,9 +624,9 @@ export default function ReportPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 hover:text-foreground"
-                    onClick={() => toggleSort("selisihQty")}
+                    onClick={() => toggleSort("selisihDefect")}
                   >
-                    {t("report.selisihDefect")} {sortIcon("selisihQty")}
+                    {t("report.selisihDefect")} {sortIcon("selisihDefect")}
                   </button>
                 </TableHead>
                 <TableHead className="text-right">
