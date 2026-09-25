@@ -345,6 +345,9 @@ Catatan perilaku Report yang harus dijaga:
   (`report.selisihValue`, admin saja) = `totals.replacementRwValue − defectValue`, dengan Value RW
   = Σ (quantity × harga master) dalam Rupiah — server mengirim `totals.replacementRwValue`.
   Keduanya dihitung di klien dari totals mentah dan diwarnai `selisihTextClass()`.
+  Keterangan kecil di bawah angkanya menyebut pengurangannya
+  (`report.selisihQtyDesc` = "Replacement − Qty Defect", `report.selisihValueDesc` =
+  "Value RW Replacement − Nilai Defect").
 
 ### Aturan alur input defect
 

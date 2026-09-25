@@ -423,6 +423,7 @@ export default function ReportPage() {
               {formatNumber(selisihQty)}
             </span>
           }
+          description={t("report.selisihQtyDesc")}
           icon={Scale}
         />
         {isAdmin && (
@@ -433,6 +434,7 @@ export default function ReportPage() {
                 {formatIDR(selisihValue)}
               </span>
             }
+            description={t("report.selisihValueDesc")}
             icon={Coins}
           />
         )}

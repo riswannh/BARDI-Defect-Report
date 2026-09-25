@@ -265,10 +265,21 @@ const translations = {
     en: "Defect Quantity Difference",
     zh: "缺陷数量差额",
   },
+  /** Keterangan kecil di bawah kartu: angka itu hasil pengurangan apa. */
+  "report.selisihQtyDesc": {
+    id: "Replacement − Qty Defect",
+    en: "Replacement − Defect Qty",
+    zh: "更换数量 − 缺陷数量",
+  },
   "report.selisihValue": {
     id: "Selisih Defect Value",
     en: "Defect Value Difference",
     zh: "缺陷金额差额",
+  },
+  "report.selisihValueDesc": {
+    id: "Value RW Replacement − Nilai Defect",
+    en: "Replacement RW Value − Defect Value",
+    zh: "更换 RW 金额 − 缺陷金额",
   },
   "report.detailTitle": {
     id: "Detail Defect — {product}",
