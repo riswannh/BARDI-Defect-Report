@@ -332,6 +332,12 @@ Catatan perilaku Report yang harus dijaga:
   Datanya dari `GET /api/report` (`totals.replacementQty` dan `replacementPos`), dicocokkan dengan
   `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect. Role Pabrik menerima
   qty-nya tetapi baris PO-nya tanpa `pricePerPcs`/`value`/`currency`.
+- Tabel **rekap per produk** punya kolom **Replacement** dan **Hutang/Dept** sebelum kolom rasio.
+  `replacementQty` per produk dijumlahkan `summarizeByProduct()` (`analytics.ts`) dari daftar PO
+  Replacement yang sama dengan kartu — jumlah seluruh `recap[].replacementQty` harus sama dengan
+  `totals.replacementQty`. **Hutang/Dept tidak dikirim server**: klien menghitung
+  `replacementQty − defectQty` (`RecapSortKey` `debtQty` ditangani khusus di `sortRecap`), warnanya
+  dari `debtTextClass()` (`report-charts.tsx`) — minus merah, plus hijau, nol abu-abu.
 
 ### Aturan alur input defect
 

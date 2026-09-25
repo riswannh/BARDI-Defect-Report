@@ -193,7 +193,12 @@ export async function reportGET(req: NextRequest) {
   const productList = productRows.map((p) => ({ id: p.id, name: p.name }));
   const productNameById = new Map(productList.map((p) => [p.id, p.name]));
   const factoryNameById = new Map(factoryRows.map((f2) => [f2.id, f2.name]));
-  let recap = summarizeByProduct(filteredDefects, filteredSales, productList);
+  let recap = summarizeByProduct(
+    filteredDefects,
+    filteredSales,
+    productList,
+    filteredPurchaseOrders
+  );
 
   // Role Pabrik hanya melihat produk yang punya data (defect/sales) di pabriknya.
   // Admin melihat semua produk.

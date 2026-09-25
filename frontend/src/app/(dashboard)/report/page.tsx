@@ -44,6 +44,7 @@ import {
   PieWithLegend,
   RatioBadge,
   buildPieData,
+  debtTextClass,
   ratioTextClass,
 } from "./report-charts";
 import {
@@ -575,6 +576,24 @@ export default function ReportPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("replacementQty")}
+                  >
+                    {t("report.replacement")} {sortIcon("replacementQty")}
+                  </button>
+                </TableHead>
+                <TableHead className="text-right">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 hover:text-foreground"
+                    onClick={() => toggleSort("debtQty")}
+                  >
+                    {t("report.debt")} {sortIcon("debtQty")}
+                  </button>
+                </TableHead>
+                <TableHead className="text-right">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 hover:text-foreground"
                     onClick={() => toggleSort("ratio")}
                   >
                     {t("report.ratio")} {sortIcon("ratio")}
@@ -610,6 +629,17 @@ export default function ReportPage() {
                       {formatIDR(row.salesValue ?? 0)}
                     </TableCell>
                   )}
+                  <TableCell className="text-right tabular-nums">
+                    {formatNumber(row.replacementQty)}
+                  </TableCell>
+                  {/* Hutang/Dept = Replacement − Qty Defect. */}
+                  <TableCell
+                    className={`text-right font-medium tabular-nums ${debtTextClass(
+                      row.replacementQty - row.defectQty
+                    )}`}
+                  >
+                    {formatNumber(row.replacementQty - row.defectQty)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <RatioBadge ratio={row.ratio} />
                   </TableCell>
@@ -618,7 +648,7 @@ export default function ReportPage() {
               {pagedRecap.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 6 : 4}
+                    colSpan={isAdmin ? 8 : 6}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {reportLoading ? t("common.loading") : t("common.noData")}

@@ -52,6 +52,16 @@ export function ratioTextClass(ratio: number | null): string {
   return "text-red-600 dark:text-red-400";
 }
 
+/**
+ * Hutang/Dept = Replacement − Qty Defect: plus (Replacement lebih banyak)
+ * hijau, minus (defect belum tertutup Replacement) merah.
+ */
+export function debtTextClass(value: number): string {
+  if (value > 0) return "text-emerald-600 dark:text-emerald-400";
+  if (value < 0) return "text-red-600 dark:text-red-400";
+  return "text-muted-foreground";
+}
+
 export function RatioBadge({ ratio }: { ratio: number | null }) {
   if (ratio === null) {
     return <span className="text-muted-foreground">-</span>;

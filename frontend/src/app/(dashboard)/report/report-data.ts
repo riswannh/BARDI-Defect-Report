@@ -19,6 +19,8 @@ export type RecapSortKey =
   | "defectValue"
   | "salesQty"
   | "salesValue"
+  | "replacementQty"
+  | "debtQty"
   | "ratio";
 
 export interface RecapRow {
@@ -28,6 +30,8 @@ export interface RecapRow {
   defectValue?: number;
   salesQty: number;
   salesValue?: number;
+  /** Qty PO berketerangan "Replacement" untuk produk ini. */
+  replacementQty: number;
   ratio: number | null;
 }
 
@@ -101,13 +105,17 @@ export function sortRecap(
     ? recap.filter((r) => r.productName.toLowerCase().includes(q))
     : recap;
   const dir = sortDir === "asc" ? 1 : -1;
+  /** Hutang/Dept tidak dikirim server: Replacement − Qty Defect. */
+  const pick = (r: RecapRow): number => {
+    if (sortKey === "debtQty") return r.replacementQty - r.defectQty;
+    if (sortKey === "productName") return 0;
+    return r[sortKey] ?? -1;
+  };
   return [...rows].sort((a, b) => {
     if (sortKey === "productName") {
       return a.productName.localeCompare(b.productName) * dir;
     }
-    const av = a[sortKey] ?? -1;
-    const bv = b[sortKey] ?? -1;
-    return (av - bv) * dir;
+    return (pick(a) - pick(b)) * dir;
   });
 }
 

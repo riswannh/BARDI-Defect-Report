@@ -254,6 +254,12 @@ const translations = {
     en: "Replacement PO Qty",
     zh: "更换采购数量",
   },
+  /** Selisih Replacement dengan Qty Defect per produk (kolom tabel rekap). */
+  "report.debt": {
+    id: "Hutang/Dept",
+    en: "Debt",
+    zh: "欠款",
+  },
   "report.detailTitle": {
     id: "Detail Defect — {product}",
     en: "Defect Detail — {product}",
