@@ -51,6 +51,7 @@ import {
 } from "./report-charts";
 import {
   defectSalesRatio,
+  formatSelisih,
   sortRecap,
   type RecapSortKey,
   type ReportResponse,
@@ -420,7 +421,7 @@ export default function ReportPage() {
           title={t("report.selisihQty")}
           value={
             <span className={selisihTextClass(selisihQty)}>
-              {formatNumber(selisihQty)}
+              {formatSelisih(selisihQty)}
             </span>
           }
           description={t("report.selisihQtyDesc")}
@@ -431,7 +432,7 @@ export default function ReportPage() {
             title={t("report.selisihValue")}
             value={
               <span className={selisihTextClass(selisihValue)}>
-                {formatIDR(selisihValue)}
+                {formatSelisih(selisihValue, formatIDR)}
               </span>
             }
             description={t("report.selisihValueDesc")}
@@ -665,7 +666,7 @@ export default function ReportPage() {
                       row.replacementQty - row.defectQty
                     )}`}
                   >
-                    {formatNumber(row.replacementQty - row.defectQty)}
+                    {formatSelisih(row.replacementQty - row.defectQty)}
                   </TableCell>
                   <TableCell className="text-right">
                     <RatioBadge ratio={row.ratio} />

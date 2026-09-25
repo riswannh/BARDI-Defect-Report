@@ -8,20 +8,12 @@ interface SummaryCardProps {
 }
 
 /**
- * Nilai rupiah bisa panjang ("Rp 1.234.567.890") sementara di halaman Report
- * kartunya hanya selebar ~240 px pada grid 6 kolom, sehingga teksnya dulu
- * terpotong. Ukuran hurufnya turun satu tingkat setiap nilainya bertambah panjang,
- * dan `break-words` dipasang sebagai jaring terakhir supaya tidak ada yang hilang.
+ * Ukuran huruf nilai mengikuti LEBAR kartu lewat container query, bukan panjang
+ * teks: di grid 2 kolom halaman Report kartunya lebar (± 640 px) sehingga angka
+ * panjang pun tetap besar dan tidak menyisakan ruang kosong, sementara di grid
+ * 3 kolom (Defect/Sales/PO) ukurannya seperti sebelumnya. `break-words` tetap
+ * dipasang sebagai jaring terakhir supaya tidak ada angka yang hilang.
  */
-function valueTextClass(value: React.ReactNode) {
-  const text =
-    typeof value === "string" || typeof value === "number" ? String(value) : "";
-  if (text.length >= 18) return "text-base";
-  if (text.length >= 15) return "text-lg";
-  if (text.length >= 12) return "text-xl";
-  return "text-2xl";
-}
-
 export function SummaryCard({
   title,
   value,
@@ -29,7 +21,7 @@ export function SummaryCard({
   icon: Icon,
 }: SummaryCardProps) {
   return (
-    <Card size="sm" className="relative overflow-hidden">
+    <Card size="sm" className="@container relative overflow-hidden">
       <CardHeader>
         <div className="flex items-center gap-2.5">
           {Icon && (
@@ -42,7 +34,7 @@ export function SummaryCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5">
         <span
-          className={`font-heading font-semibold tracking-tight break-words tabular-nums ${valueTextClass(value)}`}
+          className="font-heading text-xl font-semibold tracking-tight break-words tabular-nums @[22rem]:text-2xl @[30rem]:text-3xl"
         >
           {value}
         </span>

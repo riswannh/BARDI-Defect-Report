@@ -1,4 +1,5 @@
 import type { ChartBucket } from "@/lib/analytics";
+import { formatNumber } from "@/lib/format";
 import type {
   Defect,
   Factory,
@@ -96,6 +97,17 @@ export interface ReportFilters {
 }
 
 /** Saring berdasarkan nama produk lalu urutkan sesuai kolom yang dipilih. */
+/**
+ * Angka selisih: yang positif diberi tanda "+" supaya arahnya jelas
+ * (tanda minus sudah ikut dari angkanya sendiri).
+ */
+export function formatSelisih(
+  value: number,
+  format: (value: number) => string = formatNumber
+): string {
+  return value > 0 ? `+${format(value)}` : format(value);
+}
+
 export function sortRecap(
   recap: RecapRow[],
   search: string,
