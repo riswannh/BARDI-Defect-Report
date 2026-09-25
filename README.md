@@ -73,7 +73,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
 | + | **Harga RW** Defect jadi Harga + Total Value (harga × qty), Harga RW otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
 | + | Susunan field **Harga RW + Total Value** di form Defect disamakan dengan form PO (dropdown harga + kolom baca-saja), label "Value RW" diganti "Total Value" | ✅ Selesai |
-| + | Kartu **Replacement** di Report + kolom **Replacement** & **Hutang/Dept** (= Replacement − Qty Defect, minus merah / plus hijau; label ikut bahasa: id "Hutang", en "Dept") di tabel rekap per produk | ✅ Selesai |
+| + | Kartu **Replacement** + kartu **Selisih Defect Quantity** & **Selisih Defect Value** (Replacement − Defect, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
@@ -422,13 +422,16 @@ dengan `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp def
 (`YYYY-MM-DDTHH:mm`).
 
 `totals` memuat angka **mentah**: `defectQty`/`defectValue` (kartu Total Defect & Nilai Defect,
-grafik, pie, tabel rekap) dan `replacementQty`/`replacementValue` dari baris PO Replacement
-(`replacementValue` = `pricePerPcs × quantity`). Tidak ada lagi angka bersih (defect − Replacement).
+grafik, pie, tabel rekap), `replacementQty`/`replacementValue` dari baris PO Replacement
+(`replacementValue` = `pricePerPcs × quantity`), dan `replacementRwValue` = Σ (quantity × harga
+master) dalam Rupiah. Angka kartu **Selisih Defect Quantity** (`replacementQty − defectQty`) dan
+**Selisih Defect Value** (`replacementRwValue − defectValue`, admin saja) **tidak dikirim server** —
+klien menghitungnya dari totals di atas, jadi tidak ada lagi field angka bersih seperti dulu.
 
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan
 `Replacement` produk itu pada periode terpilih (periode sama dengan kartu Replacement, jadi jumlah
 seluruh `recap[].replacementQty` = `totals.replacementQty`). Halaman Report menampilkan kolom
-**Replacement** dan **Hutang/Dept** (= `replacementQty` − `defectQty`, minus merah / plus hijau)
+**Replacement** dan **Selisih Defect** (= `replacementQty` − `defectQty`, minus merah / plus hijau)
 sebelum kolom rasio; keduanya bisa dipakai untuk mengurutkan tabel.
 
 Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`/`currency`, dan
@@ -1029,9 +1032,10 @@ Penanganannya:
   tingkat setiap nilainya bertambah panjang (≥12 karakter `text-xl`, ≥15 `text-lg`, ≥18 `text-base`)
   dan `break-words` dipasang sebagai jaring terakhir, jadi tidak ada angka yang terpotong. Kartu ini
   dipakai juga di halaman Defects, Sales, dan PO.
-- **Halaman Report: grid kartu ringkasan memakai `2xl:grid-cols-6`, bukan `xl:grid-cols-6`.** Di
-  layar 1280–1535 px enam kolom membuat kartu nilai berdesakan; sekarang rentang itu memakai 3 kolom
-  dan enam kolom baru dipakai mulai 1536 px.
+- **Halaman Report: kartu ringkasan disusun 2 kolom (`grid-cols-2`), bukan satu baris lebar.** Sejak
+  25 Sep 2026 (permintaan user: kartu menurun ke bawah, bukan satu baris) semua ukuran layar memakai
+  dua kolom; sebelumnya `sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6`. Karena kartunya kini lebih
+  lebar, ukuran huruf nilai panjang tetap diatur `SummaryCard`.
 
 Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 

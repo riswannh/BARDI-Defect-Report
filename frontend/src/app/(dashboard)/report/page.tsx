@@ -33,8 +33,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   Banknote,
+  Coins,
   Package,
   Percent,
+  Scale,
   ShoppingCart,
   Wallet,
 } from "lucide-react";
@@ -44,7 +46,7 @@ import {
   PieWithLegend,
   RatioBadge,
   buildPieData,
-  debtTextClass,
+  selisihTextClass,
   ratioTextClass,
 } from "./report-charts";
 import {
@@ -173,6 +175,9 @@ export default function ReportPage() {
   const ratioQty = defectSalesRatio(dQty, sQty);
   // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
   const replacementQty = report?.totals.replacementQty ?? 0;
+  // Selisih Replacement − Defect (qty & Rupiah); minus merah, plus hijau.
+  const selisihQty = replacementQty - dQty;
+  const selisihValue = (report?.totals.replacementRwValue ?? 0) - dVal;
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -357,10 +362,9 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      {/* Dua kartu nilai (Defect Value & Sales Value) isinya rupiah panjang, jadi
-          enam kolom baru dipakai di layar sangat lebar — di bawah itu 3 kolom
-          supaya angkanya tidak berdesakan. */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      {/* Kartu disusun 2 kolom dan menurun ke bawah (bukan satu baris panjang),
+          supaya angka rupiah yang panjang tidak berdesakan. */}
+      <div className="mb-6 grid grid-cols-2 gap-4">
         <SummaryCard
           title={t("report.totalDefect")}
           value={formatNumber(dQty)}
@@ -411,6 +415,27 @@ export default function ReportPage() {
           description={t("report.replacementDesc")}
           icon={Package}
         />
+        {/* Selisih Replacement − Defect pada periode terpilih. */}
+        <SummaryCard
+          title={t("report.selisihQty")}
+          value={
+            <span className={selisihTextClass(selisihQty)}>
+              {formatNumber(selisihQty)}
+            </span>
+          }
+          icon={Scale}
+        />
+        {isAdmin && (
+          <SummaryCard
+            title={t("report.selisihValue")}
+            value={
+              <span className={selisihTextClass(selisihValue)}>
+                {formatIDR(selisihValue)}
+              </span>
+            }
+            icon={Coins}
+          />
+        )}
       </div>
 
       <div className="mb-6 flex flex-col gap-4">
@@ -585,9 +610,9 @@ export default function ReportPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 hover:text-foreground"
-                    onClick={() => toggleSort("debtQty")}
+                    onClick={() => toggleSort("selisihQty")}
                   >
-                    {t("report.debt")} {sortIcon("debtQty")}
+                    {t("report.selisihDefect")} {sortIcon("selisihQty")}
                   </button>
                 </TableHead>
                 <TableHead className="text-right">
@@ -632,9 +657,9 @@ export default function ReportPage() {
                   <TableCell className="text-right tabular-nums">
                     {formatNumber(row.replacementQty)}
                   </TableCell>
-                  {/* Hutang/Dept = Replacement − Qty Defect. */}
+                  {/* Selisih Defect = Replacement − Qty Defect. */}
                   <TableCell
-                    className={`text-right font-medium tabular-nums ${debtTextClass(
+                    className={`text-right font-medium tabular-nums ${selisihTextClass(
                       row.replacementQty - row.defectQty
                     )}`}
                   >

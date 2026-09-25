@@ -254,11 +254,21 @@ const translations = {
     en: "Replacement PO Qty",
     zh: "更换采购数量",
   },
-  /** Selisih Replacement dengan Qty Defect per produk (kolom tabel rekap). */
-  "report.debt": {
-    id: "Hutang",
-    en: "Dept",
-    zh: "欠款",
+  /** Selisih Replacement − Defect (kolom tabel rekap & kartu ringkasan). */
+  "report.selisihDefect": {
+    id: "Selisih Defect",
+    en: "Defect Difference",
+    zh: "缺陷差额",
+  },
+  "report.selisihQty": {
+    id: "Selisih Defect Quantity",
+    en: "Defect Quantity Difference",
+    zh: "缺陷数量差额",
+  },
+  "report.selisihValue": {
+    id: "Selisih Defect Value",
+    en: "Defect Value Difference",
+    zh: "缺陷金额差额",
   },
   "report.detailTitle": {
     id: "Detail Defect — {product}",

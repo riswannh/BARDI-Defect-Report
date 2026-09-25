@@ -220,6 +220,15 @@ export async function reportGET(req: NextRequest) {
     (sum, row) => sum + row.quantity,
     0
   );
+  /**
+   * Value RW = Σ (quantity × harga master produk) — Rupiah, sebanding dengan
+   * `defectValue`, dipakai kartu "Selisih Defect Value" di halaman Report.
+   * Bukan `value` PO yang mata uangnya bisa USD/RMB.
+   */
+  const replacementRwValue = filteredPurchaseOrders.reduce(
+    (sum, row) => sum + row.quantity * (row.productPrice ?? 0),
+    0
+  );
   /** Total PO Replacement (pricePerPcs × quantity). */
   const replacementValue = filteredPurchaseOrders.reduce(
     (sum, row) => sum + row.value,
@@ -234,6 +243,7 @@ export async function reportGET(req: NextRequest) {
     salesValue: totalSalesValue(filteredSales),
     replacementQty,
     replacementValue,
+    replacementRwValue,
   };
 
   const years = Array.from(

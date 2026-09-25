@@ -332,13 +332,19 @@ Catatan perilaku Report yang harus dijaga:
   Datanya dari `GET /api/report` (`totals.replacementQty` dan `replacementPos`), dicocokkan dengan
   `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect. Role Pabrik menerima
   qty-nya tetapi baris PO-nya tanpa `pricePerPcs`/`value`/`currency`.
-- Tabel **rekap per produk** punya kolom **Replacement** dan **Hutang/Dept** sebelum kolom rasio.
-  Labelnya ikut bahasa: id `Hutang`, en `Dept` (kunci `report.debt`).
-  `replacementQty` per produk dijumlahkan `summarizeByProduct()` (`analytics.ts`) dari daftar PO
-  Replacement yang sama dengan kartu — jumlah seluruh `recap[].replacementQty` harus sama dengan
-  `totals.replacementQty`. **Hutang/Dept tidak dikirim server**: klien menghitung
-  `replacementQty − defectQty` (`RecapSortKey` `debtQty` ditangani khusus di `sortRecap`), warnanya
-  dari `debtTextClass()` (`report-charts.tsx`) — minus merah, plus hijau, nol abu-abu.
+- Tabel **rekap per produk** punya kolom **Replacement** dan **Selisih Defect** sebelum kolom rasio
+  (kunci i18n `report.selisihDefect`, tepat sesudah Replacement). `replacementQty` per produk
+  dijumlahkan `summarizeByProduct()` (`analytics.ts`) dari daftar PO Replacement yang sama dengan
+  kartu — jumlah seluruh `recap[].replacementQty` harus sama dengan `totals.replacementQty`.
+  Angka selisih **tidak dikirim server**: klien menghitung `replacementQty − defectQty`
+  (`RecapSortKey` `selisihQty` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
+  (`report-charts.tsx`) — minus merah, plus hijau, nol abu-abu.
+- Kartu ringkasan halaman Report disusun **2 kolom** (`grid-cols-2`, menurun ke bawah) sejak
+  25 Sep 2026 — sebelumnya satu baris lebar (`2xl:grid-cols-6`). Kartu **Selisih Defect Quantity**
+  (`report.selisihQty`) = `replacementQty − defectQty`, dan kartu **Selisih Defect Value**
+  (`report.selisihValue`, admin saja) = `totals.replacementRwValue − defectValue`, dengan Value RW
+  = Σ (quantity × harga master) dalam Rupiah — server mengirim `totals.replacementRwValue`.
+  Keduanya dihitung di klien dari totals mentah dan diwarnai `selisihTextClass()`.
 
 ### Aturan alur input defect
 
