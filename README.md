@@ -73,7 +73,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
 | + | **Harga RW** Defect jadi Harga + Total Value (harga × qty), Harga RW otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
 | + | Susunan field **Harga RW + Total Value** di form Defect disamakan dengan form PO (dropdown harga + kolom baca-saja), label "Value RW" diganti "Total Value" | ✅ Selesai |
-| + | Kartu **Replacement** di Report + kolom **Replacement** & **Hutang/Dept** (= Replacement − Qty Defect, minus merah / plus hijau) di tabel rekap per produk | ✅ Selesai |
+| + | Kartu **Replacement** di Report + kolom **Replacement** & **Hutang/Dept** (= Replacement − Qty Defect, minus merah / plus hijau; label ikut bahasa: id "Hutang", en "Dept") di tabel rekap per produk | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |

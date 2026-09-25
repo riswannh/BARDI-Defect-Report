@@ -333,6 +333,7 @@ Catatan perilaku Report yang harus dijaga:
   `matchesDefectPeriod` karena `poDate` berformat sama dengan timestamp defect. Role Pabrik menerima
   qty-nya tetapi baris PO-nya tanpa `pricePerPcs`/`value`/`currency`.
 - Tabel **rekap per produk** punya kolom **Replacement** dan **Hutang/Dept** sebelum kolom rasio.
+  Labelnya ikut bahasa: id `Hutang`, en `Dept` (kunci `report.debt`).
   `replacementQty` per produk dijumlahkan `summarizeByProduct()` (`analytics.ts`) dari daftar PO
   Replacement yang sama dengan kartu — jumlah seluruh `recap[].replacementQty` harus sama dengan
   `totals.replacementQty`. **Hutang/Dept tidak dikirim server**: klien menghitung

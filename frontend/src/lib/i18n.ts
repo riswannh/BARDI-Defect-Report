@@ -256,8 +256,8 @@ const translations = {
   },
   /** Selisih Replacement dengan Qty Defect per produk (kolom tabel rekap). */
   "report.debt": {
-    id: "Hutang/Dept",
-    en: "Debt",
+    id: "Hutang",
+    en: "Dept",
     zh: "欠款",
   },
   "report.detailTitle": {
