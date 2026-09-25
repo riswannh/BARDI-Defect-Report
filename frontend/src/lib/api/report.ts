@@ -215,39 +215,20 @@ export async function reportGET(req: NextRequest) {
     (sum, row) => sum + row.quantity,
     0
   );
-  /** Value RW = quantity × harga master (Rupiah); lihat catatan di bawah. */
-  const replacementRwValue = filteredPurchaseOrders.reduce(
-    (sum, row) => sum + row.quantity * (row.productPrice ?? 0),
-    0
-  );
-  /** Total PO biasa (pricePerPcs × quantity) — tetap dikirim untuk kolom lain. */
+  /** Total PO Replacement (pricePerPcs × quantity). */
   const replacementValue = filteredPurchaseOrders.reduce(
     (sum, row) => sum + row.value,
     0
   );
 
   const totals = {
-    // Angka mentah: dipakai grafik dan tabel rekap, jangan diubah.
+    // Angka mentah: dipakai kartu ringkasan, grafik, dan tabel rekap.
     defectQty,
     defectValue,
     salesQty: totalSalesQty(filteredSales),
     salesValue: totalSalesValue(filteredSales),
     replacementQty,
     replacementValue,
-    replacementRwValue,
-    /**
-     * Angka BERSIH untuk kartu ringkasan: defect dikurangi Replacement.
-     *
-     * Pengurangnya sengaja Value RW (Quantity × harga master, Rupiah) supaya
-     * sebanding dengan `defectValue` yang juga Rupiah — bukan `value` PO yang
-     * mata uangnya bisa USD/RMB. Dibuat terpisah dari angka mentah di atas agar
-     * grafik dan tabel rekap tetap menampilkan defect apa adanya.
-     *
-     * Dibatas bawah 0: Replacement yang melebihi defect tidak boleh menghasilkan
-     * angka negatif di kartu.
-     */
-    netDefectQty: Math.max(0, defectQty - replacementQty),
-    netDefectValue: Math.max(0, defectValue - replacementRwValue),
   };
 
   const years = Array.from(
@@ -281,20 +262,11 @@ export async function reportGET(req: NextRequest) {
     totals: user.isAdmin
       ? totals
       : {
-          // Angka kuantitas tetap dikirim ke role Pabrik — nilainya sudah
-          // diturunkan dari defectQty/replacementQty yang memang mereka terima,
-          // jadi tidak ada tambahan yang bocor.
-          //
-          // `netDefectQty` WAJIB ada di sini: kartu "Total Defect" memakainya
-          // sebagai angka utama. Sebelumnya field ini hanya dikirim ke admin,
-          // sehingga di akun Pabrik kartunya jatuh ke `?? 0` dan selalu
-          // menampilkan 0 walaupun keterangannya menyebut angka yang benar.
+          // Angka kuantitas tetap dikirim ke role Pabrik; angka Rupiah
+          // (defectValue, salesValue, replacementValue) tetap disembunyikan.
           defectQty: totals.defectQty,
           salesQty: totals.salesQty,
           replacementQty: totals.replacementQty,
-          netDefectQty: totals.netDefectQty,
-          // `defectValue`, `salesValue`, `replacementValue`, dan
-          // `replacementRwValue` tetap disembunyikan: itu angka Rupiah.
         },
     years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),

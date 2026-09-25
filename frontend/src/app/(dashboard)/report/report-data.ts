@@ -42,18 +42,13 @@ export interface ReportResponse {
   salesYearly: ChartBucket[];
   salesYearlyRecap: RecapRow[];
   totals: {
-    /** Angka mentah; dipakai grafik dan tabel rekap. */
+    /** Angka mentah; dipakai kartu ringkasan, grafik, dan tabel rekap. */
     defectQty: number;
     defectValue?: number;
     salesQty: number;
     salesValue?: number;
     replacementQty: number;
     replacementValue?: number;
-    /** Value RW PO Replacement = quantity × harga master (Rupiah). */
-    replacementRwValue?: number;
-    /** Defect dikurangi Replacement — angka yang tampil di kartu ringkasan. */
-    netDefectQty: number;
-    netDefectValue?: number;
   };
   years: number[];
   products: Product[];
