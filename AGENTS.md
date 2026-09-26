@@ -344,14 +344,17 @@ Catatan perilaku Report yang harus dijaga:
   25 Sep 2026 — sebelumnya satu baris lebar (`2xl:grid-cols-6`). Kartu **Nilai Replacement**
   (`report.replacementValue`, admin saja) = `totals.replacementRwValue`, yaitu Value RW PO Replacement
   = Σ (quantity × harga master) dalam Rupiah. Kartu **Selisih Defect Quantity** (`report.selisihQty`)
-  = `defectQty − replacementQty` dan kartu **Selisih Defect Value** (`report.selisihValue`, admin
-  saja) = `defectValue − totals.replacementRwValue` — keduanya menjawab "berapa defect yang BELUM
-  ada Replacement-nya", arahnya KEBALIKAN dari kolom rekap (25 Sep 2026). Karena itu warnanya
-  dihitung dari nilai arah kolom (`selisihTextClass(-nilai)`) supaya arti hijau/merah tetap sama di
-  kartu dan di tabel. Keterangan kecil di bawah angkanya menyebut pengurangannya
-  (`report.selisihQtyDesc` = "Qty Defect − Replacement", `report.selisihValueDesc` =
-  "Nilai Defect − Value RW Replacement", `report.replacementValueDesc` = "Value RW: qty × harga
-  master"). Angka bertanda plus kalau positif (`formatSelisih()` di `report-data.ts`).
+  dan **Selisih Defect Value** (`report.selisihValue`, admin saja) memakai `totalSelisih()`
+  (`report-data.ts`): menjumlahkan **hanya baris rekap yang minus** (`Replacement − Defect` per
+  produk, qty dan Value RW), produk surplus TIDAK mengurangi totalnya — contoh acuan user pabrik
+  Yundu: 6 produk minus (−109 −340 −90 −28 −21 −12) = **−600**, sedangkan +582/+75/+7 diabaikan.
+  Jadi kartu dan kolom rekap searah, nilainya selalu ≤ 0, dan warnanya merah lewat
+  `selisihTextClass()` (plus = Replacement lebih banyak = hijau, minus = defect belum tertutup =
+  merah, nol abu-abu). Keterangan kecil di bawah angkanya menyebut aturannya
+  (`report.selisihQtyDesc` = "Hanya baris minus: Replacement − Qty Defect", `report.selisihValueDesc`
+  = "Hanya baris minus: Nilai Replacement RW − Nilai Defect", `report.replacementValueDesc` =
+  "Value RW: qty × harga master"). Angka bertanda plus kalau positif (`formatSelisih()`), dan
+  `recap[].replacementRwValue` dihitung `summarizeByProduct()` dari PO Replacement yang sama.
 
 ### Aturan alur input defect
 

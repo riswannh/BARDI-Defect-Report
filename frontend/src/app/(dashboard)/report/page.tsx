@@ -54,6 +54,7 @@ import {
   defectSalesRatio,
   formatSelisih,
   sortRecap,
+  totalSelisih,
   type RecapSortKey,
   type ReportResponse,
 } from "./report-data";
@@ -177,9 +178,17 @@ export default function ReportPage() {
   const ratioQty = defectSalesRatio(dQty, sQty);
   // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
   const replacementQty = report?.totals.replacementQty ?? 0;
-  // Selisih Defect = defect yang BELUM ada Replacement (qty & Rupiah).
-  const selisihQty = dQty - replacementQty;
-  const selisihValue = dVal - (report?.totals.replacementRwValue ?? 0);
+  // Kartu Selisih Defect = TOTAL baris yang minus saja (Replacement kurang dari
+  // defect, arah yang sama dengan kolom rekap). Produk surplus tidak mengurangi
+  // totalnya — contoh user: 6 produk minus = -600, yang surplus diabaikan.
+  const selisihQty = totalSelisih(
+    report?.recap ?? [],
+    (row) => row.replacementQty - row.defectQty
+  );
+  const selisihValue = totalSelisih(
+    report?.recap ?? [],
+    (row) => (row.replacementRwValue ?? 0) - (row.defectValue ?? 0)
+  );
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -425,13 +434,13 @@ export default function ReportPage() {
             icon={Receipt}
           />
         )}
-        {/* Selisih Defect = defect yang belum ada Replacement-nya. Warna kedua
-            kartu di bawah memakai arah kolom rekap (selisihTextClass), bukan
-            tanda kartunya: Replacement lebih banyak = hijau. */}
+        {/* Selisih Defect = jumlah baris minus saja (Replacement − Qty Defect),
+            arahnya sama dengan kolom rekap — minus berarti defect belum
+            tertutup Replacement, jadi warnanya merah lewat selisihTextClass. */}
         <SummaryCard
           title={t("report.selisihQty")}
           value={
-            <span className={selisihTextClass(-selisihQty)}>
+            <span className={selisihTextClass(selisihQty)}>
               {formatSelisih(selisihQty)}
             </span>
           }
@@ -442,7 +451,7 @@ export default function ReportPage() {
           <SummaryCard
             title={t("report.selisihValue")}
             value={
-              <span className={selisihTextClass(-selisihValue)}>
+              <span className={selisihTextClass(selisihValue)}>
                 {formatSelisih(selisihValue, formatIDR)}
               </span>
             }

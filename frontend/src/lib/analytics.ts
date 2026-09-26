@@ -11,6 +11,8 @@ export interface ProductRecapRow {
   salesValue: number;
   /** Qty PO berketerangan "Replacement" untuk produk ini (periode terpilih). */
   replacementQty: number;
+  /** Value RW PO Replacement produk ini (qty × harga master, Rupiah). */
+  replacementRwValue: number;
   ratio: number | null;
 }
 
@@ -31,7 +33,7 @@ export function summarizeByProduct(
   sales: Sale[],
   products: Product[],
   /** Baris PO berketerangan "Replacement" (opsional; rekap sales tahunan tidak pakai). */
-  replacementPos: { productId: number; quantity: number }[] = []
+  replacementPos: { productId: number; quantity: number; rwValue: number }[] = []
 ): ProductRecapRow[] {
   const rows = new Map<number, ProductRecapRow>();
 
@@ -44,6 +46,7 @@ export function summarizeByProduct(
       salesQty: 0,
       salesValue: 0,
       replacementQty: 0,
+      replacementRwValue: 0,
       ratio: null,
     });
   }
@@ -66,7 +69,10 @@ export function summarizeByProduct(
 
   for (const po of replacementPos) {
     const row = rows.get(po.productId);
-    if (row) row.replacementQty += po.quantity;
+    if (row) {
+      row.replacementQty += po.quantity;
+      row.replacementRwValue += po.rwValue;
+    }
   }
 
   for (const row of rows.values()) {

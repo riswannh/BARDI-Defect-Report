@@ -267,9 +267,9 @@ const translations = {
   },
   /** Keterangan kecil di bawah kartu: angka itu hasil pengurangan apa. */
   "report.selisihQtyDesc": {
-    id: "Qty Defect − Replacement",
-    en: "Defect Qty − Replacement",
-    zh: "缺陷数量 − 更换数量",
+    id: "Hanya baris minus: Replacement − Qty Defect",
+    en: "Negative rows only: Replacement − Defect Qty",
+    zh: "仅负数行：更换数量 − 缺陷数量",
   },
   "report.selisihValue": {
     id: "Selisih Defect Value",
@@ -277,9 +277,9 @@ const translations = {
     zh: "缺陷金额差额",
   },
   "report.selisihValueDesc": {
-    id: "Nilai Defect − Value RW Replacement",
-    en: "Defect Value − Replacement RW Value",
-    zh: "缺陷金额 − 更换 RW 金额",
+    id: "Hanya baris minus: Nilai Replacement RW − Nilai Defect",
+    en: "Negative rows only: Replacement RW Value − Defect Value",
+    zh: "仅负数行：更换 RW 金额 − 缺陷金额",
   },
   "report.replacementValue": {
     id: "Nilai Replacement",

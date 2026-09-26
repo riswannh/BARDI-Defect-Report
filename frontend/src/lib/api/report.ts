@@ -197,7 +197,11 @@ export async function reportGET(req: NextRequest) {
     filteredDefects,
     filteredSales,
     productList,
-    filteredPurchaseOrders
+    filteredPurchaseOrders.map((row) => ({
+      productId: row.productId,
+      quantity: row.quantity,
+      rwValue: row.quantity * (row.productPrice ?? 0),
+    }))
   );
 
   // Role Pabrik hanya melihat produk yang punya data (defect/sales) di pabriknya.

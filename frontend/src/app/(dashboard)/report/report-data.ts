@@ -33,6 +33,8 @@ export interface RecapRow {
   salesValue?: number;
   /** Qty PO berketerangan "Replacement" untuk produk ini. */
   replacementQty: number;
+  /** Value RW PO Replacement produk ini (qty × harga master, Rupiah). */
+  replacementRwValue?: number;
   ratio: number | null;
 }
 
@@ -106,6 +108,19 @@ export function formatSelisih(
   format: (value: number) => string = formatNumber
 ): string {
   return value > 0 ? `+${format(value)}` : format(value);
+}
+
+/**
+ * Total selisih untuk kartu ringkasan: HANYA produk yang minus
+ * (Replacement kurang dari defect) yang dihitung — produk surplus tidak
+ * mengurangi totalnya. Contoh yang dipakai user (pabrik Yundu): 6 produk minus
+ * (−109 −340 −90 −28 −21 −12) = −600, sedangkan +582/+75/+7 diabaikan.
+ */
+export function totalSelisih(
+  recap: RecapRow[],
+  ambil: (row: RecapRow) => number
+): number {
+  return recap.reduce((sum, row) => sum + Math.min(0, ambil(row)), 0);
 }
 
 export function sortRecap(
