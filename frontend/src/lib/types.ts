@@ -17,6 +17,11 @@ export interface Product {
   name: string;
   /** Opsional: produk lama belum punya SKU. Unik kalau diisi. */
   sku?: string | null;
+  /**
+   * Pabrik yang dikaitkan ke produk ini (User Management › daftar pabrik).
+   * Dipakai form Defect/PO/Sales untuk mengisi kolom Pabrik otomatis.
+   */
+  factoryId?: number | null;
 }
 
 export interface Problem {

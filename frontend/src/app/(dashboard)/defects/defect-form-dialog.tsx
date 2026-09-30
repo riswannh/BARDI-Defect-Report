@@ -49,6 +49,8 @@ interface DefectFormDialogProps {
   defects: DefectRow[];
   factories: Factory[];
   productOptions: SelectOption[];
+  /** Pabrik yang dikaitkan ke produk (auto-isi kolom Pabrik). */
+  factoryForProduct?: (productId: string) => number | null;
   problemOptions: SelectOption[];
   statusOptions: SelectOption[];
   /** Semua harga produk (semua periode) untuk menghitung value. */
@@ -67,6 +69,7 @@ export function DefectFormDialog({
   defects,
   factories,
   productOptions,
+  factoryForProduct,
   problemOptions,
   statusOptions,
   productPrices,
@@ -334,9 +337,12 @@ export function DefectFormDialog({
                         Number(nextProductId),
                         f.timestamp.slice(0, 7)
                       );
+                      // Produk punya kaitan pabrik -> kolom Pabrik terisi otomatis.
+                      const pabrik = factoryForProduct?.(nextProductId) ?? null;
                       return {
                         ...f,
                         productId: nextProductId,
+                        factoryId: pabrik ? String(pabrik) : f.factoryId,
                         priceRw: match ? String(match.price) : "",
                       };
                     })

@@ -358,6 +358,16 @@ Berlaku untuk `products`, `problems`, `statuses`, `factories`:
 | PATCH | `/api/{module}/{id}` | admin | ubah (409 "Nama sudah ada." / "SKU sudah dipakai produk lain.") |
 | DELETE | `/api/{module}/{id}` | admin | hapus (409 jika masih dipakai defect/sales) |
 | DELETE | `/api/{module}` | admin | **hapus semua** (backup otomatis dulu) |
+| GET | `/api/products` | user login | daftar produk; tiap baris ikut membawa `factoryId` pabrik yang dikaitkan (dipakai form untuk auto-isi kolom Pabrik) |
+| GET | `/api/factories/{id}/products` | user login | `{ productIds: number[] }` — produk yang dikaitkan ke pabrik itu |
+| POST | `/api/factories/{id}/products` | admin | `{ productIds: number[] }` — ganti seluruh kaitan pabrik itu; produk yang tadinya milik pabrik lain ikut **pindah** (satu produk hanya boleh punya satu pabrik) |
+
+> **Kaitan produk → pabrik.** Dikelola di **User Management › Daftar Pabrik** (tombol ikon produk di
+> tiap baris): dialog berisi pencarian produk, centang banyak sekaligus, dan isian untuk menambah
+> produk baru ke master langsung dari situ. Tabelnya `product_factories` (`productId` sebagai primary
+> key, jadi satu produk = satu pabrik). Efeknya di form **Defect / PO / Sales**: begitu produk dipilih,
+> kolom **Pabrik** terisi otomatis dari kaitan itu (tetap bisa diubah manual; kalau produk belum
+> punya kaitan, kolom Pabrik dibiarkan seperti semula).
 
 > **Keterangan PO bukan master.** Ketiga nilainya di-hardcode di
 > `KETERANGAN_OPTIONS` (`src/lib/api/validation.ts`): `Product Order`, `Sparepart Order`,

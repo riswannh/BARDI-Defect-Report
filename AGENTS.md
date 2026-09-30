@@ -180,6 +180,16 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   menghapus `quantity` dan `value` sebuah defect hanya karena problemDetail-nya diubah. Karena itu
   schema update dibangun lewat `buildUpdate(fields)` di `validation.ts`, yang memasang `.optional()`
   di luar transform dan tanpa default. Jangan kembali memakai `SomeSchema.partial()` untuk update.
+- **Kaitan produk → pabrik (`product_factories`)** — dikelola di **User Management › Daftar Pabrik**
+  (tombol ikon di tiap baris, komponen `users/factory-products-dialog.tsx`, prop `onLink` di
+  `master-list.tsx`). `productId` adalah **primary key**, jadi satu produk hanya boleh terikat satu
+  pabrik; memilih produk di pabrik lain berarti memindahkannya (server meng-upsert di
+  `POST /api/factories/{id}/products` di dalam satu transaksi: hapus kaitan pabrik ini lalu pasang
+  yang dicentang). Tujuannya **terbalik dari tebakan awal**: di form **Defect / PO / Sales**, memilih
+  produk otomatis mengisi kolom **Pabrik** dari kaitan itu (kalau produk belum punya kaitan, kolom
+  Pabrik dibiarkan apa adanya, dan operator tetap boleh mengubahnya manual). Supaya form tidak perlu
+  permintaan tambahan, `GET /api/products` sekarang di-left-join ke tabel ini dan ikut mengirim
+  `factoryId`.
 - **Harga produk (`product_prices`)** — master harga per produk per bulan+tahun, **selalu Rupiah**,
   dikelola di tab **Harga Produk** pada Data Master (`/api/product-prices`). Unik pada
   `(productId, year, month)`: harga lama TIDAK ditimpa, perubahan harga = baris baru untuk periode

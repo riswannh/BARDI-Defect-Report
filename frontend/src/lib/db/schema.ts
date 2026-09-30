@@ -136,6 +136,27 @@ export const products = sqliteTable("products", {
     .default(sql`(unixepoch())`),
 });
 
+/**
+ * Kaitan produk → pabrik, dikelola di User Management › daftar pabrik.
+ *
+ * Satu produk hanya boleh terikat ke SATU pabrik (`productId` sebagai primary
+ * key), karena kaitannya dipakai terbalik di form: begitu produk dipilih, kolom
+ * Pabrik terisi otomatis — kalau satu produk bisa punya banyak pabrik, isian itu
+ * jadi ambigu. Memilih produk di pabrik lain berarti memindahkannya.
+ */
+export const productFactories = sqliteTable(
+  "product_factories",
+  {
+    productId: integer("productId")
+      .primaryKey()
+      .references(() => products.id, { onDelete: "cascade" }),
+    factoryId: integer("factoryId")
+      .notNull()
+      .references(() => factories.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("product_factories_factory_idx").on(t.factoryId)]
+);
+
 export const problems = sqliteTable("problems", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),

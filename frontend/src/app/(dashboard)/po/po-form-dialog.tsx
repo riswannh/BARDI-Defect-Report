@@ -285,9 +285,13 @@ export function PoFormDialog({
                         Number(nextProductId),
                         f.poDate.slice(0, 7)
                       );
+                      // Produk punya kaitan pabrik -> kolom Pabrik terisi otomatis.
+                      const pabrik =
+                        products.find((p) => p.id === Number(nextProductId))?.factoryId ?? null;
                       return {
                         ...f,
                         productId: nextProductId,
+                        factoryId: pabrik ? String(pabrik) : f.factoryId,
                         productPriceId: match ? String(match.id) : "",
                       };
                     })

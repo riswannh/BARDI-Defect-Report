@@ -16,6 +16,7 @@ import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
+import { FactoryProductsDialog } from "./factory-products-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,8 @@ export default function UsersPage() {
     useApi<Factory[]>("/api/factories");
 
   const factories = factoryData ?? [];
+  /** Pabrik yang sedang dikaitkan produknya (null = dialog tertutup). */
+  const [linkFactory, setLinkFactory] = useState<Factory | null>(null);
   const factoryOptions = factories.map((f) => ({
     value: String(f.id),
     label: f.name,
@@ -371,6 +374,8 @@ export default function UsersPage() {
                 onAdd={addFactory}
                 onRename={renameFactory}
                 onDelete={deleteFactory}
+                onLink={(item) => setLinkFactory(item as Factory)}
+                linkLabel={t("users.linkProducts")}
               />
               {factories.length > 0 && (
                 <div className="mt-4">
@@ -390,6 +395,14 @@ export default function UsersPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <FactoryProductsDialog
+        factory={linkFactory}
+        onOpenChange={(open) => {
+          if (!open) setLinkFactory(null);
+        }}
+        onSaved={reloadFactories}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">

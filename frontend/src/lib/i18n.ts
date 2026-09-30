@@ -954,6 +954,53 @@ const translations = {
     en: "New factory name",
     zh: "新工厂名称",
   },
+  "users.linkProducts": {
+    id: "Kaitkan produk",
+    en: "Link products",
+    zh: "关联产品",
+  },
+
+  // Kaitan produk per pabrik (auto-isi kolom Pabrik di form)
+  "factoryProducts.title": {
+    id: "Produk Pabrik",
+    en: "Factory Products",
+    zh: "工厂产品",
+  },
+  "factoryProducts.hint": {
+    id: "Produk yang dikaitkan di sini otomatis mengisi kolom Pabrik saat produk itu dipilih di form Defect, PO, atau Sales.",
+    en: "Products linked here automatically fill the Factory field when the product is picked in the Defect, PO, or Sales form.",
+    zh: "在此关联的产品，在缺陷/采购/销售表单中被选中时会自动填入工厂。",
+  },
+  "factoryProducts.search": {
+    id: "Cari produk atau SKU…",
+    en: "Search product or SKU…",
+    zh: "搜索产品或 SKU…",
+  },
+  "factoryProducts.newProduct": {
+    id: "Tambah produk baru ke master",
+    en: "Add new product to master",
+    zh: "向主数据添加新产品",
+  },
+  "factoryProducts.selected": {
+    id: "produk dipilih",
+    en: "products selected",
+    zh: "个产品已选择",
+  },
+  "factoryProducts.otherFactory": {
+    id: "sudah di",
+    en: "already in",
+    zh: "已在",
+  },
+  "factoryProducts.none": {
+    id: "Tidak ada produk yang cocok.",
+    en: "No matching product.",
+    zh: "没有匹配的产品。",
+  },
+  "factoryProducts.saved": {
+    id: "Kaitan produk tersimpan.",
+    en: "Product links saved.",
+    zh: "产品关联已保存。",
+  },
 
   // Import result
   "import.title": {

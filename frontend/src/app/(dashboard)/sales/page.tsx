@@ -510,9 +510,15 @@ export default function SalesPage() {
               <Label>{t("common.product")}</Label>
               <Select
                 value={form.productId}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, productId: String(v) }))
-                }
+                onValueChange={(v) => {
+                  // Produk punya kaitan pabrik -> kolom Pabrik terisi otomatis.
+                  const pabrik = products.find((p) => String(p.id) === v)?.factoryId;
+                  setForm((f) => ({
+                    ...f,
+                    productId: String(v),
+                    factoryId: pabrik ? String(pabrik) : f.factoryId,
+                  }));
+                }}
                 items={productOptions}
               >
                 <SelectTrigger className="w-full">

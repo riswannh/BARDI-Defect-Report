@@ -574,6 +574,9 @@ export default function DefectsPage() {
         defects={defectData ?? []}
         factories={factories}
         productOptions={productOptions}
+        factoryForProduct={(id) =>
+          products.find((p) => String(p.id) === id)?.factoryId ?? null
+        }
         problemOptions={problemOptions}
         statusOptions={statusOptions}
         productPrices={priceData ?? []}

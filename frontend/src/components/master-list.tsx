@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, Trash2, Check, X } from "lucide-react";
+import { Pencil, Plus, Package, Trash2, Check, X } from "lucide-react";
 
 interface MasterItem {
   id: number;
@@ -32,6 +32,12 @@ interface MasterListProps {
   withSku?: boolean;
   /** Dipakai saat daftar kosong karena pencarian, bukan karena belum ada data. */
   emptyLabel?: string;
+  /**
+   * Aksi tambahan per baris, mis. mengaitkan produk ke pabrik. Kalau diisi,
+   * tombolnya muncul sebelum tombol ubah/hapus.
+   */
+  onLink?: (item: MasterItem) => void;
+  linkLabel?: string;
 }
 
 export function MasterList({
@@ -43,6 +49,8 @@ export function MasterList({
   readOnly = false,
   withSku = false,
   emptyLabel,
+  onLink,
+  linkLabel,
 }: MasterListProps) {
   const { t } = useLanguage();
   const [newName, setNewName] = useState("");
@@ -148,6 +156,17 @@ export function MasterList({
                 </div>
                 {!readOnly && (
                   <div className="flex gap-1">
+                    {onLink && (
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        title={linkLabel}
+                        aria-label={linkLabel}
+                        onClick={() => onLink(item)}
+                      >
+                        <Package className="size-4" />
+                      </Button>
+                    )}
                     <Button
                       size="icon-xs"
                       variant="ghost"
