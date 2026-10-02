@@ -206,6 +206,10 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     transaksi** supaya tidak meledak jadi 500 FOREIGN KEY.
   - Tab **Sparepart** di Data Master tidak punya tombol kaitkan — arah kaitan hanya dari produk,
     supaya tidak menyesatkan.
+  - Dialog kaitan **hanya memilih** dari master yang sudah ada: `product-spare-parts-dialog.tsx`
+    tidak lagi bisa menambah sparepart baru, begitu juga `users/factory-products-dialog.tsx`
+    yang tidak lagi bisa menambah produk baru (permintaan user 2 Okt 2026). Master baru dibuat
+    lewat tab-nya masing-masing di Data Master.
   - Harga sparepart **global per sparepart per periode** (`spare_part_prices`, unik
     `(sparePartId, year, month)`, tab **Harga Sparepart**, endpoint `/api/spare-part-prices` +
     `/carry-forward`). Logika periode dipakai bersama harga produk lewat

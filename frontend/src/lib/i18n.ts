@@ -506,11 +506,6 @@ const translations = {
     en: "Search spare part or SKU…",
     zh: "搜索备件或 SKU…",
   },
-  "productSpareParts.newSparePart": {
-    id: "Tambah sparepart baru ke master",
-    en: "Add new spare part to master",
-    zh: "向主数据添加新备件",
-  },
   "productSpareParts.none": {
     id: "Belum ada sparepart di master.",
     en: "No spare parts in master yet.",
@@ -1047,11 +1042,6 @@ const translations = {
     id: "Cari produk atau SKU…",
     en: "Search product or SKU…",
     zh: "搜索产品或 SKU…",
-  },
-  "factoryProducts.newProduct": {
-    id: "Tambah produk baru ke master",
-    en: "Add new product to master",
-    zh: "向主数据添加新产品",
   },
   "factoryProducts.selected": {
     id: "produk dipilih",

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Plus, Search } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { apiGet, apiPost } from "@/lib/api-client";
 import type { Factory, Product } from "@/lib/types";
@@ -41,7 +41,6 @@ export function FactoryProductsDialog({
   const [factories, setFactories] = useState<Factory[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState("");
-  const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
 
   const factoryId = factory?.id ?? null;
@@ -61,7 +60,6 @@ export function FactoryProductsDialog({
         setSelected(new Set(linked.productIds));
         setFactories(pabrik);
         setSearch("");
-        setNewName("");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : String(err));
       }
@@ -93,23 +91,6 @@ export function FactoryProductsDialog({
       else next.add(id);
       return next;
     });
-  }
-
-  async function tambahProduk() {
-    const name = newName.trim();
-    if (!name || busy) return;
-    setBusy(true);
-    try {
-      const created = await apiPost<Product>("/api/products", { name });
-      setProducts((list) => [...list, created]);
-      setSelected((prev) => new Set(prev).add(created.id));
-      setNewName("");
-      setSearch("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function simpan() {
@@ -148,29 +129,6 @@ export function FactoryProductsDialog({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-
-          <div className="flex gap-2">
-            <Input
-              placeholder={t("factoryProducts.newProduct")}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  tambahProduk();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || newName.trim() === ""}
-              onClick={tambahProduk}
-            >
-              <Plus className="size-4" />
-              {t("common.add")}
-            </Button>
           </div>
 
           <div className="max-h-72 overflow-y-auto rounded-lg border">

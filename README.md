@@ -768,7 +768,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
   boleh sama dengan SKU produk) dengan pencarian nama/SKU dan Excel seperti tab Produk. Sparepart
   adalah **child dari produk**, tapi satu sparepart boleh dipakai beberapa produk. Kaitan diatur
   **dari sisi produk**: tombol ikon di tiap baris tab Produk membuka dialog **Sparepart Produk**
-  (cari sparepart, centang banyak sekaligus, atau tambah sparepart baru langsung dari dialog).
+  (cari sparepart dan centang banyak sekaligus; dialog **hanya memilih** sparepart yang sudah ada
+  di master — tidak ada penambahan sparepart baru dari dialog ini).
   Dialog menandai sparepart yang sudah dipakai produk lain. Tab Sparepart sendiri tidak punya
   tombol kaitkan supaya arah relasinya tidak menyesatkan.
 - **Tab Harga Sparepart** memakai pola yang sama dengan Harga Produk (kolom SKU · Nama Sparepart ·
@@ -782,6 +783,9 @@ cuma dihitung sebagai informasi), dengan tambahan:
 ### 8.6 User Management
 
 - Tab: **User** dan **Pabrik**.
+- Tab **Pabrik**: tombol **Kaitkan produk** di tiap baris membuka dialog pemilihan produk.
+  Dialog **hanya memilih** produk master yang sudah ada; produk baru dibuat di tab Produk
+  (Data Master), bukan dari dialog ini.
 - User: username (boleh berisi spasi, validator `/^[a-zA-Z0-9 _.-]+$/`), password (hash), Pabrik, status Admin.
 - Import users: pabrik yang belum ada **otomatis dibuat**; email disintesis; duplikat username di-skip.
 - Hapus semua user mengecualikan akun sendiri.
