@@ -770,8 +770,10 @@ cuma dihitung sebagai informasi), dengan tambahan:
   **dari sisi produk**: tombol ikon di tiap baris tab Produk membuka dialog **Sparepart Produk**
   (cari sparepart dan centang banyak sekaligus; dialog **hanya memilih** sparepart yang sudah ada
   di master — tidak ada penambahan sparepart baru dari dialog ini).
-  Dialog menandai sparepart yang sudah dipakai produk lain. Tab Sparepart sendiri tidak punya
-  tombol kaitkan supaya arah relasinya tidak menyesatkan.
+  Dialog itu menandai pemilihan saja, bukan produk pemakai: daftar produk yang memakai satu
+  sparepart dilihat dari **sisi sparepart** lewat tombol **Lihat produk pemakai** di tab
+  Sparepart (`sparepart-products-dialog.tsx`, data `productNames` dari `GET /api/spare-parts`).
+  Tab Sparepart sendiri tetap tidak punya tombol kaitkan supaya arah relasinya tidak menyesatkan.
 - **Tab Harga Sparepart** memakai pola yang sama dengan Harga Produk (kolom SKU · Nama Sparepart ·
   Harga · Bulan · Tahun, filter cari/bulan/tahun, tombol salin periode sebelumnya). Harganya
   **global per sparepart per periode**. Menghapus sparepart yang masih punya harga ditolak (409).

@@ -6,7 +6,6 @@ import { Check, Search } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { apiGet, apiPost } from "@/lib/api-client";
 import type { SparePart } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,7 +29,8 @@ interface ProductSparePartsDialogProps {
  *
  * Beda dari `FactoryProductsDialog`: kaitannya banyak-ke-banyak
  * (`product_spare_parts`), jadi sparepart yang sudah dipakai produk lain tetap
- * boleh dipilih dan TIDAK pindah — produk lain itu cuma ditandai.
+ * boleh dipilih dan TIDAK pindah. Produk pemakai tidak ditandai di sini —
+ * daftarnya dilihat dari tab Sparepart (`SparePartProductsDialog`).
  */
 export function ProductSparePartsDialog({
   product,
@@ -135,9 +135,6 @@ export function ProductSparePartsDialog({
             ) : (
               tersaring.map((item) => {
                 const dipilih = selected.has(item.id);
-                const produkLain = Array.from(
-                  new Set(item.productNames ?? [])
-                ).filter((name) => name !== productName);
                 return (
                   <button
                     key={item.id}
@@ -157,16 +154,6 @@ export function ProductSparePartsDialog({
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {item.sku}
                       </span>
-                    )}
-                    {produkLain.length > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="max-w-40 shrink-0 truncate"
-                        title={produkLain.join(", ")}
-                      >
-                        {t("productSpareParts.otherProducts")}:{" "}
-                        {produkLain.join(", ")}
-                      </Badge>
                     )}
                   </button>
                 );

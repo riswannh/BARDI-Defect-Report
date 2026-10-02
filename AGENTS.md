@@ -205,7 +205,12 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     kaitan produk itu dalam satu transaksi, dan id produk/sparepart asing ditolak **422 sebelum
     transaksi** supaya tidak meledak jadi 500 FOREIGN KEY.
   - Tab **Sparepart** di Data Master tidak punya tombol kaitkan — arah kaitan hanya dari produk,
-    supaya tidak menyesatkan.
+    supaya tidak menyesatkan. Yang ada tombol **Lihat produk pemakai**
+    (`master/sparepart-products-dialog.tsx`) untuk melihat produk mana saja yang memakai satu
+    sparepart; datanya dari `productNames` di `GET /api/spare-parts`, jadi tanpa fetch tambahan.
+  - Badge "Dipakai juga oleh …" di dialog kaitan produk sudah **dihapus** (permintaan user
+    2 Okt 2026): nama produk panjang bikin baris jelek, dan informasi pemakai sekarang ada di
+    dialog produk pemakai pada tab Sparepart.
   - Dialog kaitan **hanya memilih** dari master yang sudah ada: `product-spare-parts-dialog.tsx`
     tidak lagi bisa menambah sparepart baru, begitu juga `users/factory-products-dialog.tsx`
     yang tidak lagi bisa menambah produk baru (permintaan user 2 Okt 2026). Master baru dibuat

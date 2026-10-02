@@ -38,8 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileDown, History, Trash2, Upload, Wrench } from "lucide-react";
+import { Boxes, Download, FileDown, History, Trash2, Upload, Wrench } from "lucide-react";
 import { ProductSparePartsDialog } from "./product-spare-parts-dialog";
+import { SparePartProductsDialog } from "./sparepart-products-dialog";
 import { SparePartPricesTab } from "./sparepart-prices-tab";
 
 /**
@@ -116,6 +117,7 @@ export default function MasterPage() {
     id: number;
     name: string;
   } | null>(null);
+  const [linkSparePart, setLinkSparePart] = useState<SparePart | null>(null);
 
   // Pencarian tab Produk/Problem/Status. Penyaringan ada di halaman ini karena
   // paging juga dihitung di sini — jumlah halaman harus ikut hasil pencarian.
@@ -644,6 +646,13 @@ export default function MasterPage() {
                 onDelete={(id) =>
                   deleteItem("/api/spare-parts", id, reloadSpareParts)
                 }
+                onLink={(item) =>
+                  setLinkSparePart(
+                    spareParts.find((row) => row.id === item.id) ?? null
+                  )
+                }
+                linkLabel={t("master.linkSparePartProducts")}
+                linkIcon={Boxes}
               />
               {filteredSpareParts.length > 0 && (
                 <div className="mt-4">
@@ -725,6 +734,13 @@ export default function MasterPage() {
           if (!open) setLinkProduct(null);
         }}
         onSaved={reloadSpareParts}
+      />
+
+      <SparePartProductsDialog
+        sparePart={linkSparePart}
+        onOpenChange={(open) => {
+          if (!open) setLinkSparePart(null);
+        }}
       />
       </div>
     </AdminGuard>

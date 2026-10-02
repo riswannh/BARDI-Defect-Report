@@ -491,6 +491,11 @@ const translations = {
     en: "Link spare parts",
     zh: "关联备件",
   },
+  "master.linkSparePartProducts": {
+    id: "Lihat produk pemakai",
+    en: "See products using it",
+    zh: "查看使用产品",
+  },
   "productSpareParts.title": {
     id: "Sparepart Produk",
     en: "Product Spare Parts",
@@ -516,10 +521,20 @@ const translations = {
     en: "spare parts selected",
     zh: "个备件已选择",
   },
-  "productSpareParts.otherProducts": {
-    id: "Dipakai juga oleh",
-    en: "Also used by",
-    zh: "同时用于",
+  "sparePartProducts.title": {
+    id: "Dipakai di produk",
+    en: "Used in products",
+    zh: "用于产品",
+  },
+  "sparePartProducts.hint": {
+    id: "Satu sparepart boleh dipakai beberapa produk sekaligus. Daftar ini produk yang sedang memakai sparepart ini.",
+    en: "One spare part may serve several products at once. This lists the products currently using it.",
+    zh: "一个备件可同时用于多个产品。此处列出正在使用该备件的产品。",
+  },
+  "sparePartProducts.none": {
+    id: "Belum dikaitkan ke produk mana pun.",
+    en: "Not linked to any product yet.",
+    zh: "尚未关联任何产品。",
   },
   "productSpareParts.saved": {
     id: "Kaitan sparepart tersimpan.",
