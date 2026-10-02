@@ -7,14 +7,20 @@ import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { carryForwardMessage, lastPriceBefore } from "@/lib/api/price-period";
 import {
+  DEFAULT_PRICE_TYPE,
   normalizePriceMonth,
+  normalizePriceType,
   normalizePriceYear,
   productPriceSchema,
   productPriceUpdateSchema,
 } from "@/lib/api/validation";
 
 /**
- * Harga produk per bulan dan tahun (Rupiah).
+ * Harga produk per jenis, bulan, dan tahun (Rupiah).
+ *
+ * Sejak fitur jenis harga, satu produk punya satu harga per jenis per periode:
+ * Website, Reseller, Key Account, Buyback, Collection Point, Experience Store,
+ * dan Regional Warehouse (jenis lama, jadi default baris lama).
  *
  * Harga TIDAK diubah di tempat saat berganti periode: untuk bulan baru dibuat
  * baris baru. Karena baris PO merujuk ke baris harga lewat `productPriceId`,
@@ -24,6 +30,7 @@ const priceSelect = {
   id: productPrices.id,
   productId: productPrices.productId,
   price: productPrices.price,
+  priceType: productPrices.priceType,
   month: productPrices.month,
   year: productPrices.year,
   sku: products.sku,
@@ -41,6 +48,7 @@ function listQuery() {
     .orderBy(
       desc(productPrices.year),
       desc(productPrices.month),
+      asc(productPrices.priceType),
       asc(products.name)
     );
 }
@@ -53,6 +61,7 @@ export async function pricesGET(req: NextRequest) {
   const productId = Number(params.get("productId"));
   const year = normalizePriceYear(params.get("year"));
   const month = normalizePriceMonth(params.get("month"));
+  const type = normalizePriceType(params.get("type"));
 
   const conditions = [];
   if (Number.isInteger(productId) && productId > 0) {
@@ -60,6 +69,7 @@ export async function pricesGET(req: NextRequest) {
   }
   if (year) conditions.push(eq(productPrices.year, year));
   if (month) conditions.push(eq(productPrices.month, month));
+  if (type) conditions.push(eq(productPrices.priceType, type));
 
   const rows = await listQuery().where(
     conditions.length ? and(...conditions) : undefined
@@ -85,19 +95,22 @@ export async function pricesPOST(req: NextRequest) {
     .where(eq(products.id, parsed.data.productId));
   if (product.length === 0) return jsonError("Produk tidak ditemukan.", 422);
 
+  const priceType = normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE;
+
   const existing = await db
     .select({ id: productPrices.id })
     .from(productPrices)
     .where(
       and(
         eq(productPrices.productId, parsed.data.productId),
+        eq(productPrices.priceType, priceType),
         eq(productPrices.year, year),
         eq(productPrices.month, month)
       )
     );
   if (existing.length > 0) {
     return jsonError(
-      `Harga produk ini untuk ${month}/${year} sudah ada. Ubah baris itu, atau pakai periode lain.`,
+      `Harga ${priceType} produk ini untuk ${month}/${year} sudah ada. Ubah baris itu, atau pakai periode/jenis lain.`,
       409
     );
   }
@@ -107,6 +120,7 @@ export async function pricesPOST(req: NextRequest) {
     .values({
       productId: parsed.data.productId,
       price: parsed.data.price,
+      priceType,
       month,
       year,
     })
@@ -141,22 +155,26 @@ export async function pricePATCH(
   const year = parsed.data.year
     ? normalizePriceYear(parsed.data.year)
     : current[0].year;
+  const priceType = parsed.data.priceType
+    ? normalizePriceType(parsed.data.priceType) ?? current[0].priceType
+    : current[0].priceType;
   if (!month || !year) return jsonError("Bulan atau tahun tidak valid.", 422);
 
-  // Jangan sampai dua baris menempati periode yang sama untuk produk yang sama.
+  // Jangan sampai dua baris menempati jenis+periode yang sama untuk produk yang sama.
   const clash = await db
     .select({ id: productPrices.id })
     .from(productPrices)
     .where(
       and(
         eq(productPrices.productId, productId),
+        eq(productPrices.priceType, priceType),
         eq(productPrices.year, year),
         eq(productPrices.month, month)
       )
     );
   if (clash.some((row) => row.id !== rowId)) {
     return jsonError(
-      `Harga produk ini untuk ${month}/${year} sudah ada di baris lain.`,
+      `Harga ${priceType} produk ini untuk ${month}/${year} sudah ada di baris lain.`,
       409
     );
   }
@@ -167,6 +185,7 @@ export async function pricePATCH(
       productId,
       month,
       year,
+      priceType,
       ...(parsed.data.price !== undefined ? { price: parsed.data.price } : {}),
       updatedAt: new Date(),
     })
@@ -258,6 +277,7 @@ export async function pricesCARRYFORWARD(req: NextRequest) {
   const allRows = await db
     .select({
       productId: productPrices.productId,
+      priceType: productPrices.priceType,
       price: productPrices.price,
       month: productPrices.month,
       year: productPrices.year,
@@ -265,10 +285,12 @@ export async function pricesCARRYFORWARD(req: NextRequest) {
     .from(productPrices);
 
   // Aturan "harga periode terakhir sebelum tujuan" dipakai bersama harga
-  // sparepart — lihat `src/lib/api/price-period.ts`.
+  // sparepart — lihat `src/lib/api/price-period.ts`. Kuncinya produk+jenis:
+  // tiap jenis harga disalin terpisah (harga Website dan harga Reseller sebuah
+  // produk bisa datang dari periode yang berbeda).
   const best = lastPriceBefore(
     allRows.map((row) => ({
-      refId: row.productId,
+      refId: `${row.productId}|${row.priceType}`,
       price: row.price,
       month: row.month,
       year: row.year,
@@ -286,14 +308,28 @@ export async function pricesCARRYFORWARD(req: NextRequest) {
   }
 
   const filled = await db
-    .select({ productId: productPrices.productId })
+    .select({
+      productId: productPrices.productId,
+      priceType: productPrices.priceType,
+    })
     .from(productPrices)
     .where(and(eq(productPrices.year, year), eq(productPrices.month, month)));
-  const sudahAda = new Set(filled.map((row) => row.productId));
+  const sudahAda = new Set(
+    filled.map((row) => `${row.productId}|${row.priceType}`)
+  );
 
   const toInsert = Array.from(best.entries())
-    .filter(([productId]) => !sudahAda.has(productId))
-    .map(([productId, src]) => ({ productId, price: src.price, month, year }));
+    .filter(([key]) => !sudahAda.has(String(key)))
+    .map(([key, src]) => {
+      const [productId, priceType] = String(key).split("|");
+      return {
+        productId: Number(productId),
+        priceType,
+        price: src.price,
+        month,
+        year,
+      };
+    });
 
   // Yang benar-benar dilewati = punya harga lama TAPI periode tujuan sudah
   // terisi. `sudahAda` memuat juga produk tanpa harga lama, jadi angkanya tidak

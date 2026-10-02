@@ -8,8 +8,13 @@
  */
 
 export interface PricePeriodRow {
-  /** Rujukan harga: `productId` untuk produk, `sparePartId` untuk sparepart. */
-  refId: number;
+  /**
+   * Rujukan harga: `productId` untuk produk, `sparePartId` untuk sparepart.
+   *
+   * Harga produk memakai kunci gabungan "productId|priceType" (satu produk punya
+   * satu harga per jenis per periode), jadi tipenya dibiarkan `string | number`.
+   */
+  refId: string | number;
   price: number;
   /** "01".."12". */
   month: string;
@@ -35,8 +40,11 @@ export function lastPriceBefore(
   rows: PricePeriodRow[],
   month: string,
   year: string
-): Map<number, { price: number; month: string; year: string }> {
-  const best = new Map<number, { price: number; month: string; year: string }>();
+): Map<string | number, { price: number; month: string; year: string }> {
+  const best = new Map<
+    string | number,
+    { price: number; month: string; year: string }
+  >();
   for (const row of rows) {
     if (!isBeforeTarget(row, month, year)) continue;
     const current = best.get(row.refId);

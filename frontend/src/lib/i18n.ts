@@ -277,9 +277,9 @@ const translations = {
     zh: "缺陷金额差额",
   },
   "report.selisihValueDesc": {
-    id: "Hanya baris minus: Nilai Replacement RW − Nilai Defect",
-    en: "Negative rows only: Replacement RW Value − Defect Value",
-    zh: "仅负数行：更换 RW 金额 − 缺陷金额",
+    id: "Hanya baris minus: Nilai Replacement − Nilai Defect",
+    en: "Negative rows only: Replacement Value − Defect Value",
+    zh: "仅负数行：更换金额 − 缺陷金额",
   },
   "report.replacementValue": {
     id: "Nilai Replacement",
@@ -287,9 +287,9 @@ const translations = {
     zh: "更换金额",
   },
   "report.replacementValueDesc": {
-    id: "Value RW: qty × harga master",
-    en: "RW value: qty × master price",
-    zh: "RW 金额：数量 × 主价格",
+    id: "Value: qty × harga master",
+    en: "Value: qty × master price",
+    zh: "金额：数量 × 主价格",
   },
   "report.detailTitle": {
     id: "Detail Defect — {product}",
@@ -393,14 +393,19 @@ const translations = {
   "po.currency": { id: "Currency", en: "Currency", zh: "币种" },
   "po.ppn": { id: "PPN", en: "VAT", zh: "增值税" },
   "po.priceRw": {
-    id: "Harga RW",
-    en: "RW Price",
-    zh: "RW 价格",
+    id: "Harga",
+    en: "Price",
+    zh: "价格",
+  },
+  "po.priceType": {
+    id: "Jenis Harga",
+    en: "Price Type",
+    zh: "价格类型",
   },
   "po.valueRw": {
-    id: "Value RW",
-    en: "RW Value",
-    zh: "RW 金额",
+    id: "Value",
+    en: "Value",
+    zh: "金额",
   },
   "po.selectPrice": {
     id: "Pilih harga (bulan/tahun)",
@@ -408,9 +413,9 @@ const translations = {
     zh: "选择价格（月/年）",
   },
   "po.priceMissing": {
-    id: "Produk ini belum punya harga sama sekali. Tambahkan dulu di Data Master → Harga Produk.",
-    en: "This product has no price at all yet. Add one in Data Master → Product Prices.",
-    zh: "该产品目前没有任何价格，请先在数据主档 → 产品价格中添加。",
+    id: "Produk ini belum punya harga untuk jenis ini. Tambahkan dulu di Data Master → Harga Produk.",
+    en: "This product has no price for this type yet. Add one in Data Master → Product Prices.",
+    zh: "该产品目前没有此类型的价格，请先在数据主档 → 产品价格中添加。",
   },
   "po.valueRwHint": {
     id: "{qty} × {price}",
@@ -420,6 +425,12 @@ const translations = {
   "price.tab": { id: "Harga Produk", en: "Product Prices", zh: "产品价格" },
   "price.product": { id: "Nama Produk", en: "Product Name", zh: "产品名称" },
   "price.value": { id: "Harga", en: "Price", zh: "价格" },
+  "price.type": { id: "Jenis Harga", en: "Price Type", zh: "价格类型" },
+  "price.allTypes": {
+    id: "Semua jenis harga",
+    en: "All price types",
+    zh: "所有价格类型",
+  },
   "price.month": { id: "Bulan", en: "Month", zh: "月份" },
   "price.year": { id: "Tahun", en: "Year", zh: "年份" },
   "price.saved": {

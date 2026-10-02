@@ -339,7 +339,9 @@ export default function DefectsPage() {
       quantity: Number(form.quantity) || 0,
       statusId: Number(form.statusId),
       factoryId: Number(form.factoryId),
-      // Nilai baris defect = Harga RW × Quantity, dihitung di form. Server tetap
+      // Jenis harga yang dipakai sebagai asal angka Harga di form.
+      priceType: form.priceType,
+      // Nilai baris defect = Harga × Quantity, dihitung di form. Server tetap
       // menyimpannya apa adanya dan tidak mengisi productPriceId.
       value: defectTotalValue(form),
     };

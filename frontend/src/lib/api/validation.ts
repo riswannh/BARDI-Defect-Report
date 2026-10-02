@@ -65,6 +65,36 @@ export const productSchema = z.object({
   sku: z.string().optional().nullable(),
 });
 
+/**
+ * Jenis harga produk — DI-HARDCODE, mengikuti kolom spreadsheet harga user:
+ * Website (F), Reseller (G), Key Account (H), Buyback (I), Collection Point (J),
+ * Experience Store (K), Regional Warehouse (L).
+ *
+ * "Regional Warehouse" adalah satu-satunya jenis yang dipakai sistem sebelum
+ * fitur ini, jadi ia menjadi nilai bawaan sekaligus jenis untuk baris harga lama
+ * (kolom `priceType` diberi default itu saat kolomnya ditambahkan).
+ */
+export const PRICE_TYPES = [
+  "Website",
+  "Reseller",
+  "Key Account",
+  "Buyback",
+  "Collection Point",
+  "Experience Store",
+  "Regional Warehouse",
+] as const;
+export type PriceType = (typeof PRICE_TYPES)[number];
+
+export const DEFAULT_PRICE_TYPE: PriceType = "Regional Warehouse";
+
+/** Terima beda huruf besar-kecil/spasi; nilai di luar daftar -> null. */
+export function normalizePriceType(value: unknown): PriceType | null {
+  const s =
+    typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, " ") : "";
+  if (s === "") return null;
+  return PRICE_TYPES.find((option) => option.toLowerCase() === s) ?? null;
+}
+
 export const defectFields = {
   codeGaransi: z.string().trim().min(1),
   timestamp: z
@@ -87,6 +117,8 @@ export const defectFields = {
    * isian awal (lihat `defect-form-dialog.tsx`).
    */
   value: z.coerce.number().int().min(0),
+  /** Jenis harga yang dipakai form saat mengisi `value`; lihat PRICE_TYPES. */
+  priceType: z.string().trim(),
 } satisfies z.ZodRawShape;
 
 export const defectSchema = buildCreate(defectFields, {
@@ -95,6 +127,7 @@ export const defectSchema = buildCreate(defectFields, {
   problemDetail: z.string().trim().default(""),
   quantity: z.coerce.number().int().min(0).default(0),
   value: z.coerce.number().int().min(0).default(0),
+  priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),
 });
 
 export const defectUpdateSchema = buildUpdate(defectFields);
@@ -187,6 +220,8 @@ export const purchaseOrderFields = {
   keterangan: z.string(),
   /** Harga master (Rupiah) yang dipakai baris PO; boleh kosong. */
   productPriceId: z.coerce.number().int().positive().nullable(),
+  /** Jenis harga master yang dipilih operator; lihat PRICE_TYPES. */
+  priceType: z.string().trim(),
 } satisfies z.ZodRawShape;
 
 export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
@@ -196,6 +231,7 @@ export const purchaseOrderSchema = buildCreate(purchaseOrderFields, {
   ppn: z.string().optional(),
   keterangan: z.string().optional(),
   productPriceId: z.coerce.number().int().positive().nullable().optional(),
+  priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),
 });
 
 export const purchaseOrderUpdateSchema = buildUpdate(purchaseOrderFields);
@@ -253,10 +289,13 @@ export const productPriceFields = {
   price: z.coerce.number().min(0),
   month: z.string().trim().min(1),
   year: z.string().trim().min(1),
+  /** Jenis harga (Website/Reseller/…/Regional Warehouse); lihat PRICE_TYPES. */
+  priceType: z.string().trim(),
 } satisfies z.ZodRawShape;
 
 export const productPriceSchema = buildCreate(productPriceFields, {
   price: z.coerce.number().min(0).default(0),
+  priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),
 });
 
 export const productPriceUpdateSchema = buildUpdate(productPriceFields);

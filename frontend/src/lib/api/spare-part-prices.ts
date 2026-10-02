@@ -271,9 +271,9 @@ export async function sparePartPricesCARRYFORWARD(req: NextRequest) {
   const sudahAda = new Set(filled.map((row) => row.sparePartId));
 
   const toInsert = Array.from(best.entries())
-    .filter(([sparePartId]) => !sudahAda.has(sparePartId))
+    .filter(([sparePartId]) => !sudahAda.has(Number(sparePartId)))
     .map(([sparePartId, src]) => ({
-      sparePartId,
+      sparePartId: Number(sparePartId),
       price: src.price,
       month,
       year,

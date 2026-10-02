@@ -23,10 +23,12 @@ import {
   defectSchema,
   defectUpdateSchema,
   DEFAULT_KETERANGAN,
+  DEFAULT_PRICE_TYPE,
   KETERANGAN_OPTIONS,
   normalizeCurrency,
   normalizeKeterangan,
   normalizePpn,
+  normalizePriceType,
   purchaseOrderSchema,
   purchaseOrderUpdateSchema,
   saleSchema,
@@ -44,6 +46,7 @@ import {
 function stripValue<
   T extends {
     value?: number;
+    priceType?: string;
     productPrice?: number | null;
     productPriceId?: number | null;
     productPriceMonth?: string | null;
@@ -56,18 +59,29 @@ function stripValue<
   | T
   | Omit<
       T,
-      "value" | "productPrice" | "productPriceId" | "productPriceMonth" | "productPriceYear"
+      | "value"
+      | "priceType"
+      | "productPrice"
+      | "productPriceId"
+      | "productPriceMonth"
+      | "productPriceYear"
     > {
   if (user.isAdmin) return row;
   const copy: Record<string, unknown> = { ...row };
   delete copy.value;
+  delete copy.priceType;
   delete copy.productPrice;
   delete copy.productPriceId;
   delete copy.productPriceMonth;
   delete copy.productPriceYear;
   return copy as Omit<
     T,
-    "value" | "productPrice" | "productPriceId" | "productPriceMonth" | "productPriceYear"
+    | "value"
+    | "priceType"
+    | "productPrice"
+    | "productPriceId"
+    | "productPriceMonth"
+    | "productPriceYear"
   >;
 }
 
@@ -85,6 +99,7 @@ function stripPoFinance<
     pricePerPcs?: number;
     currency?: string;
     ppn?: string;
+    priceType?: string;
     productPrice?: number | null;
     productPriceId?: number | null;
     productPriceMonth?: string | null;
@@ -101,6 +116,7 @@ function stripPoFinance<
       | "pricePerPcs"
       | "currency"
       | "ppn"
+      | "priceType"
       | "productPrice"
       | "productPriceId"
       | "productPriceMonth"
@@ -112,6 +128,7 @@ function stripPoFinance<
   delete copy.pricePerPcs;
   delete copy.currency;
   delete copy.ppn;
+  delete copy.priceType;
   delete copy.productPrice;
   delete copy.productPriceId;
   delete copy.productPriceMonth;
@@ -122,6 +139,7 @@ function stripPoFinance<
     | "pricePerPcs"
     | "currency"
     | "ppn"
+    | "priceType"
     | "productPrice"
     | "productPriceId"
     | "productPriceMonth"
@@ -142,6 +160,8 @@ const defectSelect = {
   statusId: defects.statusId,
   factoryId: defects.factoryId,
   value: defects.value,
+  /** Jenis harga yang dipakai form (Website/Reseller/…/Regional Warehouse). */
+  priceType: defects.priceType,
   /**
    * Harga master (Rupiah) yang dipakai baris defect ini — sama polanya dengan
    * Value RW di PO. Baris defect menyimpan rujukannya, bukan salinan angkanya.
@@ -179,6 +199,8 @@ const purchaseOrderSelect = {
   currency: purchaseOrders.currency,
   ppn: purchaseOrders.ppn,
   keterangan: purchaseOrders.keterangan,
+  /** Jenis harga master yang dipilih operator di form PO. */
+  priceType: purchaseOrders.priceType,
   /**
    * Harga master (Rupiah) yang dipakai baris ini. Baris PO menyimpan rujukannya,
    * bukan salinan angkanya, sehingga "Value RW = quantity × harga" selalu
@@ -323,7 +345,8 @@ export function keteranganOptions() {
  */
 export async function findProductPriceId(
   productId: number,
-  poDate: string
+  poDate: string,
+  priceType: string = DEFAULT_PRICE_TYPE
 ): Promise<number | null> {
   const year = poDate.slice(0, 4);
   const month = poDate.slice(5, 7);
@@ -334,6 +357,7 @@ export async function findProductPriceId(
     .where(
       and(
         eq(productPrices.productId, productId),
+        eq(productPrices.priceType, priceType),
         eq(productPrices.year, year),
         eq(productPrices.month, month)
       )
@@ -421,10 +445,13 @@ export async function defectsPOST(req: NextRequest) {
   // Nilai defect disimpan apa adanya dan tautan ke harga master tidak diisi lagi
   // (keputusan user: satu isian "Value RW" saja, angka di kotak itu yang masuk
   // database). Harga master tetap dipakai form sebagai isian awal.
+  // Jenis harga tetap dicatat supaya pilihan operator terbaca saat baris disunting.
+  const priceType = normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE;
   const [row] = await db
     .insert(defects)
     .values({
       ...rest,
+      priceType,
       timeStamp: timestamp,
       productPriceId: null,
       value: parsed.data.value ?? 0,
@@ -473,6 +500,9 @@ export async function defectsPATCH(
       ...rest,
       ...(timestamp ? { timeStamp: timestamp } : {}),
       quantity: finalQuantity,
+      // Jenis harga yang tidak dikenal jatuh ke jenis baris sebelumnya (bukan
+      // ke default) supaya menyunting field lain tidak mengubah pilihan jenis.
+      priceType: normalizePriceType(parsed.data.priceType) ?? current[0].priceType,
       // Nilai disimpan apa adanya; tautan harga master tidak dipakai lagi untuk
       // defect, jadi dikosongkan juga saat baris lama disunting.
       value: parsed.data.value ?? current[0].value,
@@ -677,12 +707,14 @@ export async function purchaseOrdersPOST(req: NextRequest) {
   const pricePerPcs = parsed.data.pricePerPcs ?? 0;
 
   // Harga master: pakai yang dipilih operator, atau cari otomatis sesuai
-  // bulan/tahun tanggal PO. Boleh null bila produk itu belum punya harga.
+  // jenis harga + bulan/tahun tanggal PO. Boleh null bila produk itu belum
+  // punya harga jenis tersebut.
+  const priceType = normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE;
   const productPriceId =
     parsed.data.productPriceId !== undefined &&
     parsed.data.productPriceId !== null
       ? parsed.data.productPriceId
-      : await findProductPriceId(productId, poDate);
+      : await findProductPriceId(productId, poDate, priceType);
 
   // Tidak ada pemeriksaan duplikat: satu PO Number boleh diinput berkali-kali,
   // termasuk untuk produk yang sama (keputusan user, lihat SPEC-po-product.md).
@@ -700,6 +732,7 @@ export async function purchaseOrdersPOST(req: NextRequest) {
       currency: normalizeCurrency(parsed.data.currency),
       ppn: normalizePpn(parsed.data.ppn),
       keterangan: normalizeKeterangan(parsed.data.keterangan) ?? DEFAULT_KETERANGAN,
+      priceType,
       productPriceId,
     })
     .returning();
@@ -733,18 +766,23 @@ export async function purchaseOrdersPATCH(
     pricePerPcs: parsed.data.pricePerPcs ?? current[0].pricePerPcs,
     productId: parsed.data.productId ?? current[0].productId,
     poDate: parsed.data.poDate ?? current[0].poDate,
+    priceType: normalizePriceType(parsed.data.priceType) ?? current[0].priceType,
   };
 
   /**
    * Harga master: kalau operator memilih sendiri, hormati pilihannya (termasuk
    * memilih kosong). Kalau tidak dikirim, cari ulang otomatis — perlu karena
-   * tanggal PO atau produknya mungkin ikut berubah, sehingga rujukan harga lama
-   * bisa jadi tidak nyambung lagi.
+   * tanggal PO, produknya, atau jenis harganya mungkin ikut berubah, sehingga
+   * rujukan harga lama bisa jadi tidak nyambung lagi.
    */
   const productPriceId =
     parsed.data.productPriceId !== undefined
       ? parsed.data.productPriceId
-      : await findProductPriceId(merged.productId, merged.poDate);
+      : await findProductPriceId(
+          merged.productId,
+          merged.poDate,
+          merged.priceType
+        );
 
   const [row] = await db
     .update(purchaseOrders)
@@ -762,6 +800,7 @@ export async function purchaseOrdersPATCH(
       quantity: merged.quantity,
       pricePerPcs: merged.pricePerPcs,
       value: merged.pricePerPcs * merged.quantity,
+      priceType: merged.priceType,
       productPriceId,
       ...(parsed.data.currency !== undefined
         ? { currency: normalizeCurrency(parsed.data.currency) }

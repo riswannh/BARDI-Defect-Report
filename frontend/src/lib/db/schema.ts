@@ -250,6 +250,15 @@ export const defects = sqliteTable(
       .references(() => factories.id),
     value: integer("value").notNull().default(0),
     /**
+     * Jenis harga master yang dipakai form saat mengisi `value` (Website,
+     * Reseller, Key Account, Buyback, Collection Point, Experience Store,
+     * Regional Warehouse). Nilai tetap di `PRICE_TYPES`
+     * (`src/lib/api/validation.ts`); disimpan sebagai teks supaya tidak perlu
+     * join. Baris lama memakai "Regional Warehouse" — satu-satunya jenis yang
+     * ada sebelum fitur ini.
+     */
+    priceType: text("priceType").notNull().default("Regional Warehouse"),
+    /**
      * WARISAN — tidak dipakai lagi oleh jalur defect.
      *
      * Dulu baris defect merujuk ke `product_prices` supaya `value = quantity × harga`;
@@ -338,6 +347,13 @@ export const productPrices = sqliteTable(
       .references(() => products.id),
     /** Rupiah; boleh pecahan seperti harga PO. */
     price: real("price").notNull().default(0),
+    /**
+     * Jenis harga: satu produk boleh punya harga berbeda per jenis (Website,
+     * Reseller, … Regional Warehouse) untuk periode yang sama. Nilai tetap di
+     * `PRICE_TYPES`; "Regional Warehouse" = jenis yang dipakai sistem sebelum
+     * fitur jenis harga, jadi baris lama memakai nilai itu.
+     */
+    priceType: text("priceType").notNull().default("Regional Warehouse"),
     /** "01".."12" (dua digit, supaya bisa diurutkan sebagai teks). */
     month: text("month").notNull(),
     year: text("year").notNull(),
@@ -349,11 +365,17 @@ export const productPrices = sqliteTable(
       .default(sql`(unixepoch())`),
   },
   (t) => [
-    // Satu harga per produk per bulan/tahun — inilah yang menjaga harga lama
-    // tetap unik dan tidak bisa tertimpa diam-diam.
-    unique("product_prices_unique").on(t.productId, t.year, t.month),
+    // Satu harga per produk per jenis per bulan/tahun — inilah yang menjaga
+    // harga lama tetap unik dan tidak bisa tertimpa diam-diam.
+    unique("product_prices_unique").on(
+      t.productId,
+      t.priceType,
+      t.year,
+      t.month
+    ),
     index("product_prices_product_idx").on(t.productId),
     index("product_prices_period_idx").on(t.year, t.month),
+    index("product_prices_type_idx").on(t.priceType, t.year, t.month),
   ]
 );
 
@@ -438,6 +460,11 @@ export const purchaseOrders = sqliteTable(
      * baris PO tetap boleh disimpan dan Value RW-nya dikosongkan.
      */
     productPriceId: integer("productPriceId").references(() => productPrices.id),
+    /**
+     * Jenis harga master yang dipilih operator di form PO (lihat `PRICE_TYPES`).
+     * Disimpan agar pilihan jenis tetap terbaca saat baris disunting.
+     */
+    priceType: text("priceType").notNull().default("Regional Warehouse"),
     /**
      * Status PPN baris PO: "PPN" atau "Non PPN".
      *

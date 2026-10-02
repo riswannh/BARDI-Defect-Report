@@ -1,4 +1,5 @@
 import type { Defect, Factory } from "@/lib/types";
+import { DEFAULT_PRICE_TYPE } from "@/lib/api/validation";
 
 export interface SelectOption {
   value: string;
@@ -34,6 +35,12 @@ export interface DefectForm {
    * dihitung di klien — server tetap menyimpan apa adanya.
    */
   priceRw: string;
+  /**
+   * Jenis harga yang dipakai baris ini (Website/Reseller/…/Regional Warehouse).
+   * Hanya jadi penanda asal harga; yang disimpan ke `defects.value` tetap total
+   * Rupiah hasil `defectTotalValue`, dihitung dari `priceRw` di atas.
+   */
+  priceType: string;
 }
 
 /** Nilai baris defect = Harga RW × Quantity (Rupiah, dibulatkan). */
@@ -67,6 +74,7 @@ export function emptyForm(): DefectForm {
     statusId: "",
     factoryId: "",
     priceRw: "",
+    priceType: DEFAULT_PRICE_TYPE,
   };
 }
 
@@ -84,8 +92,10 @@ export function carryOverForm(previous: DefectForm): DefectForm {
     factoryId: previous.factoryId,
     statusId: previous.statusId,
     // Produknya sama dan periodenya biasanya masih sama, jadi harga tadi dibawa
-    // sebagai isian awal entri berikutnya (masih bisa diubah).
+    // sebagai isian awal entri berikutnya (masih bisa diubah), termasuk jenis
+    // harganya supaya operator tidak perlu memilih ulang.
     priceRw: previous.priceRw,
+    priceType: previous.priceType,
   };
 }
 
@@ -122,6 +132,8 @@ export function rowToForm(d: DefectRow): DefectForm {
     // hasil impor Excel yang nilainya bukan kelipatan qty bisa membulat beberapa
     // rupiah saat disunting; kalau itu mengganggu, simpan harga per pcs-nya di DB.
     priceRw: String(qty > 0 ? Math.round(value / qty) : value),
+    // Baris lama (sebelum ada kolom jenis harga) dianggap Regional Warehouse.
+    priceType: d.priceType ?? DEFAULT_PRICE_TYPE,
   };
 }
 

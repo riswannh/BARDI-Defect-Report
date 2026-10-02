@@ -12,8 +12,10 @@ import {
 } from "@/lib/format";
 import {
   DEFAULT_KETERANGAN,
+  DEFAULT_PRICE_TYPE,
   KETERANGAN_OPTIONS,
   PPN_OPTIONS,
+  PRICE_TYPES,
   type KeteranganOption,
   type PpnStatus,
 } from "@/lib/api/validation";
@@ -58,6 +60,8 @@ export interface PoForm {
    * Kosong berarti produk ini belum punya harga untuk periode PO tersebut.
    */
   productPriceId: string;
+  /** Jenis harga master yang dipakai baris ini (Website/Reseller/…). */
+  priceType: string;
 }
 
 /** Nilai `datetime-local` untuk waktu sekarang (waktu lokal, bukan UTC). */
@@ -84,6 +88,9 @@ export function emptyPoForm(): PoForm {
     ppn: "Non PPN",
     keterangan: DEFAULT_KETERANGAN,
     productPriceId: "",
+    // Jenis harga lama (kolom L spreadsheet) tetap jadi default supaya perilaku
+    // operator yang sudah biasa tidak berubah.
+    priceType: DEFAULT_PRICE_TYPE,
   };
 }
 
@@ -144,13 +151,19 @@ export function PoFormDialog({
   );
 
   /**
-   * Harga yang bisa dipilih: harga milik produk terpilih, periode terbaru dulu.
-   * Labelnya memuat periode supaya operator tahu harga mana yang dipakai.
+   * Harga yang bisa dipilih: harga milik produk terpilih DENGAN jenis harga yang
+   * sedang dipilih, periode terbaru dulu. Labelnya memuat periode supaya operator
+   * tahu harga mana yang dipakai.
    */
   const priceOptions = useMemo(
     () =>
       productPrices
-        .filter((row) => form.productId !== "" && row.productId === Number(form.productId))
+        .filter(
+          (row) =>
+            form.productId !== "" &&
+            row.productId === Number(form.productId) &&
+            (row.priceType ?? DEFAULT_PRICE_TYPE) === form.priceType
+        )
         .sort((a, b) =>
           b.year.localeCompare(a.year) || b.month.localeCompare(a.month)
         )
@@ -158,7 +171,14 @@ export function PoFormDialog({
           value: String(row.id),
           label: `${priceMonthLabel(row.month)} ${row.year} — ${formatIDR(row.price)}`,
         })),
-    [productPrices, form.productId]
+    [productPrices, form.productId, form.priceType]
+  );
+
+  // Daftar jenis harga tetap dari kode (PRICE_TYPES), bukan dari data, supaya
+  // jenis yang belum punya harga pun tetap bisa dipilih.
+  const priceTypeOptions = useMemo(
+    () => PRICE_TYPES.map((value) => ({ value, label: value })),
+    []
   );
 
   const selectedPrice = productPrices.find(
@@ -256,7 +276,8 @@ export function PoFormDialog({
                       const match = pickProductPrice(
                         productPrices,
                         Number(f.productId),
-                        poDate.slice(0, 7)
+                        poDate.slice(0, 7),
+                        f.priceType
                       );
                       return {
                         ...f,
@@ -279,11 +300,13 @@ export function PoFormDialog({
                     onFormChange((f) => {
                       const nextProductId = String(v);
                       // Produk berganti -> pilih harga periode PO untuk produk baru
-                      // itu; kalau periodenya belum ada, pakai harga terbarunya.
+                      // itu dengan jenis harga yang sedang dipilih; kalau periodenya
+                      // belum ada, pakai harga terbarunya.
                       const match = pickProductPrice(
                         productPrices,
                         Number(nextProductId),
-                        f.poDate.slice(0, 7)
+                        f.poDate.slice(0, 7),
+                        f.priceType
                       );
                       // Produk punya kaitan pabrik -> kolom Pabrik terisi otomatis.
                       const pabrik =
@@ -409,6 +432,44 @@ export function PoFormDialog({
                     {PPN_OPTIONS.map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>{t("po.priceType")}</Label>
+                {/* Jenis harga dipilih dulu; daftar Harga di sebelahnya ikut
+                    menyesuaikan, dan harganya terisi otomatis. */}
+                <Select
+                  value={form.priceType}
+                  onValueChange={(v) => {
+                    if (v === null) return;
+                    const nextType = String(v);
+                    onFormChange((f) => {
+                      const match = pickProductPrice(
+                        productPrices,
+                        Number(f.productId),
+                        f.poDate.slice(0, 7),
+                        nextType
+                      );
+                      return {
+                        ...f,
+                        priceType: nextType,
+                        productPriceId: match ? String(match.id) : "",
+                      };
+                    });
+                  }}
+                  items={priceTypeOptions}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priceTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

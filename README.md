@@ -5,7 +5,7 @@
 > `PRD.md` adalah dokumen kebutuhan awal; README ini adalah versi terupdate yang sudah disinkronkan dengan implementasi.
 
 - **Repo**: https://github.com/riswannh/BARDI-Defect-Report (private, branch `main`)
-- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun (Value RW): Harga RW terisi otomatis dari periode tanggal/PO (jatuh ke harga terbaru kalau periode itu kosong) dan Defect menyimpan **Total Value = Harga RW × Quantity**, plus kartu **Replacement** di Report
+- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun dan **7 jenis harga** (Website, Reseller, Key Account, Buyback, Collection Point, Experience Store, Regional Warehouse): **Harga** terisi otomatis dari periode tanggal/PO untuk jenis yang dipilih (jatuh ke harga terbaru kalau periode itu kosong) dan Defect menyimpan **Total Value = Harga × Quantity**, plus kartu **Replacement** di Report
 
 ---
 
@@ -70,15 +70,16 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Perbaikan bug Select: nilai terpilih tidak lagi direset `null` saat popup ditutup | ✅ Selesai |
 | + | **PO Product** (`/po`) — CRUD, filter periode, PPN, Excel, akses baca-saja untuk Pabrik | ✅ Selesai |
 | + | **Harga Produk** per bulan/tahun (master) + salin periode sebelumnya | ✅ Selesai |
+| + | **7 jenis harga produk** (Website, Reseller, Key Account, Buyback, Collection Point, Experience Store, Regional Warehouse) — satu produk boleh punya banyak jenis di periode sama; kolom + filter **Jenis Harga** di tab Harga Produk, dropdown **Jenis Harga** di form PO & Defect, jenis tersimpan per baris (PO, Defect) dan ikut tersalin saat salin periode | ✅ Selesai |
 | + | **Sparepart** sebagai child produk (many-to-many: satu sparepart boleh dipakai beberapa produk), master **Sparepart** + tab **Harga Sparepart** per bulan/tahun + salin periode sebelumnya | ✅ Selesai |
-| + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
-| + | **Harga RW** Defect jadi Harga + Total Value (harga × qty), Harga RW otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
-| + | Susunan field **Harga RW + Total Value** di form Defect disamakan dengan form PO (dropdown harga + kolom baca-saja), label "Value RW" diganti "Total Value" | ✅ Selesai |
-| + | Kartu **Replacement** + **Nilai Replacement** (Value RW) + **Selisih Defect Quantity** & **Selisih Defect Value** (hanya baris minus dihitung, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
+| + | **Value** di PO dihitung dari harga master | ✅ Selesai |
+| + | **Harga** Defect jadi Harga + Total Value (harga × qty), Harga otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
+| + | Susunan field **Jenis Harga + Harga + Total Value** di form Defect disamakan dengan form PO (dropdown jenis harga, dropdown harga, kolom baca-saja), label lama "Harga RW"/"Value RW" diganti "Harga"/"Total Value" | ✅ Selesai |
+| + | Kartu **Replacement** + **Nilai Replacement** (Value) + **Selisih Defect Quantity** & **Selisih Defect Value** (hanya baris minus dihitung, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
-| + | Value RW Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
+| + | Value Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Big Data") satu arah sheet → aplikasi, konflik per field lewat popup | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
 
@@ -233,13 +234,17 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 |---|---|---|
 | `id` | integer PK auto | |
 | `productId` | FK → products | |
+| `priceType` | text, notNull, default `"Regional Warehouse"` | **jenis harga** — salah satu dari 7 nilai tetap (§7 · Harga Produk); bagian dari kunci unik, dengan index `product_prices_type_idx` pada `(priceType, year, month)` |
 | `price` | real (default 0) | Rupiah; boleh pecahan |
 | `month` | text | `"01"`..`"12"` (dua digit supaya bisa diurutkan sebagai teks) |
 | `year` | text | empat digit |
 | `createdAt` / `updatedAt` | timestamp | |
 
-Constraint unik: `(productId, year, month)` — **satu harga per produk per periode**. Harga lama tidak
-pernah ditimpa: kalau harga berubah, buat baris baru untuk periode berikutnya.
+Constraint unik: `(productId, priceType, year, month)` — **satu harga per produk per jenis per
+periode**, jadi satu produk boleh punya banyak jenis harga di periode yang sama (mis. harga Website dan
+harga Reseller untuk 07/2026 berdampingan). Harga lama tidak pernah ditimpa: kalau harga berubah, buat
+baris baru untuk periode berikutnya. Baris lama (dibuat sebelum kolom `priceType` ada) otomatis bernilai
+`Regional Warehouse`, karena `drizzle-kit push` mengisi default kolomnya.
 
 **`spare_parts`** — master sparepart (child dari produk)
 
@@ -291,7 +296,8 @@ Constraint unik: `(sparePartId, year, month)` — satu harga per sparepart per p
 | `currency` | text (default `Rp`) | `Rp`, `USD`, atau `RMB` |
 | `ppn` | text (default `Non PPN`) | `PPN` atau `Non PPN`. **Hanya penanda — tidak dihitung ke `value`.** Tidak dikirim ke role Pabrik |
 | `keterangan` | text (default `Product Order`) | salah satu dari tiga nilai tetap: `Product Order`, `Sparepart Order`, `Replacement` |
-| `productPriceId` | FK → product_prices (nullable) | harga master (Rupiah) yang dipakai baris ini; NULL bila produk itu belum punya harga di periode PO |
+| `productPriceId` | FK → product_prices (nullable) | harga master (Rupiah) yang dipakai baris ini; NULL bila produk itu belum punya harga **jenis ini** di periode PO |
+| `priceType` | text, notNull, default `"Regional Warehouse"` | **jenis harga** yang dipakai baris ini (7 nilai tetap — lihat §7 · Harga Produk). Read-only di tabel; menggantinya di form berarti mengganti baris harga sumbernya. Ikut disembunyikan untuk role Pabrik |
 | `createdAt` / `updatedAt` | timestamp | jejak audit, tidak ditampilkan di tabel |
 
 Index: `factoryId`, `poNumber`, `keterangan`, `poDate`. **Tidak ada constraint UNIQUE** — satu PO
@@ -312,7 +318,8 @@ duplikat (keputusan pemilik produk).
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | |
 | `factoryId` | FK → factories | |
-| `value` | integer (default 0) | IDR. **Total baris** = Harga RW × Quantity yang dihitung di form; untuk impor Excel diambil apa adanya dari kolom Value. Server tidak menghitung ulang; **disembunyikan untuk role Pabrik** |
+| `value` | integer (default 0) | IDR. **Total baris** = **Harga** × Quantity yang dihitung di form; untuk impor Excel diambil apa adanya dari kolom Value. Server tidak menghitung ulang; **disembunyikan untuk role Pabrik** |
+| `priceType` | text, notNull, default `"Regional Warehouse"` | **Jenis harga** master yang dipakai baris ini (7 nilai tetap — lihat §7 · Harga Produk). Hanya jejak jenis yang dipakai form saat mengisi `value`; **disembunyikan untuk role Pabrik** |
 | `productPriceId` | FK → product_prices (nullable) | Kolom warisan. Tidak diisi lagi untuk defect (selalu NULL pada baris baru, dan ikut dikosongkan saat baris lama disunting). Harga master kini hanya jadi **isian awal** di form — lihat §8.9 |
 | `createdAt` / `updatedAt` | timestamp | |
 
@@ -418,7 +425,7 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/defects` | user login | daftar + `factoryName`, `problemName`, `statusName`; role Pabrik ter-scope & tanpa `value`/`productPrice*` |
+| GET | `/api/defects` | user login | daftar + `factoryName`, `problemName`, `statusName`; role Pabrik ter-scope & tanpa `value`/`priceType`/`productPrice*` |
 | POST | `/api/defects` | admin | tambah (validasi zod, cek `codeGaransi` unik) |
 | PATCH | `/api/defects/{id}` | admin | ubah |
 | DELETE | `/api/defects/{id}` | admin | hapus |
@@ -427,22 +434,26 @@ sebagai `NULL`.
 
 **Sales**: sama polanya (`/api/sales`, `/api/sales/{id}`, `/api/sales/bulk-delete`), validasi unik `productId+factoryId+month`.
 
-**Harga RW Defect dipilih otomatis, angka tersimpannya tetap dihitung di form**: isian **Harga RW**
-(harga satuan per pcs) terisi sendiri dari harga master produk untuk periode `timestamp` defect; kalau
-produk itu belum punya harga di periode tersebut, dipakai **harga terbarunya** (bulan/tahun terbesar).
-Operator memilih baris harga lain lewat **dropdown Harga RW** yang sama (susunannya sengaja dibuat sama
-dengan form PO). **Total Value** (= Harga RW × Quantity) ditampilkan sebagai preview dan itulah yang dikirim
+**Harga Defect dipilih otomatis, angka tersimpannya tetap dihitung di form**: isian **Jenis Harga**
+(7 nilai tetap — §7 · Harga Produk) dipilih lebih dulu, lalu isian **Harga**
+(harga satuan per pcs) terisi sendiri dari harga master produk **untuk jenis itu** pada periode
+`timestamp` defect; kalau produk itu belum punya harga jenis tersebut di periode itu, dipakai **harga
+terbarunya** (bulan/tahun terbesar, jenis yang sama). Operator memilih baris harga lain lewat
+**dropdown Harga** yang sama (susunannya sengaja dibuat sama
+dengan form PO). **Total Value** (= Harga × Quantity) ditampilkan sebagai preview dan itulah yang dikirim
 ke `defects.value` — server menyimpannya apa adanya, tidak menghitung ulang, dan **tidak mengisi
-`productPriceId`**. Karena itu menambah harga master baru tidak mengubah baris defect lama, sedangkan
+`productPriceId`**; jenis yang dipakai dicatat di `defects.priceType`. Karena itu menambah harga master
+baru tidak mengubah baris defect lama, sedangkan
 impor Excel tetap memakai kolom `Value` di berkas apa adanya (tanpa dikalikan quantity lagi). Role
-Pabrik tidak menerima `value` **maupun** `productPrice*`. Modul **PO Product** memakai aturan pemilihan
+Pabrik tidak menerima `value`, `priceType`, **maupun** `productPrice*`. Modul **PO Product** memakai
+aturan pemilihan
 harga yang sama tetapi menyimpan **rujukan** harga (§8.10).
 
 ### PO Product
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keterangan`, `productPrice`/`productPriceMonth`/`productPriceYear` (harga master). Query: `factoryId`, `productId`, `keterangan` (teks), `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn`/`productPrice*` |
+| GET | `/api/purchase-orders` | user login | daftar + `productName`, `factoryName`, `sku`, `keterangan`, `priceType`, `productPrice`/`productPriceMonth`/`productPriceYear` (harga master). Query: `factoryId`, `productId`, `keterangan` (teks), `month`, `year`, `search`. Role Pabrik ter-scope pabriknya dan **tanpa** `pricePerPcs`/`value`/`currency`/`ppn`/`priceType`/`productPrice*` |
 | POST | `/api/purchase-orders` | admin | tambah; **tanpa** pemeriksaan duplikat; `value` dihitung server |
 | PATCH | `/api/purchase-orders/{id}` | admin | ubah sebagian; `value` dihitung ulang dari nilai final |
 | DELETE | `/api/purchase-orders/{id}` | admin | hapus satu baris |
@@ -486,30 +497,54 @@ Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/product-prices` | user login | daftar + `productName`/`sku`. Query: `productId`, `year`, `month` |
-| POST | `/api/product-prices` | admin | tambah; 409 bila produk itu sudah punya harga di periode yang sama |
-| PATCH | `/api/product-prices/{id}` | admin | ubah nominal/produk/periode |
+| GET | `/api/product-prices` | user login | daftar + `productName`/`sku`. Query: `productId`, `year`, `month`, **`type`** (filter jenis harga) |
+| POST | `/api/product-prices` | admin | tambah; 409 bila produk itu sudah punya harga **untuk jenis itu** di periode yang sama — pesannya menyebut jenisnya |
+| PATCH | `/api/product-prices/{id}` | admin | ubah nominal/produk/periode/jenis |
 | DELETE | `/api/product-prices/{id}` | admin | hapus; 409 bila masih dipakai baris PO |
 | DELETE | `/api/product-prices` | admin | hapus semua + backup; 409 bila ada PO yang memakai |
-| POST | `/api/product-prices/carry-forward` | admin | `{ month, year }` — salin harga dari periode terakhir sebelum periode itu |
+| POST | `/api/product-prices/carry-forward` | admin | `{ month, year }` — salin harga dari periode terakhir sebelum periode itu, **per pasangan produk + jenis harga** |
 
-**Value RW** pada baris PO = `quantity × harga master`. Baris PO menyimpan **rujukan**
+**Jenis harga (7 nilai tetap)** — master harga tidak lagi satu angka per produk per periode, tapi satu
+angka **per jenis** per periode. Nilainya di-HARDCODE mengikuti kolom spreadsheet user, didefinisikan
+sebagai `PRICE_TYPES` di `frontend/src/lib/api/validation.ts`:
+
+| Jenis harga |
+| --- |
+| `Website` |
+| `Reseller` |
+| `Key Account` |
+| `Buyback` |
+| `Collection Point` |
+| `Experience Store` |
+| `Regional Warehouse` |
+
+`DEFAULT_PRICE_TYPE = "Regional Warehouse"` dan `normalizePriceType()` mengubah nilai tak dikenal/kosong
+jadi `null` (pemanggilnya lalu memakai default). Jenis ini **bukan master**: tidak ada tabel, endpoint
+CRUD, atau tab Data Master untuknya — mau menambah jenis berarti mengubah `PRICE_TYPES`. Keunikan tabel
+jadi `(productId, priceType, year, month)`, sehingga satu produk boleh punya harga Website dan harga
+Reseller untuk bulan yang sama.
+
+**Value** pada baris PO = `quantity × harga master`. Baris PO menyimpan **rujukan**
 (`productPriceId`), bukan salinan angkanya, sehingga menambah harga baru untuk periode lain tidak
-mengubah nilai PO lama. Bila produk belum punya harga di periode PO, Value RW dikosongkan (`-`) dan
-PO tetap boleh disimpan.
+mengubah nilai PO lama. Rujukan itu dicari otomatis untuk **jenis harga yang dipilih** pada periode PO;
+bila produk belum punya harga jenis itu di periode tersebut, Value dikosongkan (`-`) dan PO tetap boleh
+disimpan. Jenis yang dipakai tersimpan di kolom `priceType` baris PO.
 
-**`value` pada Defect dihitung di form, bukan di server.** Harga RW (harga satuan) × Quantity =
-**Total Value**, dan total itulah yang dikirim ke `defects.value`; server menyimpannya apa adanya dan
-tidak mengisi `productPriceId`. Harga RW sendiri terisi otomatis: harga master pada periode
-`timestamp` defect, atau **harga terbaru** produk tersebut bila periode itu belum punya harga — dan
-masih bisa diganti dengan memilih baris harga lain dari dropdown-nya. Nilai `value` yang sudah tersimpan
+**`value` pada Defect dihitung di form, bukan di server.** Harga (harga satuan jenis terpilih) × Quantity
+= **Total Value**, dan total itulah yang dikirim ke `defects.value`; server menyimpannya apa adanya dan
+tidak mengisi `productPriceId`. Harga sendiri terisi otomatis: harga master **jenis yang dipilih** pada
+periode `timestamp` defect, atau **harga terbaru jenis itu** bila periode tersebut belum punya harga —
+dan masih bisa diganti dengan memilih baris harga lain dari dropdown-nya. Jenis yang dipakai ikut
+tersimpan di kolom `defects.priceType`. Nilai `value` yang sudah tersimpan
 tidak dihitung ulang saat `quantity` diubah; mengubah quantity memang menghitung ulang total dari
-Harga RW yang ada di form. Skrip satu kali `scripts/migrate-defect-price.ts` (menautkan defect lama ke
+Harga yang ada di form. Skrip satu kali `scripts/migrate-defect-price.ts` (menautkan defect lama ke
 harga master) tidak diperlukan lagi.
 
 **`carry-forward`** ada karena harga biasanya hanya berubah untuk sebagian produk: alih-alih
 mengetik ratusan baris tiap bulan, salin dulu dari periode sebelumnya lalu sunting yang berubah.
-Yang sudah ada di periode tujuan dilewati, jadi aman dijalankan berulang.
+Penyalinannya berjalan **per pasangan produk + jenis harga** (kunci `productId|priceType`), jadi harga
+Website dan harga Reseller sebuah produk boleh berasal dari periode yang berbeda. Yang sudah ada di
+periode tujuan dilewati, jadi aman dijalankan berulang.
 
 ### Sparepart (child produk + harganya)
 
@@ -701,7 +736,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 **Replacement**.
 
 - **Total Defect & Nilai Defect menampilkan angka BERSIH**: `defectQty − replacementQty` dan
-  `defectValue − Value RW Replacement` (Quantity × harga master, sama-sama Rupiah). Hasilnya
+  `defectValue − Value Replacement` (Quantity × harga master, sama-sama Rupiah). Hasilnya
   **dibatasi bawah 0** — Replacement yang melebihi defect menampilkan `0`, bukan angka negatif.
   Rumusnya ditulis di keterangan kartu supaya pengurangannya terlihat.
 - **Rasio Defect/Sales memakai angka defect bersih** agar konsisten dengan kartu Total Defect.
@@ -720,8 +755,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - **Klik baris** → dialog detail defect.
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
-- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Harga RW**, **Total Value**).
-- **Harga RW + Total Value (susunan sama dengan form PO)**: **Harga RW** adalah dropdown harga master produk. Saat produk dipilih, isiannya otomatis harga untuk bulan/tahun `timestamp` defect — kalau periode itu belum punya harga, dipakai **harga terbarunya** — dan operator bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya (kolom kedua grid) ada **Total Value** = Harga RW × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/status/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
+- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
+- **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga terbaru jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/status/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
   - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
@@ -753,13 +788,19 @@ cuma dihitung sebagai informasi), dengan tambahan:
   Penyaringan dilakukan di `master/page.tsx` supaya jumlah halaman ikut hasil pencarian, dan bila
   tidak ada yang cocok muncul pesan "Tidak ada yang cocok dengan pencarian." (prop `emptyLabel` di
   `master-list.tsx` — tanpa itu pesannya "Belum ada data." yang menyesatkan).
-- **Tab Harga Produk** mengelola harga per produk per **bulan + tahun** (selalu Rupiah). Kolom tabel:
-  SKU · Nama Produk · Harga · Bulan · Tahun. Formulirnya memilih Produk, Harga, Bulan, Tahun.
+- **Tab Harga Produk** mengelola harga per produk per **jenis harga** per **bulan + tahun** (selalu
+  Rupiah). Kolom tabel: SKU · Nama Produk · **Jenis Harga** · Harga · Bulan · Tahun. Formulirnya memilih
+  Produk, **Jenis Harga** (7 nilai tetap, default `Regional Warehouse` — §7 · Harga Produk), Harga,
+  Bulan, Tahun. Karena kuncinya `(productId, priceType, year, month)`, satu produk boleh punya beberapa
+  jenis harga di periode yang sama, dan menyimpan kombinasi yang sudah ada ditolak dengan pesan yang
+  menyebut jenis harganya.
   Perhatikan: **ubah harga ≠ timpa harga lama**. Harga baru dibuat sebagai baris baru untuk periode
   berikutnya, dan defect/PO lama tetap merujuk ke baris harganya masing-masing. Tombol **Salin harga
-  periode sebelumnya** menyalin seluruh harga dari periode terakhir sebelum periode tujuan (yang sudah
-  ada dilewati), jadi pergantian bulan tidak perlu mengetik ulang semua produk.
-  Di atas tabel ada **filter**: kotak cari (nama produk atau SKU), pilihan **bulan**, dan pilihan
+  periode sebelumnya** menyalin seluruh harga dari periode terakhir sebelum periode tujuan **per pasangan
+  produk + jenis harga** (jadi harga Website dan harga Reseller sebuah produk boleh berasal dari periode
+  berbeda; yang sudah ada dilewati), jadi pergantian bulan tidak perlu mengetik ulang semua produk.
+  Di atas tabel ada **filter**: kotak cari (nama produk atau SKU), pilihan **jenis harga** (memakai query
+  `?type=`), pilihan **bulan**, dan pilihan
   **tahun**. Pilihan bulan/tahun diambil dari data yang ada (tidak ada periode kosong yang bisa
   dipilih), hasil filter langsung memengaruhi jumlah halaman, dan bila tidak ada yang cocok muncul
   pesan "Tidak ada harga yang cocok dengan filter."
@@ -799,6 +840,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
   **Harga Produk dan Harga Sparepart belum punya Excel** (tombolnya nonaktif di tab itu) — harga diisi lewat UI atau tombol salin periode.
 - Import: validasi per baris, referensi nama → id (produk/pabrik/problem/status harus ada), duplikat di-skip, hasil detail + CSV.
 - Export role Pabrik: kolom value tidak ikut.
+- **Excel Defect & PO belum punya kolom jenis harga**: baris hasil impor memakai default
+  `Regional Warehouse` — jenis harga hanya bisa ditentukan lewat form (§7 · Harga Produk, §8.3, §8.10).
 - Nama file export: `produk.xlsx`, `problem.xlsx`, `status.xlsx`, `pabrik.xlsx`, `defect.xlsx`, `sales.xlsx`, `users.xlsx`; template: `template-{modul}.xlsx`.
 
 ### 8.8 Hapus Semua Data (Delete All)
@@ -832,34 +875,42 @@ baca-saja.
 `poDate`. Filter dilakukan di klien agar sama persis dengan halaman Sales.
 
 **Kolom tabel** (admin): PO Number, **Timestamp**, Keterangan, Nama Produk, Pabrik, Quantity, **PPN**,
-Price/pcs, Total Currency, **Value RW**. Role Pabrik hanya melihat 6 kolom pertama (tanpa PPN/harga).
+Price/pcs, Total Currency, **Value**. Role Pabrik hanya melihat 6 kolom pertama (tanpa PPN/harga).
+Jenis harga tiap baris tidak ditampilkan sebagai kolom — lihat/tentukan lewat form.
 
 **Form**: PO Number, **Timestamp** (`datetime-local`, diisi operator, default waktu sekarang), Product
 (satu dropdown berisi **nama produk saja** — SKU tidak ditampilkan di sini), Pabrik, Quantity,
-Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Harga RW**, Total Value (otomatis), dan
-Keterangan (satu dari tiga nilai tetap).
+Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Harga**, Value
+(otomatis), dan Keterangan (satu dari tiga nilai tetap).
 
-- **Value RW** = `Quantity × harga master` dan **selalu Rupiah** — kolom terpisah dari Total yang
-  mata uangnya bisa USD/RMB. **Harga RW** terisi otomatis mengikuti bulan/tahun timestamp PO; kalau
-  produk belum punya harga di periode itu, dipakai **harga terbarunya**, dan operator tetap bisa
-  memilih periode harga lain dari daftar. Kalau produknya belum punya harga sama sekali, PO **tetap
-  bisa disimpan** dan Value RW ditampilkan `-`.
+- **Jenis Harga dipilih lebih dulu**, baru **Harga**: dropdown jenis berisi 7 nilai tetap (§7 · Harga
+  Produk, default `Regional Warehouse`), dan memilih jenis mengisi ulang daftar harga sekaligus memilih
+  harga yang cocok. Jenis yang dipakai tersimpan di `purchase_orders.priceType`.
+- **Value** = `Quantity × harga master` dan **selalu Rupiah** — kolom terpisah dari Total yang
+  mata uangnya bisa USD/RMB. **Harga** terisi otomatis mengikuti bulan/tahun timestamp PO **untuk jenis
+  yang dipilih**; kalau produk belum punya harga jenis itu di periode tersebut, dipakai **harga
+  terbarunya**, dan operator tetap bisa memilih baris harga lain dari daftar. Kalau produknya belum punya
+  harga sama sekali, PO **tetap bisa disimpan** dan Value ditampilkan `-`. Saat mengubah PO, rujukan
+  harganya dicari ulang bila produk/tanggal/jenis berubah dan operator tidak memilih sendiri.
 - **Timestamp** adalah tanggal PO yang diisi operator (bukan waktu input); wajib diisi.
 - **`value`/Total selalu dihitung ulang di server** dari `pricePerPcs × quantity`; angka dari klien diabaikan.
 - **PPN hanya penanda** — tidak menambah Total, tidak ada kolom nilai pajak/DPP.
 - **Satu PO Number boleh diinput berkali-kali**, termasuk untuk produk yang sama: tidak ada `UNIQUE`
   dan tidak ada validasi duplikat di POST/PATCH maupun impor Excel.
+- **Excel PO belum punya kolom jenis harga**: baris hasil impor memakai default `Regional Warehouse`
+  (begitu pula baris lama sebelum kolom ini ada); jenis harga ditentukan lewat form PO.
 - **SKU tidak disimpan** di baris PO (melekat pada `products.sku`); SKU tetap ikut di ekspor Excel.
 - **Keterangan di-hardcode** (`Product Order` / `Sparepart Order` / `Replacement`); nilai asing jatuh ke
   default saat POST/PATCH, sedangkan pada impor Excel barisnya ditolak dengan alasan.
-- Role Pabrik tidak menerima `pricePerPcs`, `value`, `currency`, `ppn`, maupun `productPrice*`.
+- Role Pabrik tidak menerima `pricePerPcs`, `value`, `currency`, `ppn`, `priceType`, maupun `productPrice*`.
 
 ---
 
 ## 9. Ringkasan Aturan Bisnis Penting
 
 1. **Value (IDR) hanya untuk admin** — dihapus dari respons API untuk role Pabrik (`stripValue`),
-   termasuk `productPrice*` pada defect/PO karena harga satuan bisa dipakai menghitung ulang value.
+   termasuk `priceType` dan `productPrice*` pada defect/PO: jenis harga dan harga satuan hanya bermakna
+   bersama nominalnya, dan harga satuan bisa dipakai menghitung ulang value.
 2. **Role Pabrik ter-scope** — `scopedFactoryId()` memaksa filter `factoryId` milik user; produk yang tampil di Report hanya yang punya data.
 3. **Role Pabrik hanya menu Report** — sidebar menyembunyikan menu lain + `AdminGuard` redirect.
 4. **Data sales tidak punya tahun** — pencocokan periode memakai bulan; grafik sales selalu tahunan 12 bulan.
@@ -869,11 +920,16 @@ Keterangan (satu dari tiga nilai tetap).
 8. **Impor idempotent** — data duplikat di-skip, bukan error; error per baris dilaporkan.
 9. **Delete-all selalu backup dulu**; master yang masih dipakai tidak bisa dihapus (409).
 10. **Dropdown search**: item non-match disembunyikan, bukan dihapus (lihat 8.9).
-11. **Harga produk tidak pernah ditimpa** — satu harga per produk per bulan/tahun (unik), perubahan
+11. **Harga produk tidak pernah ditimpa** — satu harga per produk **per jenis** per bulan/tahun (unik
+    `(productId, priceType, year, month)`), perubahan
     harga = baris baru. Baris PO & Defect menyimpan **rujukan** ke baris harga, jadi nilai lama tidak
     ikut berubah. Harga selalu Rupiah.
-12. **`value` Defect = Harga RW × Quantity** (dihitung di form, server menyimpan apa adanya);
-    Harga RW terisi otomatis dari periode timestamp atau harga terbaru produk — sama di PO Product.
+    - **Jenis harga = 7 nilai tetap yang di-hardcode** (`PRICE_TYPES` di `validation.ts`, default
+      `Regional Warehouse`, lihat §7 · Harga Produk) — bukan master, jadi tidak ada tabel/CRUD/tab
+      untuknya; nilai yang tidak dikenal/kosong jatuh ke default lewat `normalizePriceType()`.
+12. **`value` Defect = Harga × Quantity** (dihitung di form, server menyimpan apa adanya);
+    Harga terisi otomatis dari periode timestamp atau harga terbaru produk **untuk jenis harga yang
+    dipilih** — sama di PO Product (jenis harga ada di `defects.priceType` & `purchase_orders.priceType`).
 13. **PO tanpa `UNIQUE`** — satu PO Number boleh diinput berkali-kali, termasuk produk yang sama.
 14. **PPN hanya penanda** — tidak menambah Total, dan disembunyikan dari role Pabrik.
 15. **Sparepart = child produk yang many-to-many** — satu sparepart boleh dipakai beberapa produk
@@ -896,7 +952,7 @@ Keterangan (satu dari tiga nilai tetap).
 | User Management | ✅ CRUD | ❌ |
 | Import/Export Excel | ✅ | ❌ |
 | Hapus semua data | ✅ | ❌ |
-| Lihat Value (IDR) / harga / PPN | ✅ | ❌ |
+| Lihat Value (IDR) / harga / PPN / jenis harga | ✅ | ❌ |
 
 ---
 
@@ -1145,9 +1201,11 @@ Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 2. Buka **User Management** → tambah **Pabrik**.
 3. Buat akun: Admin (tanpa pabrik) dan Pabrik (terhubung ke pabrik).
 4. Buka **Data Master** → atur **Produk** (nama + SKU), **Problem**, **Status**.
-5. Buka tab **Harga Produk** → isi harga tiap produk untuk bulan/tahun berjalan. Untuk bulan
+5. Buka tab **Harga Produk** → pilih **Jenis Harga** lalu isi harga tiap produk untuk bulan/tahun
+   berjalan — satu produk boleh punya beberapa jenis harga di periode yang sama, jadi isi jenis yang
+   dipakai (default `Regional Warehouse`). Untuk bulan
    berikutnya, ganti Bulan/Tahun lalu klik **Salin harga periode sebelumnya**, kemudian sunting hanya
-   produk yang harganya berubah.
+   produk/jenis yang harganya berubah.
 6. Aplikasi siap dipakai.
 
 > Harga boleh diisi bertahap. Produk yang belum punya harga tetap bisa di-PO maupun dicatat
@@ -1157,13 +1215,15 @@ Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 
 1. Buka **Data Sales** → Tambah (atau Import Excel).
 2. Data tampil di tabel + total quantity/value.
-3. Buka **Data Defect** → Tambah Data Defect. Pilih produk, lalu **Harga RW** (dropdown harga master,
+3. Buka **Data Defect** → Tambah Data Defect. Pilih produk, lalu **Jenis Harga** (7 nilai tetap,
+   default `Regional Warehouse`), lalu **Harga** (dropdown harga master jenis itu,
    susunannya sama dengan form PO) terisi otomatis sesuai bulan/tahun timestamp — kalau periode itu
-   kosong, dipakai harga terbaru produk tersebut — dan bisa diganti dengan memilih baris harga lain.
-   **Total Value** = Harga RW × Quantity tampil sebagai kolom baca-saja dan itulah nilai yang tersimpan.
+   kosong, dipakai harga terbaru produk **untuk jenis yang sama** — dan bisa diganti dengan memilih
+   baris harga lain.
+   **Total Value** = Harga × Quantity tampil sebagai kolom baca-saja dan itulah nilai yang tersimpan.
 4. Data lama dari spreadsheet diimpor via Excel (kolom Value di berkas dipakai apa adanya).
 5. Buka **PO Product** → Tambah → isi PO Number, Timestamp, Product, Pabrik, Quantity, Price/pcs,
-   Currency, PPN, dan Keterangan. **Harga RW** menentukan Value RW.
+   Currency, PPN, dan Keterangan. **Jenis Harga** + **Harga** menentukan **Value**.
 
 ### 16.3 Penggunaan oleh Role Pabrik
 
@@ -1171,7 +1231,7 @@ Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 2. Sistem memeriksa factory user.
 3. Menu **Report** dan **PO Product** yang tampil; PO dibuka dalam mode baca-saja.
 4. Seluruh tombol tambah/ubah/hapus/import tidak ada.
-5. Kolom value, harga (Price/pcs, Total, Currency, Value RW), PPN, dan harga master tidak muncul —
+5. Kolom value, harga (Price/pcs, Total, Currency, Value), jenis harga, PPN, dan harga master tidak muncul —
    hanya quantity.
 6. Data hanya milik pabriknya sendiri.
 

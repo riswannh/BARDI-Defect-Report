@@ -33,6 +33,7 @@ import {
 } from "./defect-form";
 import type { Factory, ProductPrice } from "@/lib/types";
 import { pickProductPrice } from "@/lib/prices";
+import { DEFAULT_PRICE_TYPE, PRICE_TYPES } from "@/lib/api/validation";
 import { formatIDR, formatNumber, priceMonthLabel } from "@/lib/format";
 
 interface DefectFormDialogProps {
@@ -100,15 +101,18 @@ export function DefectFormDialog({
   const dirty = formHasContent(form);
 
   /**
-   * Daftar harga milik produk terpilih (periode terbaru dulu) untuk memilih harga
-   * secara manual. Kotak Harga RW sendiri berisi harga satuan (Rupiah per pcs).
+   * Daftar harga milik produk terpilih dengan jenis harga yang sedang dipilih
+   * (periode terbaru dulu) untuk memilih harga secara manual. Kotak Harga sendiri
+   * berisi harga satuan (Rupiah per pcs).
    */
   const priceOptions = useMemo(
     () =>
       productPrices
         .filter(
           (row) =>
-            form.productId !== "" && row.productId === Number(form.productId)
+            form.productId !== "" &&
+            row.productId === Number(form.productId) &&
+            (row.priceType ?? DEFAULT_PRICE_TYPE) === form.priceType
         )
         .sort(
           (a, b) =>
@@ -119,7 +123,12 @@ export function DefectFormDialog({
           price: row.price,
           label: `${priceMonthLabel(row.month)} ${row.year} — ${formatIDR(row.price)}`,
         })),
-    [productPrices, form.productId]
+    [productPrices, form.productId, form.priceType]
+  );
+
+  const priceTypeOptions = useMemo(
+    () => PRICE_TYPES.map((value) => ({ value, label: value })),
+    []
   );
 
   // Baris harga yang sedang terpakai dicocokkan dari angkanya, jadi mengetik harga
@@ -247,7 +256,8 @@ export function DefectFormDialog({
                       const match = pickProductPrice(
                         productPrices,
                         Number(f.productId),
-                        timestamp.slice(0, 7)
+                        timestamp.slice(0, 7),
+                        f.priceType
                       );
                       return {
                         ...f,
@@ -335,7 +345,8 @@ export function DefectFormDialog({
                       const match = pickProductPrice(
                         productPrices,
                         Number(nextProductId),
-                        f.timestamp.slice(0, 7)
+                        f.timestamp.slice(0, 7),
+                        f.priceType
                       );
                       // Produk punya kaitan pabrik -> kolom Pabrik terisi otomatis.
                       const pabrik = factoryForProduct?.(nextProductId) ?? null;
@@ -400,6 +411,43 @@ export function DefectFormDialog({
               </div>
               {isAdmin && (
                 <>
+                  <div className="flex flex-col gap-1.5">
+                    <Label>{t("po.priceType")}</Label>
+                    {/* Jenis harga dipilih lebih dulu; daftar Harga di sebelahnya
+                        ikut menyesuaikan dan harganya terisi otomatis. */}
+                    <Select
+                      value={form.priceType}
+                      onValueChange={(v) => {
+                        if (v === null) return;
+                        const nextType = String(v);
+                        onFormChange((f) => {
+                          const match = pickProductPrice(
+                            productPrices,
+                            Number(f.productId),
+                            f.timestamp.slice(0, 7),
+                            nextType
+                          );
+                          return {
+                            ...f,
+                            priceType: nextType,
+                            priceRw: match ? String(match.price) : "",
+                          };
+                        });
+                      }}
+                      items={priceTypeOptions}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priceTypeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>{t("po.priceRw")}</Label>
                     {/* Susunan sama dengan form PO: Harga RW = dropdown harga master

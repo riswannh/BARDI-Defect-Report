@@ -34,6 +34,8 @@ interface ProductOption {
 export interface PriceInput {
   refId: number;
   price: number;
+  /** Harga produk: salah satu `PRICE_TYPES`; sparepart tidak memakainya. */
+  priceType?: string;
   month: string;
   year: string;
 }
@@ -46,6 +48,8 @@ export interface PriceRow {
   id: number;
   refId: number;
   price: number;
+  /** Jenis harga; hanya dipakai kalau `priceTypes` diberikan. */
+  priceType?: string | null;
   month: string;
   year: string;
   sku?: string | null;
@@ -65,6 +69,8 @@ export function PriceList({
   items,
   options,
   itemLabel,
+  priceTypes,
+  defaultPriceType,
   onAdd,
   onUpdate,
   onDelete,
@@ -77,6 +83,14 @@ export function PriceList({
   options: ProductOption[];
   /** Judul kolom item; bawaan "Produk". */
   itemLabel?: string;
+  /**
+   * Daftar jenis harga (mis. Website/Reseller/…). Kalau diisi, tabel dan form
+   * mendapat kolom "Jenis"; kalau tidak (harga sparepart), tampilannya sama
+   * seperti sebelumnya.
+   */
+  priceTypes?: readonly string[];
+  /** Jenis yang terpilih lebih dulu di form tambah; bawaan item pertama. */
+  defaultPriceType?: string;
   onAdd: (input: PriceInput) => void;
   onUpdate: (id: number, input: PriceInput) => void;
   onDelete: (id: number) => void;
@@ -88,6 +102,9 @@ export function PriceList({
   const { t } = useLanguage();
   const [selectedId, setSelectedId] = useState<string>("");
   const [price, setPrice] = useState("");
+  const [priceType, setPriceType] = useState<string>(
+    defaultPriceType ?? priceTypes?.[0] ?? ""
+  );
   const [month, setMonth] = useState<string>(
     PRICE_MONTHS[new Date().getMonth()]
   );
@@ -103,6 +120,13 @@ export function PriceList({
     value,
     label: `${MONTHS_FULL[index]} (${MONTHS[index]})`,
   }));
+
+  const typeOptions = (priceTypes ?? []).map((value) => ({
+    value,
+    label: value,
+  }));
+  /** Jumlah kolom tabel — dipakai untuk colSpan baris edit dan baris kosong. */
+  const columnCount = 5 + (priceTypes ? 1 : 0) + (readOnly ? 0 : 1);
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 8 }, (_, i) => {
@@ -122,7 +146,13 @@ export function PriceList({
     e.preventDefault();
     const parsed = Number(price);
     if (!selectedId || !Number.isFinite(parsed)) return;
-    onAdd({ refId: Number(selectedId), price: parsed, month, year });
+    onAdd({
+      refId: Number(selectedId),
+      price: parsed,
+      ...(priceTypes ? { priceType } : {}),
+      month,
+      year,
+    });
     setPrice("");
   }
 
@@ -130,6 +160,7 @@ export function PriceList({
     setEditingId(item.id);
     setSelectedId(String(item.refId));
     setPrice(String(item.price));
+    setPriceType(item.priceType ?? defaultPriceType ?? priceTypes?.[0] ?? "");
     setMonth(item.month);
     setYear(item.year);
   }
@@ -140,6 +171,7 @@ export function PriceList({
       onUpdate(editingId, {
         refId: Number(selectedId),
         price: parsed,
+        ...(priceTypes ? { priceType } : {}),
         month,
         year,
       });
@@ -186,6 +218,27 @@ export function PriceList({
               </SelectContent>
             </Select>
           </div>
+          {priceTypes && (
+            <div className="flex w-48 flex-col gap-1.5">
+              <Label>{t("price.type")}</Label>
+              <Select
+                value={priceType}
+                onValueChange={pick(setPriceType)}
+                items={typeOptions}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex w-40 flex-col gap-1.5">
             <Label htmlFor="price-value">{t("price.value")}</Label>
             <Input
@@ -256,6 +309,7 @@ export function PriceList({
             <TableRow>
               <TableHead>{t("common.sku")}</TableHead>
               <TableHead>{itemLabel ?? t("price.product")}</TableHead>
+              {priceTypes && <TableHead>{t("price.type")}</TableHead>}
               <TableHead className="text-right">{t("price.value")}</TableHead>
               <TableHead>{t("price.month")}</TableHead>
               <TableHead>{t("price.year")}</TableHead>
@@ -266,7 +320,7 @@ export function PriceList({
             {items.map((item) =>
               editingId === item.id ? (
                 <TableRow key={item.id}>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={columnCount - 1}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Select
                         value={selectedId}
@@ -284,6 +338,24 @@ export function PriceList({
                           ))}
                         </SelectContent>
                       </Select>
+                      {priceTypes && (
+                        <Select
+                          value={priceType}
+                          onValueChange={pick(setPriceType)}
+                          items={typeOptions}
+                        >
+                          <SelectTrigger className="h-8 w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {typeOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <Input
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
@@ -338,6 +410,9 @@ export function PriceList({
                   >
                     {rowName(item)}
                   </TableCell>
+                  {priceTypes && (
+                    <TableCell className="text-xs">{item.priceType}</TableCell>
+                  )}
                   <TableCell className="text-right tabular-nums">
                     {formatIDR(item.price)}
                   </TableCell>
@@ -369,7 +444,7 @@ export function PriceList({
             {items.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={readOnly ? 5 : 6}
+                  colSpan={columnCount}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   {emptyLabel ?? t("price.empty")}

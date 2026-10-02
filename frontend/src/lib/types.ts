@@ -45,6 +45,12 @@ export interface ProductPrice {
   id: number;
   productId: number;
   price: number;
+  /**
+   * Jenis harga: Website, Reseller, Key Account, Buyback, Collection Point,
+   * Experience Store, atau Regional Warehouse (jenis lama, jadi default baris
+   * lama). Daftar tetapnya ada di `PRICE_TYPES` (`src/lib/api/validation.ts`).
+   */
+  priceType?: string;
   /** "01".."12". */
   month: string;
   year: string;
@@ -96,6 +102,11 @@ export interface Defect {
   statusId: number;
   factoryId: number;
   value: number;
+  /**
+   * Jenis harga master yang dipakai form saat mengisi `value` (mis. "Website").
+   * Baris lama bernilai "Regional Warehouse".
+   */
+  priceType?: string;
   /**
    * Harga master (Rupiah) yang dipakai baris ini, sama polanya dengan Value RW
    * di PO. Null berarti produk belum punya harga di periode defect tersebut,
@@ -150,6 +161,8 @@ export interface PurchaseOrder {
   keterangan?: string;
   /** Rujukan ke harga master (Rupiah) yang dipakai baris ini; null bila belum ada. */
   productPriceId?: number | null;
+  /** Jenis harga master yang dipilih operator; lihat `PRICE_TYPES`. */
+  priceType?: string;
   /** Nominal harga master yang dirujuk, untuk menghitung Value RW. */
   productPrice?: number | null;
   productPriceMonth?: string | null;

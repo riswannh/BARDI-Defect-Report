@@ -14,7 +14,11 @@ import type {
   Status,
 } from "@/lib/types";
 import { MONTHS_FULL } from "@/lib/format";
-import { PRICE_MONTHS } from "@/lib/api/validation";
+import {
+  DEFAULT_PRICE_TYPE,
+  PRICE_MONTHS,
+  PRICE_TYPES,
+} from "@/lib/api/validation";
 import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
@@ -148,12 +152,22 @@ export default function MasterPage() {
   const [priceSearch, setPriceSearch] = useState("");
   const [priceMonth, setPriceMonth] = useState("all");
   const [priceYear, setPriceYear] = useState("all");
+  const [priceType, setPriceType] = useState("all");
   const priceFilterActive =
-    priceSearch.trim() !== "" || priceMonth !== "all" || priceYear !== "all";
+    priceSearch.trim() !== "" ||
+    priceMonth !== "all" ||
+    priceYear !== "all" ||
+    priceType !== "all";
 
   const filteredPrices = prices.filter((item) => {
     if (priceMonth !== "all" && item.month !== priceMonth) return false;
     if (priceYear !== "all" && item.year !== priceYear) return false;
+    if (
+      priceType !== "all" &&
+      (item.priceType ?? DEFAULT_PRICE_TYPE) !== priceType
+    ) {
+      return false;
+    }
     const q = priceSearch.trim().toLowerCase();
     if (!q) return true;
     const product = products.find((p) => p.id === item.productId);
@@ -161,6 +175,13 @@ export default function MasterPage() {
     const sku = item.sku ?? product?.sku ?? "";
     return `${name} ${sku}`.toLowerCase().includes(q);
   });
+
+  // Jenis harga tetap daftarnya (PRICE_TYPES), bukan dari data, supaya jenis yang
+  // belum punya harga tetap bisa dipilih/difilter.
+  const priceTypeOptions = [
+    { value: "all", label: t("price.allTypes") },
+    ...PRICE_TYPES.map((value) => ({ value, label: value })),
+  ];
 
   const priceMonthOptions = [
     { value: "all", label: t("price.allMonths") },
@@ -214,6 +235,7 @@ export default function MasterPage() {
     id: row.id,
     refId: row.productId,
     price: row.price,
+    priceType: row.priceType,
     month: row.month,
     year: row.year,
     sku: row.sku,
@@ -306,6 +328,7 @@ export default function MasterPage() {
       await apiPost("/api/product-prices", {
         productId: input.refId,
         price: input.price,
+        priceType: input.priceType,
         month: input.month,
         year: input.year,
       });
@@ -321,6 +344,7 @@ export default function MasterPage() {
       await apiPatch(`/api/product-prices/${id}`, {
         productId: input.refId,
         price: input.price,
+        priceType: input.priceType,
         month: input.month,
         year: input.year,
       });
@@ -590,11 +614,36 @@ export default function MasterPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>{t("price.type")}</Label>
+                  <Select
+                    value={priceType}
+                    onValueChange={(value) => {
+                      if (value === null) return;
+                      setPriceType(String(value));
+                      setPage(1);
+                    }}
+                    items={priceTypeOptions}
+                  >
+                    <SelectTrigger className="w-52">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priceTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <PriceList
                 items={priceRows}
                 options={products}
+                priceTypes={PRICE_TYPES}
+                defaultPriceType={DEFAULT_PRICE_TYPE}
                 onAdd={addPrice}
                 onUpdate={updatePrice}
                 onDelete={deletePrice}

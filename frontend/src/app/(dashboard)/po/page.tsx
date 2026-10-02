@@ -20,7 +20,11 @@ import type {
   ProductPrice,
   PurchaseOrder,
 } from "@/lib/types";
-import { DEFAULT_KETERANGAN, KETERANGAN_OPTIONS } from "@/lib/api/validation";
+import {
+  DEFAULT_KETERANGAN,
+  DEFAULT_PRICE_TYPE,
+  KETERANGAN_OPTIONS,
+} from "@/lib/api/validation";
 import { AuthGuard } from "@/components/auth-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
@@ -271,6 +275,8 @@ export default function PoPage() {
       keterangan:
         (row.keterangan as PoForm["keterangan"]) ?? DEFAULT_KETERANGAN,
       productPriceId: row.productPriceId ? String(row.productPriceId) : "",
+      // Baris lama (sebelum ada jenis harga) dianggap Regional Warehouse.
+      priceType: row.priceType ?? DEFAULT_PRICE_TYPE,
     });
     setEditingId(row.id);
     setDialogOpen(true);
@@ -288,8 +294,10 @@ export default function PoPage() {
       currency: form.currency,
       ppn: form.ppn,
       keterangan: form.keterangan,
+      // Jenis harga yang dipilih operator di form.
+      priceType: form.priceType,
       // Harga master yang dipakai untuk Value RW; null bila produk itu belum
-      // punya harga di periode PO.
+      // punya harga jenis tersebut di periode PO.
       productPriceId: form.productPriceId ? Number(form.productPriceId) : null,
     };
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
@@ -314,6 +322,7 @@ export default function PoPage() {
             ppn: f.ppn,
             keterangan: f.keterangan,
             productPriceId: "",
+            priceType: f.priceType,
           }));
           reload();
           toast.success(t("po.savedNext"));
