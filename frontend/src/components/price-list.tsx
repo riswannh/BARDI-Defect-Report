@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { formatIDR, MONTHS, MONTHS_FULL } from "@/lib/format";
 import { PRICE_MONTHS } from "@/lib/api/validation";
-import type { ProductPrice } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,17 +30,41 @@ interface ProductOption {
   sku?: string | null;
 }
 
+/** Isi form harga; `refId` = `productId` untuk produk, `sparePartId` untuk sparepart. */
+export interface PriceInput {
+  refId: number;
+  price: number;
+  month: string;
+  year: string;
+}
+
 /**
- * Daftar harga produk per bulan dan tahun.
+ * Satu baris harga. Bentuk rujukan dan nama diseragamkan di pemanggil supaya
+ * komponen ini bisa dipakai harga produk maupun harga sparepart.
+ */
+export interface PriceRow {
+  id: number;
+  refId: number;
+  price: number;
+  month: string;
+  year: string;
+  sku?: string | null;
+  /** Nama dari API (`productName`/`sparePartName`), kalau ada. */
+  name?: string | null;
+}
+
+/**
+ * Daftar harga per bulan dan tahun — dipakai harga produk dan harga sparepart.
  *
- * Sengaja bukan `MasterList`: satu baris harga punya produk, nominal, dan
+ * Sengaja bukan `MasterList`: satu baris harga punya item, nominal, dan
  * periode, bukan sekadar nama. Harga lama tidak pernah ditimpa — kalau harga
  * berubah, dibuat baris baru untuk periode berikutnya, dan baris PO lama tetap
  * merujuk ke baris lamanya.
  */
 export function PriceList({
   items,
-  products,
+  options,
+  itemLabel,
   onAdd,
   onUpdate,
   onDelete,
@@ -49,18 +72,13 @@ export function PriceList({
   readOnly = false,
   emptyLabel,
 }: {
-  items: ProductPrice[];
-  products: ProductOption[];
-  onAdd: (input: {
-    productId: number;
-    price: number;
-    month: string;
-    year: string;
-  }) => void;
-  onUpdate: (
-    id: number,
-    input: { productId: number; price: number; month: string; year: string }
-  ) => void;
+  items: PriceRow[];
+  /** Pilihan item di dropdown: produk atau sparepart. */
+  options: ProductOption[];
+  /** Judul kolom item; bawaan "Produk". */
+  itemLabel?: string;
+  onAdd: (input: PriceInput) => void;
+  onUpdate: (id: number, input: PriceInput) => void;
   onDelete: (id: number) => void;
   onCarryForward?: (input: { month: string; year: string }) => void;
   readOnly?: boolean;
@@ -68,7 +86,7 @@ export function PriceList({
   emptyLabel?: string;
 }) {
   const { t } = useLanguage();
-  const [productId, setProductId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>("");
   const [price, setPrice] = useState("");
   const [month, setMonth] = useState<string>(
     PRICE_MONTHS[new Date().getMonth()]
@@ -76,9 +94,9 @@ export function PriceList({
   const [year, setYear] = useState<string>(String(new Date().getFullYear()));
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const productOptions = products.map((p) => ({
-    value: String(p.id),
-    label: p.sku ? `${p.name} — ${p.sku}` : p.name,
+  const selectOptions = options.map((option) => ({
+    value: String(option.id),
+    label: option.sku ? `${option.name} — ${option.sku}` : option.name,
   }));
 
   const monthOptions = PRICE_MONTHS.map((value, index) => ({
@@ -92,24 +110,25 @@ export function PriceList({
     return { value, label: value };
   });
 
-  const productName = (item: ProductPrice) =>
-    item.productName ?? products.find((p) => p.id === item.productId)?.name ?? `#${item.productId}`;
-  const productSku = (item: ProductPrice) =>
-    item.sku ?? products.find((p) => p.id === item.productId)?.sku ?? "";
+  const rowOption = (item: PriceRow) =>
+    options.find((option) => option.id === item.refId);
+  const rowName = (item: PriceRow) =>
+    item.name ?? rowOption(item)?.name ?? `#${item.refId}`;
+  const rowSku = (item: PriceRow) => item.sku ?? rowOption(item)?.sku ?? "";
   const monthLabel = (value: string) =>
     MONTHS_FULL[PRICE_MONTHS.indexOf(value as (typeof PRICE_MONTHS)[number])] ?? value;
 
   function submitAdd(e: React.FormEvent) {
     e.preventDefault();
     const parsed = Number(price);
-    if (!productId || !Number.isFinite(parsed)) return;
-    onAdd({ productId: Number(productId), price: parsed, month, year });
+    if (!selectedId || !Number.isFinite(parsed)) return;
+    onAdd({ refId: Number(selectedId), price: parsed, month, year });
     setPrice("");
   }
 
-  function startEdit(item: ProductPrice) {
+  function startEdit(item: PriceRow) {
     setEditingId(item.id);
-    setProductId(String(item.productId));
+    setSelectedId(String(item.refId));
     setPrice(String(item.price));
     setMonth(item.month);
     setYear(item.year);
@@ -117,9 +136,9 @@ export function PriceList({
 
   function submitEdit() {
     const parsed = Number(price);
-    if (editingId !== null && productId && Number.isFinite(parsed)) {
+    if (editingId !== null && selectedId && Number.isFinite(parsed)) {
       onUpdate(editingId, {
-        productId: Number(productId),
+        refId: Number(selectedId),
         price: parsed,
         month,
         year,
@@ -149,17 +168,17 @@ export function PriceList({
           className="flex flex-wrap items-end gap-2 rounded-lg border p-3"
         >
           <div className="flex min-w-56 flex-1 flex-col gap-1.5">
-            <Label>{t("price.product")}</Label>
+            <Label>{itemLabel ?? t("price.product")}</Label>
             <Select
-              value={productId}
-              onValueChange={pick(setProductId)}
-              items={productOptions}
+              value={selectedId}
+              onValueChange={pick(setSelectedId)}
+              items={selectOptions}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("po.selectProduct")} />
               </SelectTrigger>
               <SelectContent>
-                {productOptions.map((option) => (
+                {selectOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -236,7 +255,7 @@ export function PriceList({
           <TableHeader>
             <TableRow>
               <TableHead>{t("common.sku")}</TableHead>
-              <TableHead>{t("price.product")}</TableHead>
+              <TableHead>{itemLabel ?? t("price.product")}</TableHead>
               <TableHead className="text-right">{t("price.value")}</TableHead>
               <TableHead>{t("price.month")}</TableHead>
               <TableHead>{t("price.year")}</TableHead>
@@ -250,15 +269,15 @@ export function PriceList({
                   <TableCell colSpan={5}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Select
-                        value={productId}
-                        onValueChange={pick(setProductId)}
-                        items={productOptions}
+                        value={selectedId}
+                        onValueChange={pick(setSelectedId)}
+                        items={selectOptions}
                       >
                         <SelectTrigger className="h-8 w-64">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {productOptions.map((option) => (
+                          {selectOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -311,13 +330,13 @@ export function PriceList({
               ) : (
                 <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs text-muted-foreground">
-                    {productSku(item) || "-"}
+                    {rowSku(item) || "-"}
                   </TableCell>
                   <TableCell
                     className="max-w-72 truncate"
-                    title={productName(item)}
+                    title={rowName(item)}
                   >
-                    {productName(item)}
+                    {rowName(item)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatIDR(item.price)}

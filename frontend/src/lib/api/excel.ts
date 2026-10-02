@@ -9,6 +9,7 @@ import {
   products,
   purchaseOrders,
   sales,
+  spareParts,
   statuses,
   user,
 } from "@/lib/db/schema";
@@ -146,6 +147,7 @@ async function readSheet(req: NextRequest): Promise<SheetRow[] | Response> {
 
 const MASTER_MODULES = {
   products: { table: products, file: "produk", label: "Produk" },
+  spareparts: { table: spareParts, file: "sparepart", label: "Sparepart" },
   problems: { table: problems, file: "problem", label: "Problem" },
   statuses: { table: statuses, file: "status", label: "Status" },
   factories: { table: factories, file: "pabrik", label: "Pabrik" },
@@ -230,14 +232,14 @@ export async function excelExport(moduleName: string, req: NextRequest) {
   }
 
   if (isMasterModule(moduleName)) {
-    const { file } = MASTER_MODULES[moduleName];
-    if (moduleName === "products") {
-      // Produk mengekspor SKU juga, sejajar dengan template dan impornya.
-      const rows = await db.select().from(products).orderBy(products.id);
+    const { table, file } = MASTER_MODULES[moduleName];
+    // Modul yang punya SKU (produk, sparepart) mengekspor kolomnya juga,
+    // sejajar dengan template dan impornya.
+    if (table === products || table === spareParts) {
+      const rows = await db.select().from(table).orderBy(table.id);
       const data = rows.map((row) => ({ Nama: row.name, SKU: row.sku ?? "" }));
       return downloadResponse(sheetBuffer(data, ["Nama", "SKU"]), `${file}.xlsx`);
     }
-    const { table } = MASTER_MODULES[moduleName];
     const rows = await db.select().from(table).orderBy(table.id);
     const data = rows.map((row) => ({ Nama: row.name }));
     return downloadResponse(sheetBuffer(data, ["Nama"]), `${file}.xlsx`);
@@ -440,12 +442,12 @@ async function importPurchaseOrders(sheet: SheetRow[]) {
 
 async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
   const { table } = MASTER_MODULES[moduleName];
-  // Hanya produk yang punya SKU; master lain tetap nama saja.
-  const isProducts = table === products;
+  // Produk dan sparepart sama-sama punya kolom SKU; master lain hanya nama.
+  const hasSkuColumn = table === products || table === spareParts;
   const existingRows = await db.select().from(table);
   const existing = new Set(existingRows.map((row) => row.name.toLowerCase()));
   const existingSkus = new Set(
-    isProducts
+    hasSkuColumn
       ? existingRows
           .map((row) => (row as { sku?: string | null }).sku?.toLowerCase())
           .filter((sku): sku is string => Boolean(sku))
@@ -473,7 +475,7 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
     // SKU opsional, tapi kalau diisi tidak boleh bentrok — termasuk dengan baris
     // lain di berkas yang sama, karena UNIQUE di database baru gagal saat insert
     // dan pesannya tidak menyebut baris mana yang bertabrakan.
-    const sku = isProducts
+    const sku = hasSkuColumn
       ? normalizeSku(sheet[i].SKU ?? sheet[i].Sku ?? sheet[i].sku)
       : null;
     if (sku && existingSkus.has(sku.toLowerCase())) {
@@ -487,9 +489,12 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
     }
 
     try {
-      // Bercabang supaya TypeScript menyempitkan tipe: hanya produk punya `sku`.
+      // Bercabang supaya TypeScript menyempitkan tipe: hanya produk dan
+      // sparepart punya `sku`.
       if (table === products) {
         await db.insert(products).values({ name, sku });
+      } else if (table === spareParts) {
+        await db.insert(spareParts).values({ name, sku });
       } else {
         await db.insert(table).values({ name });
       }
@@ -835,14 +840,12 @@ export async function excelTemplate(moduleName: string) {
   }
 
   if (isMasterModule(moduleName)) {
-    const { file } = MASTER_MODULES[moduleName];
-    // Template produk ikut memuat kolom SKU supaya pengisian massal cocok
-    // dengan kolom yang dibaca `importMaster`.
-    const headers = moduleName === "products" ? ["Nama", "SKU"] : ["Nama"];
-    const example: SheetRow =
-      moduleName === "products"
-        ? { Nama: "", SKU: "" }
-        : { Nama: "" };
+    const { table, file } = MASTER_MODULES[moduleName];
+    // Template modul ber-SKU (produk, sparepart) ikut memuat kolom SKU supaya
+    // pengisian massal cocok dengan kolom yang dibaca `importMaster`.
+    const hasSku = table === products || table === spareParts;
+    const headers = hasSku ? ["Nama", "SKU"] : ["Nama"];
+    const example: SheetRow = hasSku ? { Nama: "", SKU: "" } : { Nama: "" };
     return downloadResponse(
       sheetBuffer([example], headers),
       `template-${file}.xlsx`

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable,
   text,
@@ -157,6 +158,51 @@ export const productFactories = sqliteTable(
   (t) => [index("product_factories_factory_idx").on(t.factoryId)]
 );
 
+/**
+ * Master sparepart — child dari produk.
+ *
+ * Bentuknya sengaja seperti `products` (nama wajib, SKU opsional tapi unik)
+ * karena sparepart dijual seperti produk dan punya harga sendiri per periode.
+ * SKU sparepart unik di antara sparepart saja; boleh sama dengan SKU produk,
+ * karena keduanya daftar yang berbeda.
+ */
+export const spareParts = sqliteTable("spare_parts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  /** SKU opsional tapi unik kalau diisi (sama seperti SKU produk). */
+  sku: text("sku").unique(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+/**
+ * Kaitan produk → sparepart (banyak-ke-banyak).
+ *
+ * BERBEDA dari `product_factories` yang `productId`-nya jadi primary key: di
+ * sini primary key-nya GABUNGAN, jadi satu sparepart boleh dipakai beberapa
+ * produk sekaligus dan mengaitkannya ke produk kedua tidak memindahkannya dari
+ * produk pertama.
+ */
+export const productSpareParts = sqliteTable(
+  "product_spare_parts",
+  {
+    productId: integer("productId")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sparePartId: integer("sparePartId")
+      .notNull()
+      .references(() => spareParts.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.sparePartId] }),
+    index("product_spare_parts_spare_idx").on(t.sparePartId),
+  ]
+);
+
 export const problems = sqliteTable("problems", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
@@ -308,6 +354,40 @@ export const productPrices = sqliteTable(
     unique("product_prices_unique").on(t.productId, t.year, t.month),
     index("product_prices_product_idx").on(t.productId),
     index("product_prices_period_idx").on(t.year, t.month),
+  ]
+);
+
+/**
+ * Riwayat harga SPAREPART per bulan dan tahun — mekanismenya sama persis dengan
+ * `product_prices`: satu sparepart boleh punya banyak baris (satu per periode),
+ * harga lama tidak pernah ditimpa, dan periode yang sama tidak boleh dobel.
+ *
+ * Harga sparepart bersifat GLOBAL per sparepart, bukan per (sparepart × produk):
+ * satu sparepart yang dipakai dua produk memakai harga yang sama.
+ */
+export const sparePartPrices = sqliteTable(
+  "spare_part_prices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    sparePartId: integer("sparePartId")
+      .notNull()
+      .references(() => spareParts.id),
+    /** Rupiah; boleh pecahan seperti harga produk. */
+    price: real("price").notNull().default(0),
+    /** "01".."12" (dua digit, supaya bisa diurutkan sebagai teks). */
+    month: text("month").notNull(),
+    year: text("year").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    unique("spare_part_prices_unique").on(t.sparePartId, t.year, t.month),
+    index("spare_part_prices_spare_idx").on(t.sparePartId),
+    index("spare_part_prices_period_idx").on(t.year, t.month),
   ]
 );
 

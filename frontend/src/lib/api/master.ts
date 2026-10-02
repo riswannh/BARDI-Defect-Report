@@ -5,6 +5,8 @@ import {
   factories,
   problems,
   products,
+  sparePartPrices,
+  spareParts,
   statuses,
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
@@ -19,12 +21,26 @@ import {
 export type MasterTable =
   | typeof factories
   | typeof products
+  | typeof spareParts
   | typeof problems
   | typeof statuses;
 
-/** Produk menerima SKU, master lain hanya nama. */
+/**
+ * Master yang punya kolom SKU: produk dan sparepart. Keduanya memakai schema
+ * input yang sama, hanya berbeda ruang keunikan SKU-nya.
+ */
+function hasSku(table: MasterTable): boolean {
+  return table === products || table === spareParts;
+}
+
+/** Master tanpa SKU hanya menerima nama. */
 function masterInputSchema(table: MasterTable) {
-  return table === products ? productSchema : masterNameSchema;
+  return hasSku(table) ? productSchema : masterNameSchema;
+}
+
+/** Label master untuk pesan error yang dibaca pengguna. */
+function skuOwner(table: MasterTable): string {
+  return table === spareParts ? "sparepart" : "produk";
 }
 
 export async function listMasterRows(table: MasterTable) {
@@ -40,10 +56,45 @@ export async function masterNameExists(
   return rows.some((row) => row.id !== exceptId);
 }
 
-/** SKU unik antar produk; null (tidak diisi) tidak pernah dianggap bentrok. */
-export async function productSkuExists(sku: string, exceptId?: number) {
-  const rows = await db.select().from(products).where(eq(products.sku, sku));
-  return rows.some((row) => row.id !== exceptId);
+/**
+ * SKU unik di dalam daftarnya sendiri: SKU produk tidak boleh bentrok dengan
+ * produk lain, SKU sparepart tidak boleh bentrok dengan sparepart lain. Kedua
+ * daftar punya ruang SKU terpisah, jadi SKU yang sama boleh ada di keduanya.
+ * Null (tidak diisi) tidak pernah dianggap bentrok.
+ */
+export async function skuExists(
+  table: MasterTable,
+  sku: string,
+  exceptId?: number
+) {
+  if (table === products) {
+    const rows = await db.select().from(products).where(eq(products.sku, sku));
+    return rows.some((row) => row.id !== exceptId);
+  }
+  if (table === spareParts) {
+    const rows = await db
+      .select()
+      .from(spareParts)
+      .where(eq(spareParts.sku, sku));
+    return rows.some((row) => row.id !== exceptId);
+  }
+  return false;
+}
+
+/**
+ * Sparepart yang harganya masih ada tidak boleh dihapus — harga tidak memakai
+ * cascade supaya tidak ada riwayat harga yang hilang tanpa disadari.
+ */
+async function sparePartHasPrices(sparePartId?: number) {
+  const rows = await db
+    .select({ id: sparePartPrices.id })
+    .from(sparePartPrices)
+    .where(
+      sparePartId === undefined
+        ? undefined
+        : eq(sparePartPrices.sparePartId, sparePartId)
+    );
+  return rows.length > 0;
 }
 
 /**
@@ -60,6 +111,12 @@ async function insertMaster(
   if (table === products) {
     return db
       .insert(products)
+      .values({ name, sku: normalizeSku(sku) })
+      .returning();
+  }
+  if (table === spareParts) {
+    return db
+      .insert(spareParts)
       .values({ name, sku: normalizeSku(sku) })
       .returning();
   }
@@ -80,6 +137,13 @@ async function updateMaster(
       .where(eq(products.id, id))
       .returning();
   }
+  if (table === spareParts) {
+    return db
+      .update(spareParts)
+      .set({ name, sku: normalizeSku(sku) })
+      .where(eq(spareParts.id, id))
+      .returning();
+  }
   return db
     .update(table)
     .set({ name })
@@ -95,10 +159,10 @@ async function masterConflict(
   exceptId?: number
 ): Promise<string | null> {
   if (await masterNameExists(table, name, exceptId)) return "Nama sudah ada.";
-  if (table === products) {
+  if (hasSku(table)) {
     const normalized = normalizeSku(sku);
-    if (normalized && (await productSkuExists(normalized, exceptId))) {
-      return "SKU sudah dipakai produk lain.";
+    if (normalized && (await skuExists(table, normalized, exceptId))) {
+      return `SKU sudah dipakai ${skuOwner(table)} lain.`;
     }
   }
   return null;
@@ -152,6 +216,13 @@ export function masterCollectionHandlers(table: MasterTable) {
       const guard = await requireAdmin();
       if (!guard.ok) return guard.response;
 
+      if (table === spareParts && (await sparePartHasPrices())) {
+        return jsonError(
+          "Masih ada harga sparepart. Hapus dulu di tab Harga Sparepart.",
+          409
+        );
+      }
+
       const moduleName = getTableName(table);
       const backup = backupDatabase(moduleName);
       try {
@@ -161,7 +232,7 @@ export function masterCollectionHandlers(table: MasterTable) {
         return jsonOk({ deleted: rows.length, backup });
       } catch {
         return jsonError(
-          "Tidak bisa menghapus semua data karena masih dipakai di Data Defect/Sales. Hapus data terkait terlebih dahulu.",
+          "Tidak bisa menghapus semua data karena masih dipakai di data lain (mis. Defect/Sales). Hapus data terkait terlebih dahulu.",
           409
         );
       }
@@ -205,6 +276,13 @@ export function masterItemHandlers(table: MasterTable) {
       const { id } = await ctx.params;
       const rowId = Number(id);
       if (!Number.isInteger(rowId)) return jsonError("ID tidak valid.", 400);
+
+      if (table === spareParts && (await sparePartHasPrices(rowId))) {
+        return jsonError(
+          "Sparepart ini masih punya harga. Hapus harganya dulu di tab Harga Sparepart.",
+          409
+        );
+      }
 
       try {
         const [row] = await db

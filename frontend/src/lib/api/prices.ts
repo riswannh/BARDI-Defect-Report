@@ -5,6 +5,7 @@ import { productPrices, products, purchaseOrders } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
+import { carryForwardMessage, lastPriceBefore } from "@/lib/api/price-period";
 import {
   normalizePriceMonth,
   normalizePriceYear,
@@ -263,33 +264,24 @@ export async function pricesCARRYFORWARD(req: NextRequest) {
     })
     .from(productPrices);
 
-  /** Periode ini lebih awal dari periode tujuan? */
-  const isBeforeTarget = (row: { year: string; month: string }) =>
-    row.year < year || (row.year === year && row.month < month);
-
-  // Sumber untuk tiap produk = periode terbesar yang masih sebelum tujuan.
-  const best = new Map<number, { price: number; year: string; month: string }>();
-  for (const row of allRows) {
-    if (!isBeforeTarget(row)) continue;
-    const current = best.get(row.productId);
-    if (
-      !current ||
-      row.year > current.year ||
-      (row.year === current.year && row.month > current.month)
-    ) {
-      best.set(row.productId, {
-        price: row.price,
-        year: row.year,
-        month: row.month,
-      });
-    }
-  }
+  // Aturan "harga periode terakhir sebelum tujuan" dipakai bersama harga
+  // sparepart — lihat `src/lib/api/price-period.ts`.
+  const best = lastPriceBefore(
+    allRows.map((row) => ({
+      refId: row.productId,
+      price: row.price,
+      month: row.month,
+      year: row.year,
+    })),
+    month,
+    year
+  );
 
   if (best.size === 0) {
     return jsonOk({
       inserted: 0,
       skipped: 0,
-      message: "Belum ada harga sebelum periode itu untuk disalin.",
+      message: carryForwardMessage("produk", 0, 0, { month, year }),
     });
   }
 
@@ -303,18 +295,29 @@ export async function pricesCARRYFORWARD(req: NextRequest) {
     .filter(([productId]) => !sudahAda.has(productId))
     .map(([productId, src]) => ({ productId, price: src.price, month, year }));
 
+  // Yang benar-benar dilewati = punya harga lama TAPI periode tujuan sudah
+  // terisi. `sudahAda` memuat juga produk tanpa harga lama, jadi angkanya tidak
+  // boleh dipakai mentah.
+  const skipped = best.size - toInsert.length;
+
   if (toInsert.length === 0) {
     return jsonOk({
       inserted: 0,
-      skipped: sudahAda.size,
-      message: "Semua produk sudah punya harga di periode itu.",
+      skipped,
+      message: carryForwardMessage("produk", 0, skipped, {
+        month,
+        year,
+      }),
     });
   }
 
   await db.insert(productPrices).values(toInsert);
   return jsonOk({
     inserted: toInsert.length,
-    skipped: sudahAda.size,
-    message: `${toInsert.length} harga disalin ke ${month}/${year}.`,
+    skipped,
+    message: carryForwardMessage("produk", toInsert.length, skipped, {
+      month,
+      year,
+    }),
   });
 }

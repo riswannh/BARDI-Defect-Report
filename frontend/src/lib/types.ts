@@ -53,6 +53,36 @@ export interface ProductPrice {
   productName?: string | null;
 }
 
+/**
+ * Master sparepart — child dari produk.
+ *
+ * `productNames` = produk yang memakai sparepart ini. Satu sparepart boleh
+ * dipakai beberapa produk (banyak-ke-banyak), jadi daftarnya bisa lebih dari satu.
+ */
+export interface SparePart {
+  id: number;
+  name: string;
+  /** Opsional tapi unik kalau diisi (ruang SKU terpisah dari SKU produk). */
+  sku?: string | null;
+  productNames?: string[];
+}
+
+/**
+ * Harga sparepart per bulan dan tahun (selalu Rupiah) — mekanismenya sama dengan
+ * `ProductPrice`, hanya rujukannya sparepart. Harga bersifat global per
+ * sparepart, bukan per (sparepart × produk).
+ */
+export interface SparePartPrice {
+  id: number;
+  sparePartId: number;
+  price: number;
+  /** "01".."12". */
+  month: string;
+  year: string;
+  sku?: string | null;
+  sparePartName?: string | null;
+}
+
 export interface Defect {
   id: number;
   codeGaransi: string;

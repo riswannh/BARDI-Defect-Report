@@ -10,6 +10,7 @@ import type {
   Problem,
   Product,
   ProductPrice,
+  SparePart,
   Status,
 } from "@/lib/types";
 import { MONTHS_FULL } from "@/lib/format";
@@ -20,7 +21,11 @@ import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { PriceList } from "@/components/price-list";
+import {
+  PriceList,
+  type PriceInput,
+  type PriceRow,
+} from "@/components/price-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -33,7 +38,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, FileDown, History, Trash2, Upload } from "lucide-react";
+import { Download, FileDown, History, Trash2, Upload, Wrench } from "lucide-react";
+import { ProductSparePartsDialog } from "./product-spare-parts-dialog";
+import { SparePartPricesTab } from "./sparepart-prices-tab";
+
+/**
+ * Endpoint "hapus semua" per tab. Nama tab tidak selalu sama dengan nama
+ * endpoint — dulu `/api/${tab}` membuat tab Harga Produk menembak `/api/prices`
+ * yang tidak ada (404).
+ */
+const DELETE_ALL_ENDPOINTS: Record<string, string> = {
+  products: "/api/products",
+  problems: "/api/problems",
+  statuses: "/api/statuses",
+  prices: "/api/product-prices",
+  spareparts: "/api/spare-parts",
+  "sparepart-prices": "/api/spare-part-prices",
+};
 
 /**
  * Kotak pencarian untuk tab Produk/Problem/Status. Penyaringannya dilakukan di
@@ -83,17 +104,25 @@ export default function MasterPage() {
     useApi<Status[]>("/api/statuses");
   const { data: priceData, reload: reloadPrices } =
     useApi<ProductPrice[]>("/api/product-prices");
+  const { data: sparePartData, reload: reloadSpareParts } =
+    useApi<SparePart[]>("/api/spare-parts");
 
   const products = productData ?? [];
   const problems = problemData ?? [];
   const statuses = statusData ?? [];
   const prices = priceData ?? [];
+  const spareParts = sparePartData ?? [];
+  const [linkProduct, setLinkProduct] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   // Pencarian tab Produk/Problem/Status. Penyaringan ada di halaman ini karena
   // paging juga dihitung di sini — jumlah halaman harus ikut hasil pencarian.
   const [productSearch, setProductSearch] = useState("");
   const [problemSearch, setProblemSearch] = useState("");
   const [statusSearch, setStatusSearch] = useState("");
+  const [sparePartSearch, setSparePartSearch] = useState("");
 
   const matchSearch = (query: string, ...fields: (string | null | undefined)[]) => {
     const q = query.trim().toLowerCase();
@@ -107,6 +136,9 @@ export default function MasterPage() {
   );
   const filteredStatuses = statuses.filter((item) =>
     matchSearch(statusSearch, item.name)
+  );
+  const filteredSpareParts = spareParts.filter((item) =>
+    matchSearch(sparePartSearch, item.name, item.sku)
   );
 
   // Filter tab Harga Produk. Pilihan bulan & tahun diambil dari data yang ada,
@@ -155,22 +187,36 @@ export default function MasterPage() {
   // Daftar yang sedang tampil menentukan jumlah halaman. Tab "prices" WAJIB ikut
   // di sini: dulu dia jatuh ke `statuses` (cuma 1 baris di produksi), sehingga
   // totalPages selalu 1 dan tombol "Berikutnya" tidak pernah bisa pindah.
-  const activeItems =
+  // Tab "sparepart-prices" menghitung pagingnya sendiri (lihat SparePartPricesTab).
+  const activeCount =
     tab === "products"
-      ? filteredProducts
+      ? filteredProducts.length
       : tab === "problems"
-        ? filteredProblems
+        ? filteredProblems.length
         : tab === "prices"
-          ? filteredPrices
-          : filteredStatuses;
-  const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
+          ? filteredPrices.length
+          : tab === "spareparts"
+            ? filteredSpareParts.length
+            : filteredStatuses.length;
+  const totalPages = Math.max(1, Math.ceil(activeCount / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const pagedProducts = filteredProducts.slice(start, end);
   const pagedProblems = filteredProblems.slice(start, end);
   const pagedStatuses = filteredStatuses.slice(start, end);
+  const pagedSpareParts = filteredSpareParts.slice(start, end);
   const pagedPrices = filteredPrices.slice(start, end);
+  /** `PriceList` memakai `refId`/`name` supaya bisa dipakai produk maupun sparepart. */
+  const priceRows: PriceRow[] = pagedPrices.map((row) => ({
+    id: row.id,
+    refId: row.productId,
+    price: row.price,
+    month: row.month,
+    year: row.year,
+    sku: row.sku,
+    name: row.productName,
+  }));
 
   async function addItem(
     endpoint: string,
@@ -239,25 +285,28 @@ export default function MasterPage() {
     e.target.value = "";
   }
 
-  const tabLabel =
-    tab === "products"
-      ? t("common.product")
-      : tab === "problems"
-        ? t("common.problem")
-        : tab === "prices"
-          ? t("price.tab")
-          : t("common.status");
+  const tabLabels: Record<string, string> = {
+    products: t("common.product"),
+    problems: t("common.problem"),
+    prices: t("price.tab"),
+    statuses: t("common.status"),
+    spareparts: t("sparePart.tab"),
+    "sparepart-prices": t("sparePartPrice.tab"),
+  };
+  const tabLabel = tabLabels[tab] ?? t("common.status");
+  /** Tab harga tidak punya template/import/export Excel. */
+  const noExcel = tab === "prices" || tab === "sparepart-prices";
 
   // Harga produk: satu baris = produk + nominal + periode, jadi handler-nya
-  // terpisah dari master yang hanya nama.
-  async function addPrice(input: {
-    productId: number;
-    price: number;
-    month: string;
-    year: string;
-  }) {
+  // terpisah dari master yang hanya nama. `refId` diisi dari `productId`.
+  async function addPrice(input: PriceInput) {
     try {
-      await apiPost("/api/product-prices", input);
+      await apiPost("/api/product-prices", {
+        productId: input.refId,
+        price: input.price,
+        month: input.month,
+        year: input.year,
+      });
       reloadPrices();
       toast.success(t("price.saved"));
     } catch (err) {
@@ -265,12 +314,14 @@ export default function MasterPage() {
     }
   }
 
-  async function updatePrice(
-    id: number,
-    input: { productId: number; price: number; month: string; year: string }
-  ) {
+  async function updatePrice(id: number, input: PriceInput) {
     try {
-      await apiPatch(`/api/product-prices/${id}`, input);
+      await apiPatch(`/api/product-prices/${id}`, {
+        productId: input.refId,
+        price: input.price,
+        month: input.month,
+        year: input.year,
+      });
       reloadPrices();
       toast.success(t("price.saved"));
     } catch (err) {
@@ -304,12 +355,16 @@ export default function MasterPage() {
 
   async function handleDeleteAll() {
     try {
-      const res = await apiDelete<{ deleted: number }>(`/api/${tab}`);
+      const res = await apiDelete<{ deleted: number }>(
+        DELETE_ALL_ENDPOINTS[tab] ?? `/api/${tab}`
+      );
       toast.success(t("deleteAll.success", { count: res.deleted }));
       setDeleteAllOpen(false);
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
       if (tab === "statuses") reloadStatuses();
+      if (tab === "spareparts") reloadSpareParts();
+      if (tab === "prices") reloadPrices();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal menghapus.");
     }
@@ -334,7 +389,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/template`)}
-              disabled={tab === "prices"}
+              disabled={noExcel}
             >
               <FileDown className="size-4" /> {t("common.template")}
             </Button>
@@ -342,7 +397,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={tab === "prices"}
+              disabled={noExcel}
             >
               <Upload className="size-4" /> {t("common.importExcel")}
             </Button>
@@ -350,7 +405,7 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/export`)}
-              disabled={tab === "prices"}
+              disabled={noExcel}
             >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
@@ -378,8 +433,12 @@ export default function MasterPage() {
         <TabsList>
           <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
-          <TabsTrigger value="prices">{t("price.tab")}</TabsTrigger>
+          <TabsTrigger value="spareparts">{t("sparePart.tab")}</TabsTrigger>
           <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
+          <TabsTrigger value="prices">{t("price.tab")}</TabsTrigger>
+          <TabsTrigger value="sparepart-prices">
+            {t("sparePartPrice.tab")}
+          </TabsTrigger>
         </TabsList>
 
         <Card size="sm" className="mt-4">
@@ -410,6 +469,9 @@ export default function MasterPage() {
                 onDelete={(id) =>
                   deleteItem("/api/products", id, reloadProducts)
                 }
+                onLink={(item) => setLinkProduct(item)}
+                linkLabel={t("master.linkSpareParts")}
+                linkIcon={Wrench}
               />
               {filteredProducts.length > 0 && (
                 <div className="mt-4">
@@ -529,8 +591,8 @@ export default function MasterPage() {
               </div>
 
               <PriceList
-                items={pagedPrices}
-                products={products}
+                items={priceRows}
+                options={products}
                 onAdd={addPrice}
                 onUpdate={updatePrice}
                 onDelete={deletePrice}
@@ -553,6 +615,53 @@ export default function MasterPage() {
                   />
                 </div>
               )}
+            </TabsContent>
+            <TabsContent value="spareparts">
+              <SearchBox
+                id="master-search-spareparts"
+                value={sparePartSearch}
+                onChange={(value) => {
+                  setSparePartSearch(value);
+                  setPage(1);
+                }}
+                placeholder={t("masterList.searchNameSku")}
+              />
+              <MasterList
+                items={pagedSpareParts}
+                withSku
+                addPlaceholder={t("master.newSparePart")}
+                emptyLabel={
+                  sparePartSearch.trim()
+                    ? t("masterList.emptyFiltered")
+                    : undefined
+                }
+                onAdd={(name, sku) =>
+                  addItem("/api/spare-parts", name, reloadSpareParts, sku)
+                }
+                onRename={(id, name, sku) =>
+                  renameItem("/api/spare-parts", id, name, reloadSpareParts, sku)
+                }
+                onDelete={(id) =>
+                  deleteItem("/api/spare-parts", id, reloadSpareParts)
+                }
+              />
+              {filteredSpareParts.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    totalItems={filteredSpareParts.length}
+                    page={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="sparepart-prices">
+              <SparePartPricesTab />
             </TabsContent>
             <TabsContent value="statuses">
               <SearchBox
@@ -608,6 +717,14 @@ export default function MasterPage() {
         onOpenChange={setDeleteAllOpen}
         label={tabLabel}
         onConfirm={handleDeleteAll}
+      />
+
+      <ProductSparePartsDialog
+        product={linkProduct}
+        onOpenChange={(open) => {
+          if (!open) setLinkProduct(null);
+        }}
+        onSaved={reloadSpareParts}
       />
       </div>
     </AdminGuard>

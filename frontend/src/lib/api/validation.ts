@@ -261,6 +261,25 @@ export const productPriceSchema = buildCreate(productPriceFields, {
 
 export const productPriceUpdateSchema = buildUpdate(productPriceFields);
 
+/* --------------------- Harga sparepart per bulan --------------------- */
+
+/**
+ * Sama seperti harga produk, hanya rujukannya sparepart. Dipisah (bukan dipakai
+ * ulang) supaya kontrak API-nya jelas: field-nya `sparePartId`, bukan `productId`.
+ */
+export const sparePartPriceFields = {
+  sparePartId: z.coerce.number().int().positive(),
+  price: z.coerce.number().min(0),
+  month: z.string().trim().min(1),
+  year: z.string().trim().min(1),
+} satisfies z.ZodRawShape;
+
+export const sparePartPriceSchema = buildCreate(sparePartPriceFields, {
+  price: z.coerce.number().min(0).default(0),
+});
+
+export const sparePartPriceUpdateSchema = buildUpdate(sparePartPriceFields);
+
 export const userCreateSchema = z.object({
   username: z.string().trim().min(3),
   password: z.string().min(6),

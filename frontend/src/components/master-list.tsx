@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pencil, Plus, Package, Trash2, Check, X } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Package,
+  Trash2,
+  Check,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 interface MasterItem {
   id: number;
@@ -38,6 +46,8 @@ interface MasterListProps {
    */
   onLink?: (item: MasterItem) => void;
   linkLabel?: string;
+  /** Ikon tombol kaitan: pabrik memakai Package (bawaan), produk memakai Wrench. */
+  linkIcon?: LucideIcon;
 }
 
 export function MasterList({
@@ -51,6 +61,7 @@ export function MasterList({
   emptyLabel,
   onLink,
   linkLabel,
+  linkIcon: LinkIcon = Package,
 }: MasterListProps) {
   const { t } = useLanguage();
   const [newName, setNewName] = useState("");
@@ -164,7 +175,7 @@ export function MasterList({
                         aria-label={linkLabel}
                         onClick={() => onLink(item)}
                       >
-                        <Package className="size-4" />
+                        <LinkIcon className="size-4" />
                       </Button>
                     )}
                     <Button

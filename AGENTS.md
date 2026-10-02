@@ -130,7 +130,7 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - `npm run db:seed` — isi data awal (idempotent, skip jika sudah ada data)
 - **Kredensial seed**: `admin/admin123`, `pabrik_jkt/pabrik123`, `pabrik_sby/pabrik123`, `pabrik_bdg/pabrik123`
 - **Struktur**:
-  - `src/lib/db/schema.ts` — tabel (auth + factories/products/problems/statuses/defects/sales)
+  - `src/lib/db/schema.ts` — tabel (auth + factories/products/problems/statuses/defects/sales/purchase_orders + spare_parts/product_spare_parts/spare_part_prices)
   - `src/lib/db/index.ts` — koneksi Drizzle
   - `src/lib/auth.ts` — konfigurasi Better Auth (username plugin, field `isAdmin` & `factoryId`)
   - `src/lib/api/*` — guard role, validasi zod, CRUD, report, Excel
@@ -140,15 +140,19 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - **Daftar pabrik (`GET /api/factories`) di-scope untuk role Pabrik**: mereka hanya menerima baris
   pabriknya sendiri. Header memang butuh satu nama pabrik, dan pemilih pabrik hanya ada di halaman
   admin, jadi daftar lengkap tidak perlu bocor. Admin tetap menerima seluruh daftar.
-- **Produk punya `sku` (unik, opsional/nullable)** di samping `name`. Master lain hanya nama.
+- **Produk dan sparepart punya `sku` (unik per tabel, opsional/nullable)** di samping `name`.
+  Master lain hanya nama.
   - Handler master bercabang per tabel di `insertMaster`/`updateMaster` (`master.ts`) supaya
     TypeScript menyempitkan tipe — satu objek nilai gabungan tidak akan lolos type check
-    karena hanya `products` yang punya kolom `sku`.
+    karena hanya `products` dan `spareParts` yang punya kolom `sku`.
   - SKU kosong dinormalkan jadi `null` oleh `normalizeSku()`; beberapa `NULL` tidak bentrok pada
     constraint UNIQUE SQLite, jadi produk tanpa SKU tetap valid.
-  - Excel: `template-produk.xlsx` dan ekspor `produk.xlsx` memakai kolom `Nama` + `SKU`;
-    impor melewati baris dengan SKU yang sudah dipakai (termasuk bentrok antar-baris di berkas
-    yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap satu kolom `Nama`.
+  - SKU **unik hanya di dalam tabelnya sendiri**: SKU sparepart boleh sama dengan SKU produk, dan
+    pesan 409 menyesuaikan tabelnya (`skuOwner()` di `master.ts`).
+  - Excel: `template-produk.xlsx`/`produk.xlsx` dan `template-sparepart.xlsx`/`sparepart.xlsx`
+    memakai kolom `Nama` + `SKU`; impor melewati baris dengan SKU yang sudah dipakai (termasuk
+    bentrok antar-baris di berkas yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap
+    satu kolom `Nama`.
 - **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template`
 - **Google Sheet tab "Big Data" itu READ-ONLY (WAJIB)** — kolom A:H diisi `=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat IMPORTRANGE), jadi menulis ke sana merusak feed-nya. Pernah kejadian 24 Sep 2026: uji izin tulis menimpa sel `A1` dan menghapus formulanya (header A:H jadi kosong), harus ditulis ulang manual. **JANGAN menambahkan jalur tulis ke sheet ini** — fitur sync karena itu **satu arah (sheet → app)**: `src/lib/gsheet/values.ts` sengaja tidak punya fungsi tulis, `src/lib/gsheet/sync.ts` (logika murni) + `src/lib/api/gsheet.ts` (endpoint admin `/api/defects/gsheet/sync` dan `/resolve`), self-check `npx tsx scripts/gsheet-sync-check.ts`, dan UI `src/components/gsheet-sync-dialog.tsx`. Jangan pernah menguji tulis ke sheet produksi. Tab **"Data Penjualan"** (sync menu Sales, `src/lib/gsheet/sales-mapping.ts` + `sales-sync.ts`, endpoint `/api/sales/gsheet/sync` & `/resolve`, self-check `npx tsx scripts/gsheet-sales-check.ts`) juga read-only — bentuknya tabel lebar (1 baris = 1 produk, 12 pasang kolom QTY/Value) dan SEMUA sel datanya rumus `=INDEX('Raw Penjualan'!…)`. Aturannya: kunci app = produk + pabrik + bulan, acuan produk kolom **Official Name**, pabrik kolom **Factory**, bulan `"January 2026"` → `Jan`, dan bulan yang di sheet 0 semua TIDAK dibuatkan baris di app (keputusan user).
 - **Diagnostik klien**: `POST /api/client-errors` (route `src/app/api/client-errors/route.ts`) mencatat
@@ -190,6 +194,25 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   Pabrik dibiarkan apa adanya, dan operator tetap boleh mengubahnya manual). Supaya form tidak perlu
   permintaan tambahan, `GET /api/products` sekarang di-left-join ke tabel ini dan ikut mengirim
   `factoryId`.
+- **Sparepart (`spare_parts` + `product_spare_parts` + `spare_part_prices`)** — sparepart adalah
+  **child dari produk**, tetapi kaitannya **many-to-many**: satu sparepart boleh dipakai beberapa
+  produk sekaligus (permintaan eksplisit user). Karena itu `product_spare_parts` ber-PK komposit
+  `(productId, sparePartId)` dan **TIDAK ada aturan pindah** seperti `product_factories` —
+  mengaitkan di produk B tidak melepasnya dari produk A.
+  - Dikelola dari sisi **produk**: tombol ikon di tab Produk (Data Master) membuka
+    `master/product-spare-parts-dialog.tsx` (prop `onLink`/`linkLabel`/`linkIcon` di
+    `master-list.tsx`), endpoint `GET`/`POST /api/products/{id}/spare-parts`. POST mengganti seluruh
+    kaitan produk itu dalam satu transaksi, dan id produk/sparepart asing ditolak **422 sebelum
+    transaksi** supaya tidak meledak jadi 500 FOREIGN KEY.
+  - Tab **Sparepart** di Data Master tidak punya tombol kaitkan — arah kaitan hanya dari produk,
+    supaya tidak menyesatkan.
+  - Harga sparepart **global per sparepart per periode** (`spare_part_prices`, unik
+    `(sparePartId, year, month)`, tab **Harga Sparepart**, endpoint `/api/spare-part-prices` +
+    `/carry-forward`). Logika periode dipakai bersama harga produk lewat
+    `src/lib/api/price-period.ts` (`lastPriceBefore`, `carryForwardMessage`) — jangan diduplikasi.
+  - `spare_part_prices.sparePartId` sengaja **tanpa cascade** (harga tidak boleh hilang diam-diam):
+    menghapus sparepart yang masih punya harga ditolak 409, begitu juga hapus-semua tab Sparepart.
+  - Belum masuk form PO/Sales/Defect dan tidak ikut sync Google Sheet — menunggu keputusan baru.
 - **Harga produk (`product_prices`)** — master harga per produk per bulan+tahun, **selalu Rupiah**,
   dikelola di tab **Harga Produk** pada Data Master (`/api/product-prices`). Unik pada
   `(productId, year, month)`: harga lama TIDAK ditimpa, perubahan harga = baris baru untuk periode

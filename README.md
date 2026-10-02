@@ -70,6 +70,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Perbaikan bug Select: nilai terpilih tidak lagi direset `null` saat popup ditutup | ✅ Selesai |
 | + | **PO Product** (`/po`) — CRUD, filter periode, PPN, Excel, akses baca-saja untuk Pabrik | ✅ Selesai |
 | + | **Harga Produk** per bulan/tahun (master) + salin periode sebelumnya | ✅ Selesai |
+| + | **Sparepart** sebagai child produk (many-to-many: satu sparepart boleh dipakai beberapa produk), master **Sparepart** + tab **Harga Sparepart** per bulan/tahun + salin periode sebelumnya | ✅ Selesai |
 | + | **Value RW** di PO dihitung dari harga master | ✅ Selesai |
 | + | **Harga RW** Defect jadi Harga + Total Value (harga × qty), Harga RW otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
 | + | Susunan field **Harga RW + Total Value** di form Defect disamakan dengan form PO (dropdown harga + kolom baca-saja), label "Value RW" diganti "Total Value" | ✅ Selesai |
@@ -239,6 +240,38 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 
 Constraint unik: `(productId, year, month)` — **satu harga per produk per periode**. Harga lama tidak
 pernah ditimpa: kalau harga berubah, buat baris baru untuk periode berikutnya.
+
+**`spare_parts`** — master sparepart (child dari produk)
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `name` | text (unik) | nama sparepart |
+| `sku` | text (unik, opsional/nullable) | unik **di antara sparepart saja** — boleh sama dengan SKU produk |
+| `createdAt` / `updatedAt` | timestamp | |
+
+**`product_spare_parts`** — kaitan produk ↔ sparepart (**many-to-many**)
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `productId` | FK → products (cascade) | bagian dari primary key komposit |
+| `sparePartId` | FK → spare_parts (cascade) | bagian dari primary key komposit + index |
+
+Satu produk boleh punya banyak sparepart dan **satu sparepart boleh dipakai beberapa produk**;
+mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `product_factories`).
+
+**`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `sparePartId` | FK → spare_parts (tanpa cascade) | harga tidak boleh hilang diam-diam saat sparepart dihapus |
+| `price` | real (default 0) | Rupiah |
+| `month` / `year` | text | sama seperti `product_prices` |
+| `createdAt` / `updatedAt` | timestamp | |
+
+Constraint unik: `(sparePartId, year, month)` — satu harga per sparepart per periode. Harga bersifat
+**global per sparepart**, bukan per pasangan produk × sparepart.
 
 > Keterangan PO **bukan** master: ketiga nilainya di-hardcode di kode
 > (`KETERANGAN_OPTIONS` di `src/lib/api/validation.ts`) dan disimpan sebagai teks pada baris PO.
@@ -478,6 +511,30 @@ harga master) tidak diperlukan lagi.
 mengetik ratusan baris tiap bulan, salin dulu dari periode sebelumnya lalu sunting yang berubah.
 Yang sudah ada di periode tujuan dilewati, jadi aman dijalankan berulang.
 
+### Sparepart (child produk + harganya)
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/spare-parts` | user login | daftar sparepart + `sku` + `productNames` (produk yang memakainya) |
+| POST | `/api/spare-parts` | admin | tambah (`name`, `sku` opsional); 409 "Nama sudah ada." / "SKU sudah dipakai sparepart lain." |
+| PATCH | `/api/spare-parts/{id}` | admin | ubah nama/SKU |
+| DELETE | `/api/spare-parts/{id}` | admin | hapus; 409 bila masih punya harga |
+| DELETE | `/api/spare-parts` | admin | hapus semua + backup; 409 bila masih ada harga sparepart |
+| GET | `/api/products/{id}/spare-parts` | user login | `{ sparePartIds: number[] }` |
+| POST | `/api/products/{id}/spare-parts` | admin | `{ sparePartIds: number[] }` — ganti seluruh kaitan produk itu; id asing 422 |
+| GET | `/api/spare-part-prices` | user login | daftar + `sparePartName`/`sku`. Query: `sparePartId`, `year`, `month` |
+| POST | `/api/spare-part-prices` | admin | tambah; 409 bila sparepart itu sudah punya harga di periode yang sama |
+| PATCH / DELETE | `/api/spare-part-prices/{id}` | admin | ubah / hapus satu baris harga |
+| DELETE | `/api/spare-part-prices` | admin | hapus semua harga sparepart + backup |
+| POST | `/api/spare-part-prices/carry-forward` | admin | `{ month, year }` — salin harga dari periode terakhir sebelum periode itu |
+
+**Sparepart adalah child produk, tetapi kaitannya many-to-many**: satu sparepart boleh dipakai
+beberapa produk sekaligus, jadi mengaitkan sparepart di produk B **tidak** melepasnya dari produk A.
+Kaitan diatur dari sisi produk (tombol ikon di tab Produk), dan POST-nya mengganti seluruh kaitan
+produk tersebut. Harga sparepart **global per sparepart per periode** — tidak berbeda antar produk
+yang memakainya. Logika salin-periode memakai helper bersama `src/lib/api/price-period.ts`, sama
+seperti harga produk (yang sudah ada di periode tujuan dilewati).
+
 ### Users
 
 | Method | Path | Akses | Keterangan |
@@ -686,8 +743,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.5 Data Master
 
-- Tab: **Produk**, **Problem**, **Harga Produk**, **Status** (komponen `master-list.tsx` untuk
-  master nama, `price-list.tsx` untuk harga).
+- Tab: **Produk**, **Sparepart**, **Problem**, **Harga Produk**, **Harga Sparepart**, **Status**
+  (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga).
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
@@ -707,6 +764,16 @@ cuma dihitung sebagai informasi), dengan tambahan:
   dipilih), hasil filter langsung memengaruhi jumlah halaman, dan bila tidak ada yang cocok muncul
   pesan "Tidak ada harga yang cocok dengan filter."
   Tab ini tidak punya tombol Excel — impor/ekspor harga belum tersedia.
+- **Tab Sparepart** mengelola master sparepart (Nama + SKU, SKU unik di antara sparepart saja —
+  boleh sama dengan SKU produk) dengan pencarian nama/SKU dan Excel seperti tab Produk. Sparepart
+  adalah **child dari produk**, tapi satu sparepart boleh dipakai beberapa produk. Kaitan diatur
+  **dari sisi produk**: tombol ikon di tiap baris tab Produk membuka dialog **Sparepart Produk**
+  (cari sparepart, centang banyak sekaligus, atau tambah sparepart baru langsung dari dialog).
+  Dialog menandai sparepart yang sudah dipakai produk lain. Tab Sparepart sendiri tidak punya
+  tombol kaitkan supaya arah relasinya tidak menyesatkan.
+- **Tab Harga Sparepart** memakai pola yang sama dengan Harga Produk (kolom SKU · Nama Sparepart ·
+  Harga · Bulan · Tahun, filter cari/bulan/tahun, tombol salin periode sebelumnya). Harganya
+  **global per sparepart per periode**. Menghapus sparepart yang masih punya harga ditolak (409).
 - CRUD + paging (5/10/25/50/100) + import/export/template Excel untuk master nama.
 - Hapus master gagal (409) jika masih dipakai defect/sales; **hapus harga** gagal (409) bila masih
   dirujuk baris PO atau defect.
@@ -721,8 +788,9 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.7 Excel (Impor/Ekspor/Template)
 
-- Tersedia di modul: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
-  **Harga Produk belum punya Excel** (tombolnya nonaktif di tab itu) — harga diisi lewat UI atau tombol salin periode.
+- Tersedia di modul: `products`, `spareparts`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
+  `spareparts` memakai kolom `Nama` + `SKU` seperti `products`.
+  **Harga Produk dan Harga Sparepart belum punya Excel** (tombolnya nonaktif di tab itu) — harga diisi lewat UI atau tombol salin periode.
 - Import: validasi per baris, referensi nama → id (produk/pabrik/problem/status harus ada), duplikat di-skip, hasil detail + CSV.
 - Export role Pabrik: kolom value tidak ikut.
 - Nama file export: `produk.xlsx`, `problem.xlsx`, `status.xlsx`, `pabrik.xlsx`, `defect.xlsx`, `sales.xlsx`, `users.xlsx`; template: `template-{modul}.xlsx`.
@@ -802,6 +870,10 @@ Keterangan (satu dari tiga nilai tetap).
     Harga RW terisi otomatis dari periode timestamp atau harga terbaru produk — sama di PO Product.
 13. **PO tanpa `UNIQUE`** — satu PO Number boleh diinput berkali-kali, termasuk produk yang sama.
 14. **PPN hanya penanda** — tidak menambah Total, dan disembunyikan dari role Pabrik.
+15. **Sparepart = child produk yang many-to-many** — satu sparepart boleh dipakai beberapa produk
+    (mengaitkan di produk B tidak melepasnya dari A, beda dengan kaitan produk → pabrik). Harganya
+    global per sparepart per periode, dan sparepart yang masih punya harga tidak bisa dihapus.
+    Sampai ada keputusan baru, sparepart belum muncul di form PO/Sales/Defect maupun sync Google Sheet.
 15. **Keterangan PO di-hardcode** — tidak ada master/CRUD-nya.
 
 ---
@@ -813,7 +885,7 @@ Keterangan (satu dari tiga nilai tetap).
 | Report | ✅ semua pabrik | ✅ pabriknya sendiri (nilai & harga disembunyikan) |
 | Data Defect | ✅ CRUD | ❌ (hanya Report) |
 | Data Sales | ✅ CRUD | ❌ |
-| Data Master + Harga Produk | ✅ CRUD | ❌ |
+| Data Master + Harga Produk + Sparepart & Harga Sparepart | ✅ CRUD | ❌ |
 | PO Product (`/po`) | ✅ CRUD | ✅ baca-saja, hanya PO pabriknya, tanpa harga/PPN |
 | User Management | ✅ CRUD | ❌ |
 | Import/Export Excel | ✅ | ❌ |

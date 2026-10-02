@@ -459,6 +459,78 @@ const translations = {
     en: "Copy previous period prices",
     zh: "复制上一期间价格",
   },
+  // Sparepart = child dari produk; harganya global per sparepart per periode.
+  "sparePart.tab": { id: "Sparepart", en: "Spare Parts", zh: "备件" },
+  "sparePartPrice.tab": {
+    id: "Harga Sparepart",
+    en: "Spare Part Prices",
+    zh: "备件价格",
+  },
+  "sparePartPrice.empty": {
+    id: "Belum ada harga sparepart. Tambahkan lewat formulir di atas.",
+    en: "No spare part prices yet. Add one with the form above.",
+    zh: "暂无备件价格，请使用上方表单添加。",
+  },
+  "sparePartPrice.searchPlaceholder": {
+    id: "Cari nama sparepart atau SKU",
+    en: "Search spare part name or SKU",
+    zh: "搜索备件名称或 SKU",
+  },
+  "sparePartPrice.deleted": {
+    id: "Harga sparepart dihapus.",
+    en: "Spare part price deleted.",
+    zh: "备件价格已删除。",
+  },
+  "master.newSparePart": {
+    id: "Nama sparepart baru",
+    en: "New spare part name",
+    zh: "新备件名称",
+  },
+  "master.linkSpareParts": {
+    id: "Kaitkan sparepart",
+    en: "Link spare parts",
+    zh: "关联备件",
+  },
+  "productSpareParts.title": {
+    id: "Sparepart Produk",
+    en: "Product Spare Parts",
+    zh: "产品备件",
+  },
+  "productSpareParts.hint": {
+    id: "Sparepart yang dikaitkan di sini adalah child dari produk ini. Satu sparepart boleh dipakai beberapa produk sekaligus, jadi mengaitkan di sini tidak memindahkan sparepart dari produk lain.",
+    en: "Spare parts linked here are children of this product. One spare part may serve several products, so linking here never moves it away from another product.",
+    zh: "在此关联的备件属于该产品。一个备件可同时用于多个产品，因此在此关联不会将其从其他产品移走。",
+  },
+  "productSpareParts.search": {
+    id: "Cari sparepart atau SKU…",
+    en: "Search spare part or SKU…",
+    zh: "搜索备件或 SKU…",
+  },
+  "productSpareParts.newSparePart": {
+    id: "Tambah sparepart baru ke master",
+    en: "Add new spare part to master",
+    zh: "向主数据添加新备件",
+  },
+  "productSpareParts.none": {
+    id: "Belum ada sparepart di master.",
+    en: "No spare parts in master yet.",
+    zh: "主数据中暂无备件。",
+  },
+  "productSpareParts.selected": {
+    id: "sparepart dipilih",
+    en: "spare parts selected",
+    zh: "个备件已选择",
+  },
+  "productSpareParts.otherProducts": {
+    id: "Dipakai juga oleh",
+    en: "Also used by",
+    zh: "同时用于",
+  },
+  "productSpareParts.saved": {
+    id: "Kaitan sparepart tersimpan.",
+    en: "Spare part links saved.",
+    zh: "备件关联已保存。",
+  },
   "po.totalValue": {
     id: "Total Value",
     en: "Total Value",
