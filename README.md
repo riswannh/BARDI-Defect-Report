@@ -778,7 +778,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.5 Data Master
 
-- Tab: **Produk**, **Sparepart**, **Problem**, **Harga Produk**, **Harga Sparepart**, **Status**
+- Tab (urutan tampil): **Produk**, **Harga Produk**, **Sparepart**, **Harga Sparepart**, **Problem**,
+  **Status**
   (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga).
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
