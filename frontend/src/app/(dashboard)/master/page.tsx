@@ -458,13 +458,13 @@ export default function MasterPage() {
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
           <TabsTrigger value="products">{t("common.product")}</TabsTrigger>
-          <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
-          <TabsTrigger value="spareparts">{t("sparePart.tab")}</TabsTrigger>
-          <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
           <TabsTrigger value="prices">{t("price.tab")}</TabsTrigger>
+          <TabsTrigger value="spareparts">{t("sparePart.tab")}</TabsTrigger>
           <TabsTrigger value="sparepart-prices">
             {t("sparePartPrice.tab")}
           </TabsTrigger>
+          <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
+          <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
         </TabsList>
 
         <Card size="sm" className="mt-4">
