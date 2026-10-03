@@ -154,6 +154,18 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     bentrok antar-baris di berkas yang sama) dengan alasan "SKU sudah dipakai". Master lain tetap
     satu kolom `Nama`.
 - **Excel**: `GET /api/excel/{module}/export`, `POST /api/excel/{module}/import`, `GET /api/excel/{module}/template`
+  (module: products, spareparts, problems, statuses, factories, defects, sales, users, purchase-orders,
+  `prices`, `sparepart-prices`).
+  - **Harga Produk / Harga Sparepart** (`prices`, `sparepart-prices`) — kolom `Produk` + `Jenis Harga` +
+    `Bulan` + `Tahun` + `Harga`, dan `Sparepart` + `Bulan` + `Tahun` + `Harga`. Impor mencocokkan **nama**
+    ke Data Master Produk/Sparepart (`trim().toLowerCase()`); nama tak dikenal **ditolak dengan alasan**,
+    master TIDAK dibuat otomatis. `Jenis Harga` kosong → `DEFAULT_PRICE_TYPE`; jenis asing, bulan/tahun
+    tidak valid, dan harga bukan angka juga ditolak. Duplikat (produk+jenis+tahun+bulan /
+    sparepart+tahun+bulan) dilewati. Impor kedua modul ini **admin saja** (`requireAdmin()`), ekspor dan
+    template mengikuti aturan role umum. Setelah impor UI memuat ulang daftar harga
+    (`reloadPrices()`; tab Harga Sparepart lewat prop `reloadToken`).
+  - **Jebakan SQLite**: `month`/`year` bertipe TEXT, jadi parameter **angka** pada `where year = ?`
+    tidak cocok (`eq(productPrices.year, 2027)` gagal) — selalu ikat sebagai string.
 - **Google Sheet tab "Big Data" itu READ-ONLY (WAJIB)** — kolom A:H diisi `=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat IMPORTRANGE), jadi menulis ke sana merusak feed-nya. Pernah kejadian 24 Sep 2026: uji izin tulis menimpa sel `A1` dan menghapus formulanya (header A:H jadi kosong), harus ditulis ulang manual. **JANGAN menambahkan jalur tulis ke sheet ini** — fitur sync karena itu **satu arah (sheet → app)**: `src/lib/gsheet/values.ts` sengaja tidak punya fungsi tulis, `src/lib/gsheet/sync.ts` (logika murni) + `src/lib/api/gsheet.ts` (endpoint admin `/api/defects/gsheet/sync` dan `/resolve`), self-check `npx tsx scripts/gsheet-sync-check.ts`, dan UI `src/components/gsheet-sync-dialog.tsx`. Jangan pernah menguji tulis ke sheet produksi. Tab **"Data Penjualan"** (sync menu Sales, `src/lib/gsheet/sales-mapping.ts` + `sales-sync.ts`, endpoint `/api/sales/gsheet/sync` & `/resolve`, self-check `npx tsx scripts/gsheet-sales-check.ts`) juga read-only — bentuknya tabel lebar (1 baris = 1 produk, 12 pasang kolom QTY/Value) dan SEMUA sel datanya rumus `=INDEX('Raw Penjualan'!…)`. Aturannya: kunci app = produk + pabrik + bulan, acuan produk kolom **Official Name**, pabrik kolom **Factory**, bulan `"January 2026"` → `Jan`, dan bulan yang di sheet 0 semua TIDAK dibuatkan baris di app (keputusan user).
 - **Diagnostik klien**: `POST /api/client-errors` (route `src/app/api/client-errors/route.ts`) mencatat
   kegagalan jaringan dari browser ke `<folder database>/client-errors.log`. Hanya user login yang boleh

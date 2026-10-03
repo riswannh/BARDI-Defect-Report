@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { apiDelete, apiPatch, apiPost } from "@/lib/api-client";
@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
  * Pencarian dan paging tinggal di sini supaya `master/page.tsx` tidak ikut
  * membengkak.
  */
-export function SparePartPricesTab() {
+export function SparePartPricesTab({ reloadToken = 0 }: { reloadToken?: number }) {
   const { t } = useLanguage();
   const { data: sparePartData } = useApi<SparePart[]>("/api/spare-parts");
   const { data: priceData, reload } =
@@ -31,6 +31,12 @@ export function SparePartPricesTab() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Impor Excel di halaman induk menaikkan token ini; tabel dimuat ulang supaya
+  // baris hasil impor langsung terlihat tanpa pindah tab.
+  useEffect(() => {
+    if (reloadToken > 0) reload();
+  }, [reloadToken, reload]);
 
   const spareParts = sparePartData ?? [];
   const prices = priceData ?? [];

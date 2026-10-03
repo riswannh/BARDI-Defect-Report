@@ -1,14 +1,16 @@
 import * as XLSX from "xlsx";
-import { eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   defects,
   factories,
   problems,
+  productPrices,
   products,
   purchaseOrders,
   sales,
+  sparePartPrices,
   spareParts,
   statuses,
   user,
@@ -18,10 +20,15 @@ import { jsonError, jsonOk } from "@/lib/api/response";
 import {
   KETERANGAN_OPTIONS,
   DEFAULT_KETERANGAN,
+  PRICE_TYPES,
+  DEFAULT_PRICE_TYPE,
   normalizeSku,
   normalizeCurrency,
   normalizeKeterangan,
   normalizePpn,
+  normalizePriceMonth,
+  normalizePriceType,
+  normalizePriceYear,
   normalizeTimestamp,
 } from "@/lib/api/validation";
 import { createUserAccount } from "@/lib/api/users";
@@ -120,6 +127,18 @@ function cellNumber(value: unknown): number {
   return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
+/**
+ * Harga Rupiah: "18.500" dan "Rp 18.500" sama-sama 18.500. Null kalau bukan
+ * angka — beda dari cellNumber yang mengembalikan 0 untuk sel kosong.
+ */
+function cellPrice(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(value);
+  const raw = cellString(value);
+  if (raw === "") return null;
+  const digits = raw.replace(/[^\d]/g, "");
+  return digits === "" ? null : Number(digits);
+}
+
 function cellBool(value: unknown): boolean {
   const s = cellString(value).toLowerCase();
   return s === "true" || s === "ya" || s === "yes" || s === "1" || s === "admin";
@@ -193,6 +212,18 @@ const PO_HEADERS = [
 
 const PO_MODULE = "purchase-orders";
 
+/**
+ * Modul harga. Bukan master nama: barisnya menunjuk produk/sparepart lewat NAMA
+ * yang harus sudah ada di Data Master — nama tak dikenal jadi error dan barisnya
+ * dilewati (tidak membuat master baru).
+ */
+const PRICE_MODULE = "prices";
+const SPARE_PART_PRICE_MODULE = "sparepart-prices";
+
+const PRICE_HEADERS = ["Produk", "Jenis Harga", "Bulan", "Tahun", "Harga"];
+
+const SPARE_PART_PRICE_HEADERS = ["Sparepart", "Bulan", "Tahun", "Harga"];
+
 /* ------------------------------- export ------------------------------- */
 
 export async function excelExport(moduleName: string, req: NextRequest) {
@@ -229,6 +260,56 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       Keterangan: row.keterangan,
     }));
     return downloadResponse(sheetBuffer(data, headers), "po-product.xlsx");
+  }
+
+  if (moduleName === PRICE_MODULE || moduleName === SPARE_PART_PRICE_MODULE) {
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
+
+    if (moduleName === PRICE_MODULE) {
+      const rows = await db
+        .select({
+          name: products.name,
+          priceType: productPrices.priceType,
+          month: productPrices.month,
+          year: productPrices.year,
+          price: productPrices.price,
+        })
+        .from(productPrices)
+        .leftJoin(products, eq(productPrices.productId, products.id))
+        .orderBy(
+          asc(products.name),
+          asc(productPrices.priceType),
+          desc(productPrices.year),
+          desc(productPrices.month)
+        );
+      const data = rows.map((row) => ({
+        Produk: row.name ?? "",
+        "Jenis Harga": row.priceType,
+        Bulan: row.month,
+        Tahun: row.year,
+        Harga: row.price,
+      }));
+      return downloadResponse(sheetBuffer(data, PRICE_HEADERS), "harga-produk.xlsx");
+    }
+
+    const rows = await db
+      .select({
+        name: spareParts.name,
+        month: sparePartPrices.month,
+        year: sparePartPrices.year,
+        price: sparePartPrices.price,
+      })
+      .from(sparePartPrices)
+      .leftJoin(spareParts, eq(sparePartPrices.sparePartId, spareParts.id))
+      .orderBy(asc(spareParts.name), desc(sparePartPrices.year), desc(sparePartPrices.month));
+    const data = rows.map((row) => ({
+      Sparepart: row.name ?? "",
+      Bulan: row.month,
+      Tahun: row.year,
+      Harga: row.price,
+    }));
+    return downloadResponse(sheetBuffer(data, SPARE_PART_PRICE_HEADERS), "harga-sparepart.xlsx");
   }
 
   if (isMasterModule(moduleName)) {
@@ -321,6 +402,8 @@ export async function excelImport(moduleName: string, req: NextRequest) {
     return importMaster(moduleName, sheet);
   }
   if (moduleName === PO_MODULE) return importPurchaseOrders(sheet);
+  if (moduleName === PRICE_MODULE) return importProductPrices(sheet);
+  if (moduleName === SPARE_PART_PRICE_MODULE) return importSparePartPrices(sheet);
   if (moduleName === "defects") return importDefects(sheet);
   if (moduleName === "sales") return importSales(sheet);
   if (moduleName === "users") return importUsers(sheet);
@@ -814,6 +897,190 @@ async function importUsers(sheet: SheetRow[]) {
 
 /* ------------------------------ template ------------------------------ */
 
+/**
+ * Impor Harga Produk. Nama produk dicocokkan ke Data Master (tanpa membedakan
+ * huruf besar/kecil); nama yang tidak ada TIDAK dibuat otomatis — barisnya jadi
+ * error dan dilewati. Baris dengan produk + jenis + periode yang sudah ada
+ * dilewati sebagai duplikat (keunikan sama dengan endpoint /api/product-prices).
+ */
+async function importProductPrices(sheet: SheetRow[]) {
+  const [productRows, priceRows] = await Promise.all([
+    db.select().from(products),
+    db
+      .select({
+        productId: productPrices.productId,
+        priceType: productPrices.priceType,
+        month: productPrices.month,
+        year: productPrices.year,
+      })
+      .from(productPrices),
+  ]);
+  const productMap = new Map(productRows.map((row) => [row.name.trim().toLowerCase(), row.id]));
+  const existing = new Set(
+    priceRows.map((row) => `${row.productId}|${row.priceType}|${row.year}|${row.month}`)
+  );
+  const result = newImportResult(PRICE_MODULE, sheet.length);
+
+  for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
+    const row = sheet[i];
+    const name = cellString(row.Produk ?? row.Product);
+    const productId = productMap.get(name.toLowerCase());
+    if (!productId) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: name
+          ? `Produk "${name}" tidak ada di Data Master`
+          : "Nama produk kosong",
+      });
+      continue;
+    }
+
+    const typeRaw = cellString(row["Jenis Harga"] ?? row.PriceType);
+    const priceType = typeRaw === "" ? DEFAULT_PRICE_TYPE : normalizePriceType(typeRaw);
+    if (!priceType) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: `Jenis harga "${typeRaw}" tidak dikenal (pilihan: ${PRICE_TYPES.join(", ")})`,
+      });
+      continue;
+    }
+
+    const month = normalizePriceMonth(row.Bulan ?? row.Month);
+    const year = normalizePriceYear(row.Tahun ?? row.Year);
+    if (!month || !year) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: !month
+          ? "Bulan harus 01-12 atau nama bulan"
+          : "Tahun harus empat angka, mis. 2026",
+      });
+      continue;
+    }
+
+    const price = cellPrice(row.Harga ?? row.Price);
+    if (price === null) {
+      result.errors.push({ row: rowNumber, key: name, reason: "Harga bukan angka" });
+      continue;
+    }
+
+    const key = `${productId}|${priceType}|${year}|${month}`;
+    if (existing.has(key)) {
+      result.skipped += 1;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: name,
+        reason: `Harga ${priceType} produk ini untuk ${month}/${year} sudah ada`,
+      });
+      continue;
+    }
+
+    try {
+      await db.insert(productPrices).values({ productId, price, priceType, month, year });
+      existing.add(key);
+      result.inserted += 1;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan.",
+      });
+    }
+  }
+
+  logImport(result);
+  return jsonOk(result);
+}
+
+/**
+ * Impor Harga Sparepart. Aturannya sama dengan Harga Produk: nama sparepart harus
+ * ada di Data Master, harga global per periode (tanpa jenis harga).
+ */
+async function importSparePartPrices(sheet: SheetRow[]) {
+  const [sparePartRows, priceRows] = await Promise.all([
+    db.select().from(spareParts),
+    db
+      .select({
+        sparePartId: sparePartPrices.sparePartId,
+        month: sparePartPrices.month,
+        year: sparePartPrices.year,
+      })
+      .from(sparePartPrices),
+  ]);
+  const sparePartMap = new Map(
+    sparePartRows.map((row) => [row.name.trim().toLowerCase(), row.id])
+  );
+  const existing = new Set(
+    priceRows.map((row) => `${row.sparePartId}|${row.year}|${row.month}`)
+  );
+  const result = newImportResult(SPARE_PART_PRICE_MODULE, sheet.length);
+
+  for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
+    const row = sheet[i];
+    const name = cellString(row.Sparepart ?? row.Nama ?? row.Name);
+    const sparePartId = sparePartMap.get(name.toLowerCase());
+    if (!sparePartId) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: name
+          ? `Sparepart "${name}" tidak ada di Data Master`
+          : "Nama sparepart kosong",
+      });
+      continue;
+    }
+
+    const month = normalizePriceMonth(row.Bulan ?? row.Month);
+    const year = normalizePriceYear(row.Tahun ?? row.Year);
+    if (!month || !year) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: !month
+          ? "Bulan harus 01-12 atau nama bulan"
+          : "Tahun harus empat angka, mis. 2026",
+      });
+      continue;
+    }
+
+    const price = cellPrice(row.Harga ?? row.Price);
+    if (price === null) {
+      result.errors.push({ row: rowNumber, key: name, reason: "Harga bukan angka" });
+      continue;
+    }
+
+    const key = `${sparePartId}|${year}|${month}`;
+    if (existing.has(key)) {
+      result.skipped += 1;
+      result.skippedDetails.push({
+        row: rowNumber,
+        key: name,
+        reason: `Harga sparepart ini untuk ${month}/${year} sudah ada`,
+      });
+      continue;
+    }
+
+    try {
+      await db.insert(sparePartPrices).values({ sparePartId, price, month, year });
+      existing.add(key);
+      result.inserted += 1;
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: name,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan.",
+      });
+    }
+  }
+
+  logImport(result);
+  return jsonOk(result);
+}
+
 export async function excelTemplate(moduleName: string) {
   const admin = await requireAdmin();
   if (!admin.ok) return admin.response;
@@ -836,6 +1103,32 @@ export async function excelTemplate(moduleName: string) {
     return downloadResponse(
       sheetBuffer([example], PO_HEADERS, "Template"),
       "template-po-product.xlsx"
+    );
+  }
+
+  if (moduleName === PRICE_MODULE) {
+    const example: SheetRow = {
+      Produk: "LED Bulb 12W RGBWW",
+      "Jenis Harga": DEFAULT_PRICE_TYPE,
+      Bulan: "01",
+      Tahun: "2026",
+      Harga: 18500,
+    };
+    return downloadResponse(
+      sheetBuffer([example], PRICE_HEADERS, "Template"),
+      "template-harga-produk.xlsx"
+    );
+  }
+  if (moduleName === SPARE_PART_PRICE_MODULE) {
+    const example: SheetRow = {
+      Sparepart: "Adaptor 12V",
+      Bulan: "01",
+      Tahun: "2026",
+      Harga: 35000,
+    };
+    return downloadResponse(
+      sheetBuffer([example], SPARE_PART_PRICE_HEADERS, "Template"),
+      "template-harga-sparepart.xlsx"
     );
   }
 

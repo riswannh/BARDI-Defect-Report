@@ -582,7 +582,18 @@ seperti harga produk (yang sudah ada di periode tujuan dilewati).
 
 ### Excel
 
-Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
+Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`,
+`purchase-orders`, `prices`, `sparepart-prices`.
+
+**Harga Produk** (`prices`) memakai kolom `Produk`, `Jenis Harga`, `Bulan`, `Tahun`, `Harga`
+(berkas `harga-produk.xlsx`, template `template-harga-produk.xlsx`); **Harga Sparepart**
+(`sparepart-prices`) memakai `Sparepart`, `Bulan`, `Tahun`, `Harga` (`harga-sparepart.xlsx`,
+`template-harga-sparepart.xlsx`). Pada impor, baris dicocokkan lewat **nama** ke Data Master
+Produk/Sparepart — nama yang tidak ada **ditolak dengan alasan** (tidak membuat master baru),
+begitu pula jenis harga asing, bulan/tahun tidak valid, dan harga bukan angka. `Jenis Harga`
+kosong memakai default `Regional Warehouse`. Baris duplikat (produk + jenis + bulan + tahun,
+atau sparepart + bulan + tahun) dilewati. Impor kedua modul ini **admin saja**; ekspor dan
+template mengikuti aturan role seperti endpoint lain.
 
 **PO Product** memakai kolom `PO Number`, `Timestamp`, `Produk`, `Pabrik`, `Quantity`, `PPN`,
 `Price/pcs`, `Currency`, `Total`, `Keterangan` (berkas `po-product.xlsx`, template
@@ -805,7 +816,8 @@ cuma dihitung sebagai informasi), dengan tambahan:
   **tahun**. Pilihan bulan/tahun diambil dari data yang ada (tidak ada periode kosong yang bisa
   dipilih), hasil filter langsung memengaruhi jumlah halaman, dan bila tidak ada yang cocok muncul
   pesan "Tidak ada harga yang cocok dengan filter."
-  Tab ini tidak punya tombol Excel — impor/ekspor harga belum tersedia.
+  Tab ini punya tombol **Template / Import Excel / Export Excel** (modul `prices`, kolom
+  `Produk`, `Jenis Harga`, `Bulan`, `Tahun`, `Harga`) — lihat 8.7.
 - **Tab Sparepart** mengelola master sparepart (Nama + SKU, SKU unik di antara sparepart saja —
   boleh sama dengan SKU produk) dengan pencarian nama/SKU dan Excel seperti tab Produk. Sparepart
   adalah **child dari produk**, tapi satu sparepart boleh dipakai beberapa produk. Kaitan diatur
@@ -836,9 +848,12 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.7 Excel (Impor/Ekspor/Template)
 
-- Tersedia di modul: `products`, `spareparts`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`.
+- Tersedia di modul: `products`, `spareparts`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`, `prices`, `sparepart-prices`.
   `spareparts` memakai kolom `Nama` + `SKU` seperti `products`.
-  **Harga Produk dan Harga Sparepart belum punya Excel** (tombolnya nonaktif di tab itu) — harga diisi lewat UI atau tombol salin periode.
+  **Harga Produk** (`prices`) dan **Harga Sparepart** (`sparepart-prices`) sudah punya Template/Import/Export:
+  kolom `Produk` + `Jenis Harga` + `Bulan` + `Tahun` + `Harga`, dan `Sparepart` + `Bulan` + `Tahun` + `Harga`.
+  Impor mencocokkan **nama** ke Data Master; nama tak dikenal ditolak dengan alasan (master tidak dibuat otomatis),
+  `Jenis Harga` kosong memakai `Regional Warehouse`, baris duplikat dilewati, dan tabel harga langsung dimuat ulang setelah impor.
 - Import: validasi per baris, referensi nama → id (produk/pabrik/problem/status harus ada), duplikat di-skip, hasil detail + CSV.
 - Export role Pabrik: kolom value tidak ikut.
 - **Excel Defect & PO belum punya kolom jenis harga**: baris hasil impor memakai default

@@ -96,6 +96,8 @@ function SearchBox({
 export default function MasterPage() {
   const { t } = useLanguage();
   const [tab, setTab] = useState("products");
+  /** Dinaikkan setelah impor Excel supaya tab harga sparepart memuat ulang. */
+  const [sparePartPriceVersion, setSparePartPriceVersion] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
@@ -303,6 +305,9 @@ export default function MasterPage() {
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
       if (tab === "statuses") reloadStatuses();
+      if (tab === "prices") reloadPrices();
+      // Tabel harga sparepart memuat datanya sendiri di dalam tab itu.
+      if (tab === "sparepart-prices") setSparePartPriceVersion((v) => v + 1);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gagal import.");
     }
@@ -318,8 +323,6 @@ export default function MasterPage() {
     "sparepart-prices": t("sparePartPrice.tab"),
   };
   const tabLabel = tabLabels[tab] ?? t("common.status");
-  /** Tab harga tidak punya template/import/export Excel. */
-  const noExcel = tab === "prices" || tab === "sparepart-prices";
 
   // Harga produk: satu baris = produk + nominal + periode, jadi handler-nya
   // terpisah dari master yang hanya nama. `refId` diisi dari `productId`.
@@ -415,7 +418,6 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/template`)}
-              disabled={noExcel}
             >
               <FileDown className="size-4" /> {t("common.template")}
             </Button>
@@ -423,7 +425,6 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={noExcel}
             >
               <Upload className="size-4" /> {t("common.importExcel")}
             </Button>
@@ -431,7 +432,6 @@ export default function MasterPage() {
               variant="outline"
               size="sm"
               onClick={() => downloadUrl(`/api/excel/${tab}/export`)}
-              disabled={noExcel}
             >
               <Download className="size-4" /> {t("common.exportExcel")}
             </Button>
@@ -719,7 +719,7 @@ export default function MasterPage() {
               )}
             </TabsContent>
             <TabsContent value="sparepart-prices">
-              <SparePartPricesTab />
+              <SparePartPricesTab reloadToken={sparePartPriceVersion} />
             </TabsContent>
             <TabsContent value="statuses">
               <SearchBox
