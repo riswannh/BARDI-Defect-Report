@@ -11,6 +11,7 @@ import {
   Database,
   Users,
   ClipboardList,
+  Headset,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
@@ -32,6 +33,8 @@ const navItems: NavItem[] = [
   },
   // PO Product juga dibuka untuk role Pabrik (read-only, tanpa harga/total).
   { href: "/po", labelKey: "nav.po", icon: ClipboardList },
+  // Ticketing dipakai CS, Tim Produk, dan Tim Pabrik — bukan admin-only.
+  { href: "/tickets", labelKey: "nav.tickets", icon: Headset },
   {
     href: "/defects",
     labelKey: "nav.defects",
