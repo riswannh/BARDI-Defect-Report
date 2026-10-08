@@ -1402,7 +1402,6 @@ const translations = {
   "ticket.forward.confirm": { id: "Teruskan", en: "Forward", zh: "转发" },
   "ticket.forward.badge": { id: "Diteruskan", en: "Forwarded", zh: "已转发" },
   "ticket.forward.done": { id: "{count} lampiran diteruskan ke ruang pabrik.", en: "{count} attachments forwarded to the factory room.", zh: "已转发 {count} 个附件到工厂对话。" },
-  "ticket.chat.forwardedFiles": { id: "Lampiran diteruskan", en: "Forwarded attachments", zh: "已转发的附件" },
   "ticket.list.unread": { id: "Ada pembaruan", en: "New updates", zh: "有新更新" },
   "ticket.action.escalate": { id: "Teruskan ke Tim Pabrik", en: "Forward to Factory Team", zh: "转交工厂团队" },
   "ticket.action.solve": { id: "Tandai Selesai", en: "Mark as Solved", zh: "标记为已解决" },

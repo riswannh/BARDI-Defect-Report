@@ -63,7 +63,9 @@ Semua tabel di `frontend/src/lib/db/schema.ts`, mengikuti pola tabel `defects` (
 
 ## 6. Chat, privasi CS, dan terjemahan
 
-- Thread chat di halaman detail: **dua kartu ruang** — "CS ↔ Tim Produk" (`visibility='all'`) dan "Tim Produk ↔ Tim Pabrik" (`visibility='factory'`); gelembung kiri/kanan, pesan `sistem` untuk kejadian (eskalasi, selesai, buka lagi), segarkan otomatis tiap 10 detik.
+- Thread chat di halaman detail: **dua kartu ruang** — "CS ↔ Tim Produk" (`visibility='all'`) dan "Tim Produk ↔ Tim Pabrik" (`visibility='factory'`); gelembung kiri/kanan, segarkan otomatis tiap 10 detik.
+- **Tanpa log otomatis**: eskalasi, teruskan lampiran, selesai, dan buka lagi **tidak** menulis pesan sistem ke chat (koreksi user, 8 Okt 2026) — teks Indonesia di chat membingungkan tim pabrik; tahap tiket sudah terlihat dari badge status dan kolom waktu di kartu info. Server hanya menyimpan percakapan manusia.
+- **Lampiran hasil teruskan muncul sebagai gelembung chat di ruang tujuan**: salinan lampiran menempel pada satu pesan pengantar tanpa teks (`body = ""`) dari Tim Produk, bukan tumpukan terpisah di atas kotak tulis. Di ruang tujuannya tiap salinan berlabel "Diteruskan" dan disimpan di server (bukan Drive).
 - **Penyaringan di server**, bukan di UI: CS hanya menerima ruang `all`, Tim Pabrik hanya ruang `factory`, Tim Produk menerima keduanya. Pesan/lampiran ruang `factory` tidak pernah masuk respons untuk user CS.
 - **Relay permintaan pabrik ke CS**: Tim Produk menuliskan permintaan pabrik di ruang `all` supaya CS membacanya, jadi CS tetap boleh mengirim pesan di ruang `all` setelah tiket dieskalasi (ruang CS tidak dikunci).
 - **Terjemahan per bubble**: tiap gelembung punya aksi "Terjemahkan ke <bahasa UI aktif>" (mengikuti bahasa aktif di `frontend/src/lib/i18n.ts`); hasil tampil di bawah teks asli + tombol sembunyikan, teks asli tidak pernah ditimpa.
@@ -93,7 +95,7 @@ Semua route lewat `requireUser()` (`frontend/src/lib/api/guard.ts:35`); hapus ti
 - Tidak menyentuh modul Defect/Sales/PO yang sudah jalan kecuali membaca `GET /api/defects` (sudah ada, `frontend/src/lib/api/records.ts:419-424`).
 - Tidak ada master baru: Produk, Pabrik, Defect memakai data yang sudah ada.
 - Tidak memakai library baru untuk unggah berkas (dialirkan manual) dan tidak memakai paket Google baru (`googleapis` tidak ada; akses Drive memakai `node:crypto` + `fetch` seperti modul gsheet).
-- Riwayat chat tidak boleh diubah/dihapus (hanya pesan sistem yang dibuat server).
+- Riwayat chat tidak boleh dihapus; pesan hanya boleh diubah oleh penulisnya (server mencatat `editedAt`).
 
 ## 9. Fase 0 — Frontend pratinjau (yang sedang dikerjakan)
 

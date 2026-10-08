@@ -224,7 +224,6 @@ export function seedPreview(
       messages: [
         { id: 3, author: "cs", team: "cs", body: "Unit kedua bulan ini dari toko yang sama.", kind: "chat", visibility: "all", createdAt: nowIso(-72) },
         { id: 4, author: "produk", team: "produk", body: "Kami sudah uji 2 unit, gejalanya sama. Kami eskalasi ke pabrik.", kind: "chat", visibility: "all", createdAt: nowIso(-21) },
-        { id: 5, author: "sistem", team: "produk", body: "Dieskalasi ke Tim Pabrik — dengan 2 defect terkait.", kind: "sistem", visibility: "factory", createdAt: nowIso(-20) },
         { id: 6, author: "produk", team: "produk", body: "Pabrik, mohon dicek modul speaker batch ini.", kind: "chat", visibility: "factory", createdAt: nowIso(-19), replyToId: null },
         { id: 7, author: "pabrik", team: "pabrik", body: "收到，我们检查同一批次的扬声器模块。", kind: "chat", visibility: "factory", createdAt: nowIso(-2), replyToId: 6 },
         { id: 12, author: "produk", team: "produk", body: "Pabrik minta foto kondisi kabel dalam unit. Bisa dibantu minta ke customer?", kind: "chat", visibility: "all", createdAt: nowIso(-1), editedAt: nowIso(-1) },
@@ -234,8 +233,8 @@ export function seedPreview(
         // Lampiran CS (ruang all) + salinan yang sudah diteruskan Tim Produk ke ruang pabrik.
         { id: 3, fileName: "rekaman-kresek.mp3", mime: "audio/mpeg", size: 1_204_882, storage: "server", visibility: "all", messageId: 3 },
         { id: 4, fileName: "foto-speaker.jpg", mime: "image/jpeg", size: 604_120, storage: "server", visibility: "all", messageId: 3 },
-        { id: 6, fileName: "rekaman-kresek.mp3", mime: "audio/mpeg", size: 1_204_882, storage: "server", visibility: "factory", forwardedFromId: 3 },
-        { id: 7, fileName: "foto-speaker.jpg", mime: "image/jpeg", size: 604_120, storage: "server", visibility: "factory", forwardedFromId: 4 },
+        { id: 6, fileName: "rekaman-kresek.mp3", mime: "audio/mpeg", size: 1_204_882, storage: "server", visibility: "factory", forwardedFromId: 3, messageId: 6 },
+        { id: 7, fileName: "foto-speaker.jpg", mime: "image/jpeg", size: 604_120, storage: "server", visibility: "factory", forwardedFromId: 4, messageId: 6 },
       ],
       defects: defectA.defectId ? [defectA, defectB.defectId ? defectB : defectA] : [],
       unread: 2,
@@ -261,9 +260,9 @@ export function seedPreview(
       messages: [
         { id: 8, author: "cs", team: "cs", body: "Customer minta unit diganti kalau tidak bisa diperbaiki.", kind: "chat", visibility: "all", createdAt: nowIso(-240) },
         { id: 9, author: "produk", team: "produk", body: "Kami kirim baut pengunci versi baru.", kind: "chat", visibility: "all", createdAt: nowIso(-90) },
-        { id: 10, author: "sistem", team: "produk", body: "Tiket ditandai selesai oleh Tim Produk.", kind: "sistem", visibility: "all", createdAt: nowIso(-60) },
+        { id: 10, author: "produk", team: "produk", body: "Baut pengunci sudah diganti, unit kembali normal.", kind: "chat", visibility: "all", createdAt: nowIso(-60) },
       ],
-      attachments: [{ id: 5, fileName: "foto-baut.jpg", mime: "image/jpeg", size: 512_004, storage: "drive", visibility: "all" }],
+      attachments: [{ id: 5, fileName: "foto-baut.jpg", mime: "image/jpeg", size: 512_004, storage: "drive", visibility: "all", messageId: 8 }],
       defects: [],
       unread: 0,
     },
@@ -454,6 +453,20 @@ export function forwardAttachments(ticketId: number, attachmentIds: number[], to
   const sources = ticket.attachments.filter(
     (item) => attachmentIds.includes(item.id) && item.visibility !== to && item.forwardedFromId === undefined,
   );
+  if (sources.length === 0) return 0;
+  const stamp = nowIso();
+  // Salinan menempel pada pesan pengantar tanpa teks supaya muncul sebagai bubble
+  // di dalam alur chat (bukan tumpukan terpisah di atas kotak tulis).
+  const bridgeId = nextMessageId++;
+  ticket.messages.push({
+    id: bridgeId,
+    author: "produk",
+    team: "produk",
+    body: "",
+    kind: "chat",
+    visibility: to,
+    createdAt: stamp,
+  });
   for (const source of sources) {
     ticket.attachments.push({
       ...source,
@@ -461,24 +474,11 @@ export function forwardAttachments(ticketId: number, attachmentIds: number[], to
       visibility: to,
       storage: "server",
       forwardedFromId: source.id,
-      // Salinan berdiri sendiri di ruang tujuan (bukan menempel ke pesan ruang asal).
-      messageId: undefined,
+      messageId: bridgeId,
     });
   }
-  if (sources.length > 0) {
-    const stamp = nowIso();
-    ticket.messages.push({
-      id: nextMessageId++,
-      author: "sistem",
-      team: "produk",
-      body: `Tim Produk meneruskan ${sources.length} lampiran dari CS ke Tim Pabrik.`,
-      kind: "sistem",
-      visibility: to,
-      createdAt: stamp,
-    });
-    ticket.updatedAt = stamp;
-    ticket.unread += 1;
-  }
+  ticket.updatedAt = stamp;
+  ticket.unread += 1;
   return sources.length;
 }
 
@@ -510,18 +510,8 @@ export function escalate(
   // Salinan lampiran ke server baru terjadi di titik ini (koreksi user).
   ticket.attachments = ticket.attachments.map((a) => ({ ...a, storage: "server" }));
   ticket.defects = input.defects;
-  const codes = input.defects.map((d) => d.codeGaransi).join(", ");
-  ticket.messages.push({
-    id: nextMessageId++,
-    author: "sistem",
-    team: "produk",
-    body: input.defects.length
-      ? `Dieskalasi ke Tim Pabrik — dengan ${input.defects.length} defect terkait: ${codes}.`
-      : "Dieskalasi ke Tim Pabrik.",
-    kind: "sistem",
-    visibility: "factory",
-    createdAt: stamp,
-  });
+  // Tanpa catatan log otomatis ("Dieskalasi ke Tim Pabrik ..."): teks Indonesia
+  // membingungkan tim pabrik; tahap tiket sudah terlihat dari badge di kepala tiket.
   if (input.note.trim()) {
     ticket.messages.push({
       id: nextMessageId++,
@@ -550,16 +540,6 @@ export function solveTicket(ticketId: number, author = "produk"): void {
   ticket.stage = "selesai";
   ticket.solvedAt = stamp;
   ticket.updatedAt = stamp;
-  ticket.messages.push({
-    id: nextMessageId++,
-    author: "sistem",
-    team: "produk",
-    body: "Tiket ditandai selesai.",
-    kind: "sistem",
-    // Tiket yang selesai dari jalur pabrik tetap tertutup untuk CS.
-    visibility: ticket.escalatedAt ? "factory" : "all",
-    createdAt: stamp,
-  });
   void author;
 }
 
@@ -570,15 +550,6 @@ export function reopenTicket(ticketId: number): void {
   ticket.stage = ticket.escalatedAt ? "pabrik" : "produk";
   ticket.solvedAt = null;
   ticket.updatedAt = stamp;
-  ticket.messages.push({
-    id: nextMessageId++,
-    author: "sistem",
-    team: "produk",
-    body: "Tiket dibuka lagi.",
-    kind: "sistem",
-    visibility: ticket.escalatedAt ? "factory" : "all",
-    createdAt: stamp,
-  });
 }
 
 export function removeTicket(ticketId: number): void {

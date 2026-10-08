@@ -101,8 +101,6 @@ function ChatRoom({
   const shownCount = Math.min(windowCount, total);
   const shown = messages.slice(total - shownCount);
   const filesFor = (messageId: number) => attachments.filter((item) => item.messageId === messageId);
-  // Lampiran hasil teruskan tidak menempel pada pesan ruang asal → bubble sendiri.
-  const forwardedFiles = attachments.filter((item) => item.messageId === undefined);
 
   // Muat pesan lama: jaga posisi baca (tinggi yang hilang dikompensasi).
   useEffect(() => {
@@ -185,17 +183,19 @@ function ChatRoom({
               const files = filesFor(message.id);
               return (
                 <div key={message.id} className={cn("flex flex-col gap-2", own ? "items-end" : "items-start")}>
-                  <TicketMessageBubble
-                    message={message}
-                    own={own}
-                    quoted={message.replyToId ? (messages.find((item) => item.id === message.replyToId) ?? null) : null}
-                    canEdit={own && message.kind === "chat"}
-                    canTranslate={canTranslate}
-                    highlight={highlight === message.id}
-                    onEdit={onEdit}
-                    onReply={(messageId) => setReplyTo(messageId)}
-                    onJumpToQuoted={jumpToQuoted}
-                  />
+                  {message.body.trim().length > 0 && (
+                    <TicketMessageBubble
+                      message={message}
+                      own={own}
+                      quoted={message.replyToId ? (messages.find((item) => item.id === message.replyToId) ?? null) : null}
+                      canEdit={own && message.kind === "chat"}
+                      canTranslate={canTranslate}
+                      highlight={highlight === message.id}
+                      onEdit={onEdit}
+                      onReply={(messageId) => setReplyTo(messageId)}
+                      onJumpToQuoted={jumpToQuoted}
+                    />
+                  )}
                   {files.length > 0 && (
                     <div className={cn("flex flex-col gap-2", own ? "items-end" : "items-start")}>
                       {files.map((file) => (
@@ -206,15 +206,6 @@ function ChatRoom({
                 </div>
               );
             })}
-
-            {forwardedFiles.length > 0 && (
-              <div className="flex flex-col gap-2 border-t pt-3">
-                <p className="text-xs font-medium text-muted-foreground">{t("ticket.chat.forwardedFiles")}</p>
-                {forwardedFiles.map((file) => (
-                  <TicketAttachmentBubble key={file.id} attachment={file} />
-                ))}
-              </div>
-            )}
           </div>
         )}
 
