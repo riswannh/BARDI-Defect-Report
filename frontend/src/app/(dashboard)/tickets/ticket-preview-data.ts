@@ -235,6 +235,8 @@ export function seedPreview(
         { id: 4, fileName: "foto-speaker.jpg", mime: "image/jpeg", size: 604_120, storage: "server", visibility: "all", messageId: 3 },
         { id: 6, fileName: "rekaman-kresek.mp3", mime: "audio/mpeg", size: 1_204_882, storage: "server", visibility: "factory", forwardedFromId: 3, messageId: 6 },
         { id: 7, fileName: "foto-speaker.jpg", mime: "image/jpeg", size: 604_120, storage: "server", visibility: "factory", forwardedFromId: 4, messageId: 6 },
+        // Lampiran buatan Tim Pabrik sendiri: kandidat "Teruskan lampiran pabrik ke CS".
+        { id: 8, fileName: "laporan-inspeksi-batch.pdf", mime: "application/pdf", size: 248_320, storage: "server", visibility: "factory", messageId: 7 },
       ],
       defects: defectA.defectId ? [defectA, defectB.defectId ? defectB : defectA] : [],
       unread: 2,

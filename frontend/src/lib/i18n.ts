@@ -1402,6 +1402,14 @@ const translations = {
   "ticket.forward.confirm": { id: "Teruskan", en: "Forward", zh: "转发" },
   "ticket.forward.badge": { id: "Diteruskan", en: "Forwarded", zh: "已转发" },
   "ticket.forward.done": { id: "{count} lampiran diteruskan ke ruang pabrik.", en: "{count} attachments forwarded to the factory room.", zh: "已转发 {count} 个附件到工厂对话。" },
+  "ticket.forward.actionToCs": { id: "Teruskan lampiran pabrik ke CS", en: "Forward factory attachments to CS", zh: "转发工厂附件给客服" },
+  "ticket.forward.titleToCs": { id: "Teruskan Lampiran ke CS", en: "Forward Attachments to CS", zh: "转发附件给客服" },
+  "ticket.forward.descriptionToCs": {
+    id: "Lampiran dari Tim Pabrik disalin ke ruang CS ↔ Tim Produk supaya CS bisa membacanya.",
+    en: "Attachments from the Factory Team are copied into the CS ↔ Product Team room so CS can read them.",
+    zh: "工厂团队的附件将复制到客服 ↔ 产品团队对话，方便客服查看。",
+  },
+  "ticket.forward.doneToCs": { id: "{count} lampiran diteruskan ke ruang CS.", en: "{count} attachments forwarded to the CS room.", zh: "已转发 {count} 个附件到客服对话。" },
   "ticket.list.unread": { id: "Ada pembaruan", en: "New updates", zh: "有新更新" },
   "ticket.action.escalate": { id: "Teruskan ke Tim Pabrik", en: "Forward to Factory Team", zh: "转交工厂团队" },
   "ticket.action.solve": { id: "Tandai Selesai", en: "Mark as Solved", zh: "标记为已解决" },
@@ -1487,6 +1495,11 @@ const translations = {
     id: "Terjemahan contoh — Fase 2 memakai penerjemah server BARDI.",
     en: "Sample translation — Phase 2 uses the BARDI server translator.",
     zh: "示例翻译 — 第二阶段使用 BARDI 服务器翻译。",
+  },
+  "ticket.translate.cardNotice": {
+    id: "Judul, penjelasan kendala, kronologi, dan solusi yang sudah dicoba ditampilkan dalam bahasa terjemahan contoh.",
+    en: "Title, problem description, chronology, and tried solutions are shown in sample translation.",
+    zh: "标题、问题说明、时间线和已尝试的解决方案均以示例翻译显示。",
   },
   "ticket.translate.sampleOnly": {
     id: "(contoh) teks terjemahan belum tersedia untuk pesan ini.",

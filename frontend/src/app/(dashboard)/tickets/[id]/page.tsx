@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Forward, Paperclip, RotateCcw, Send, Upload } from "lucide-react";
+import { ArrowLeft, Forward, Languages, Paperclip, RotateCcw, Send, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import { TicketAttachmentBubble } from "../ticket-attachment-bubble";
 import { TicketStageBadge } from "../ticket-badges";
 import { TicketDefectList, TicketDefectPicker, type DefectPickerRow } from "../ticket-defect-picker";
 import { TicketMessageBubble } from "../ticket-message-bubble";
+import { translationSample } from "../ticket-translate";
 import {
   addMessage,
   editMessage,
@@ -63,6 +64,7 @@ function ChatRoom({
   viewer,
   canPost,
   canForward,
+  forwardLabel,
   canTranslate,
   draft,
   onDraftChange,
@@ -78,8 +80,10 @@ function ChatRoom({
   attachments: TicketAttachment[];
   viewer: PreviewViewer;
   canPost: boolean;
-  /** Tim Produk: teruskan lampiran dari ruang CS ke ruang pabrik. */
+  /** Tim Produk: teruskan lampiran lintas ruang (CS -> pabrik atau pabrik -> CS). */
   canForward?: boolean;
+  /** Label tombol teruskan, mengikuti arah ruang. */
+  forwardLabel?: string;
   /** Translate hanya tersedia di ruang Tim Produk ↔ Tim Pabrik. */
   canTranslate?: boolean;
   draft: string;
@@ -246,7 +250,7 @@ function ChatRoom({
               {canForward && (
                 <Button variant="outline" size="sm" onClick={() => onForward?.()}>
                   <Forward className="size-4" />
-                  {t("ticket.forward.action")}
+                  {forwardLabel ?? t("ticket.forward.action")}
                 </Button>
               )}
             </div>
@@ -267,7 +271,11 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function TicketDetailPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  // Terjemahan isi kartu info untuk tim pabrik (Fase 2: POST /api/translate).
+  const [cardTranslated, setCardTranslated] = useState(false);
+  const tr = (text: string) =>
+    cardTranslated ? (translationSample(text, language) ?? t("ticket.translate.sampleOnly")) : text;
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -327,6 +335,8 @@ export default function TicketDetailPage() {
   const [drafts, setDrafts] = useState<Record<TicketVisibility, string>>({ all: "", factory: "" });
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardIds, setForwardIds] = useState<number[]>([]);
+  // Arah teruskan: "toFactory" = lampiran CS ke ruang pabrik, "toCs" = lampiran pabrik ke ruang CS.
+  const [forwardDirection, setForwardDirection] = useState<"toFactory" | "toCs">("toFactory");
   const [escalateAttachmentIds, setEscalateAttachmentIds] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileRoomRef = useRef<TicketVisibility>("all");
@@ -377,6 +387,11 @@ export default function TicketDetailPage() {
   const csForwardable = ticket.attachments.filter(
     (item) => item.visibility === "all" && item.forwardedFromId === undefined,
   );
+  /** Lampiran buatan Tim Pabrik yang bisa diteruskan Tim Produk ke ruang CS. */
+  const factoryForwardable = ticket.attachments.filter(
+    (item) => item.visibility === "factory" && item.forwardedFromId === undefined,
+  );
+  const forwardCandidates = forwardDirection === "toFactory" ? csForwardable : factoryForwardable;
 
   const activeFactoryId = escalateFactoryId
     ? Number(escalateFactoryId)
@@ -409,11 +424,18 @@ export default function TicketDetailPage() {
     );
   };
 
+  const openForward = (direction: "toFactory" | "toCs") => {
+    setForwardDirection(direction);
+    setForwardIds([]);
+    setForwardOpen(true);
+  };
+
   const handleForward = () => {
-    const count = forwardAttachments(ticket.id, forwardIds, "factory");
+    const toFactory = forwardDirection === "toFactory";
+    const count = forwardAttachments(ticket.id, forwardIds, toFactory ? "factory" : "all");
     setForwardOpen(false);
     setForwardIds([]);
-    if (count > 0) toast.success(t("ticket.forward.done", { count }));
+    if (count > 0) toast.success(t(toFactory ? "ticket.forward.done" : "ticket.forward.doneToCs", { count }));
     refresh();
   };
 
@@ -481,10 +503,18 @@ export default function TicketDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <Card size="sm">
-            <CardHeader>
-              <CardTitle>{ticket.title}</CardTitle>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              {/* Inline: varian kartu `size="sm"` mengunci CardTitle ke text-sm. */}
+              <CardTitle className="pr-2" style={{ fontSize: "1.5rem", lineHeight: "2rem" }}>{tr(ticket.title)}</CardTitle>
+              {viewer.team === "pabrik" && (
+                <Button variant="outline" size="sm" onClick={() => setCardTranslated((prev) => !prev)}>
+                  <Languages className="size-4" />
+                  {t(cardTranslated ? "ticket.translate.original" : "ticket.translate.action")}
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
+              {cardTranslated && <p className="text-xs text-muted-foreground">{t("ticket.translate.cardNotice")}</p>}
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <InfoRow label={t("common.product")} value={ticket.productName} />
                 <InfoRow label="Virtual ID" value={ticket.virtualId} />
@@ -496,15 +526,15 @@ export default function TicketDetailPage() {
 
               <div className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">{t("ticket.detail.problemDetail")}</p>
-                <p className="whitespace-pre-wrap text-sm">{ticket.problemDetail}</p>
+                <p className="whitespace-pre-wrap text-sm">{tr(ticket.problemDetail)}</p>
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">{t("ticket.detail.chronology")}</p>
-                <p className="whitespace-pre-wrap text-sm">{ticket.chronology || "-"}</p>
+                <p className="whitespace-pre-wrap text-sm">{ticket.chronology ? tr(ticket.chronology) : "-"}</p>
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-xs text-muted-foreground">{t("ticket.detail.triedSolutions")}</p>
-                <p className="whitespace-pre-wrap text-sm">{ticket.triedSolutions || "-"}</p>
+                <p className="whitespace-pre-wrap text-sm">{ticket.triedSolutions ? tr(ticket.triedSolutions) : "-"}</p>
               </div>
             </CardContent>
           </Card>
@@ -522,6 +552,9 @@ export default function TicketDetailPage() {
               onDraftChange={(value) => setDrafts((prev) => ({ ...prev, all: value }))}
               onSend={(replyToId) => handleSend("all", replyToId)}
               onEdit={handleEdit}
+              canForward={viewer.team === "produk" && ticket.stage !== "produk"}
+              forwardLabel={t("ticket.forward.actionToCs")}
+              onForward={() => openForward("toCs")}
               onAttach={() => {
                 fileRoomRef.current = "all";
                 fileInputRef.current?.click();
@@ -544,10 +577,8 @@ export default function TicketDetailPage() {
               onEdit={handleEdit}
               canTranslate
               canForward={viewer.team === "produk"}
-              onForward={() => {
-                setForwardIds([]);
-                setForwardOpen(true);
-              }}
+              forwardLabel={t("ticket.forward.action")}
+              onForward={() => openForward("toFactory")}
               onAttach={() => {
                 fileRoomRef.current = "factory";
                 fileInputRef.current?.click();
@@ -704,14 +735,16 @@ export default function TicketDetailPage() {
       <Dialog open={forwardOpen} onOpenChange={setForwardOpen}>
         <DialogContent className="grid-cols-1 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("ticket.forward.title")}</DialogTitle>
-            <DialogDescription>{t("ticket.forward.description")}</DialogDescription>
+            <DialogTitle>{t(forwardDirection === "toFactory" ? "ticket.forward.title" : "ticket.forward.titleToCs")}</DialogTitle>
+            <DialogDescription>
+              {t(forwardDirection === "toFactory" ? "ticket.forward.description" : "ticket.forward.descriptionToCs")}
+            </DialogDescription>
           </DialogHeader>
-          {csForwardable.length === 0 ? (
+          {forwardCandidates.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("ticket.forward.empty")}</p>
           ) : (
             <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
-              {csForwardable.map((file) => (
+              {forwardCandidates.map((file) => (
                 <TicketAttachmentBubble
                   key={file.id}
                   attachment={file}
