@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | What this is | A plain-language guide to the pages a factory account can use in the BARDI portal |
-| Version | 2.0 |
+| Version | 2.1 |
 | Who it is for | The factory team in China, and anyone helping them get started |
 | Language | Interface available in English and 中文 (Chinese) |
 
@@ -32,6 +32,9 @@ belongs to your factory only. Another factory's numbers never appear on your pag
 Prefer Chinese? Click the globe icon in the top-right corner and choose **中文**. Your choice is
 remembered the next time you sign in.
 
+![Language switcher (English)](./06-language-switcher-en.png)
+![Language switcher (中文)](./06-language-switcher-zh.png)
+
 ## 3. The two pages in this guide
 
 - **Report** — defect and sales analysis for your products.
@@ -40,8 +43,8 @@ remembered the next time you sign in.
 You open them from the menu on the left side of the screen. Whatever page you are on, the portal only
 ever shows your own factory's information — nothing from another factory appears here.
 
-![Report overview (English)](./en-01-report-overview.png)
-![Report overview (中文)](./zh-01-report-overview.png)
+![Report overview (English)](./01-report-overview-en.png)
+![Report overview (中文)](./01-report-overview-zh.png)
 
 ---
 
@@ -49,7 +52,7 @@ ever shows your own factory's information — nothing from another factory appea
 
 This is the page to open when you want to know how your products are doing.
 
-![Report, full page (English)](./en-02-report-full.png)
+![Report, full page (English)](./02-report-full-en.png)
 
 ### 4.1 Choose the period
 
@@ -92,17 +95,17 @@ one product quickly, and use the page numbers if you have many products.
 
 **Click a product row** to open a pop-up with that product's defect list for the period.
 
-![Recap by Product (English)](./en-03-report-recap.png)
+![Recap by Product (English)](./03-report-recap-en.png)
 
 **Click a defect row inside the pop-up** and you get the full detail of that one defect — warranty code,
 date and time, product, factory, problem, status, quantity, and any photo or video attached.
 
-![Product detail pop-up (English)](./en-04-report-product-detail.png)
+![Product detail pop-up (English)](./04-report-product-popup-en.png)
 
 Same two screens in Chinese:
 
-![Recap by Product (中文)](./zh-03-report-recap.png)
-![Product detail pop-up (中文)](./zh-04-report-product-detail.png)
+![Recap by Product (中文)](./03-report-recap-zh.png)
+![Product detail pop-up (中文)](./04-report-product-popup-zh.png)
 
 ---
 
@@ -110,13 +113,13 @@ Same two screens in Chinese:
 
 This page lists the purchase orders BARDI placed for your products.
 
-![PO Product (English)](./en-05-po-product.png)
+![PO Product (English)](./05-po-product-en.png)
 
 - The table shows six columns: **PO NUMBER, TIMESTAMP, REMARKS, PRODUCT NAME, FACTORY, QUANTITY**.
 - Use the filters above the table to narrow it down by product, month, year, or remarks.
 - The page is for reading: it simply tells you what was ordered, when, and how many units.
 
-![PO Product (中文)](./zh-05-po-product.png)
+![PO Product (中文)](./05-po-product-zh.png)
 
 ---
 
@@ -124,11 +127,8 @@ This page lists the purchase orders BARDI placed for your products.
 
 - **Your own factory only.** The portal always shows your factory's products and orders; no other
   factory's data is visible to you.
-- **Language.** English and 中文, switchable at any time from the globe icon.
-
-  ![Language switcher (English)](./en-13-language-switcher.png)
-  ![Language switcher (中文)](./zh-13-language-switcher.png)
-
+- **Language.** English and 中文, switchable at any time from the globe icon (see the picture in
+  section 2).
 - **Works on the factory network.** The portal does not need access to Google services to open, so it
   works from the factory's own network.
 - **If a page looks empty**, check the period selector first — a month with no sales or no defects shows
@@ -146,11 +146,11 @@ This page lists the purchase orders BARDI placed for your products.
 
 ## 8. Screenshot index
 
-| File | What it shows |
-| --- | --- |
-| `en-01` / `zh-01` | Report — the top of the page (period selector and cards) |
-| `en-02` / `zh-02` | Report, full page with cards and charts |
-| `en-03` / `zh-03` | Report — Recap by Product table |
-| `en-04` / `zh-04` | Report — product detail pop-up |
-| `en-05` / `zh-05` | PO Product |
-| `en-13` / `zh-13` | Language switcher (English / 中文) |
+| Picture | Shown in | What it shows |
+| --- | --- | --- |
+| `01-report-overview-en` / `-zh` | Section 3 | Report — top of the page (period selector and cards) |
+| `02-report-full-en` / `-zh` | Section 4 | Report — the full page with cards and charts |
+| `03-report-recap-en` / `-zh` | Section 4.4 | Report — the Recap by Product table |
+| `04-report-product-popup-en` / `-zh` | Section 4.4 | The product pop-up with its defect list |
+| `05-po-product-en` / `-zh` | Section 5 | PO Product |
+| `06-language-switcher-en` / `-zh` | Section 2 | The globe icon and the language choices |
