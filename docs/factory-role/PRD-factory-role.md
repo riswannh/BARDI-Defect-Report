@@ -93,19 +93,28 @@ The table at the bottom lists your products one row at a time: **Product, Defect
 Replacement, Defect Difference, Ratio**. Click any column title to sort, type in the search box to find
 one product quickly, and use the page numbers if you have many products.
 
-**Click a product row** to open a pop-up with that product's defect list for the period.
+Two clicks take you from the table to one single defect.
+
+**Step 1 — click a product row.** A pop-up opens with the defect list of that product for the period: one
+row per defect, with the warranty code, date and time, problem, status, and quantity.
 
 ![Recap by Product (English)](./03-report-recap-en.png)
-
-**Click a defect row inside the pop-up** and you get the full detail of that one defect — warranty code,
-date and time, product, factory, problem, status, quantity, and any photo or video attached.
-
 ![Product detail pop-up (English)](./04-report-product-popup-en.png)
 
-Same two screens in Chinese:
+**Step 2 — click a defect row inside that pop-up.** A second pop-up opens with the full detail of that one
+defect: **warranty code, timestamp, product, factory, problem, status, quantity**, and the photo or video
+attached to it, if there is one — click the **Photo** or **Video** link to open the file in a new tab.
+
+![Defect detail pop-up (English)](./07-defect-detail-en.png)
+
+Close the second pop-up with the **X** or the **Esc** key and you are back at the product's defect list —
+that table stays open, so you can open the next defect straight away.
+
+The same three screens in Chinese:
 
 ![Recap by Product (中文)](./03-report-recap-zh.png)
 ![Product detail pop-up (中文)](./04-report-product-popup-zh.png)
+![Defect detail pop-up (中文)](./07-defect-detail-zh.png)
 
 ---
 
@@ -152,5 +161,6 @@ This page lists the purchase orders BARDI placed for your products.
 | `02-report-full-en` / `-zh` | Section 4 | Report — the full page with cards and charts |
 | `03-report-recap-en` / `-zh` | Section 4.4 | Report — the Recap by Product table |
 | `04-report-product-popup-en` / `-zh` | Section 4.4 | The product pop-up with its defect list |
+| `07-defect-detail-en` / `-zh` | Section 4.4 | The defect detail pop-up that opens from a defect row |
 | `05-po-product-en` / `-zh` | Section 5 | PO Product |
 | `06-language-switcher-en` / `-zh` | Section 2 | The globe icon and the language choices |
