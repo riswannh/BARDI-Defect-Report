@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Languages } from "lucide-react";
+import { Languages, Pencil, Reply } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -36,13 +37,37 @@ const SAMPLE: Record<string, { id: string; en: string; zh: string }> = {
   },
 };
 
-export function TicketMessageBubble({ message, own }: { message: TicketMessage; own: boolean }) {
+export function TicketMessageBubble({
+  message,
+  own,
+  quoted,
+  canEdit = false,
+  canTranslate = false,
+  highlight = false,
+  onEdit,
+  onReply,
+  onJumpToQuoted,
+}: {
+  message: TicketMessage;
+  own: boolean;
+  quoted?: TicketMessage | null;
+  /** Hanya pesan sendiri dan belum dihapus yang bisa diubah. */
+  canEdit?: boolean;
+  /** Translate hanya ada di ruang Tim Produk ↔ Tim Pabrik. */
+  canTranslate?: boolean;
+  highlight?: boolean;
+  onEdit?: (messageId: number, body: string) => void;
+  onReply?: (messageId: number) => void;
+  onJumpToQuoted?: (messageId: number) => void;
+}) {
   const { t, language } = useLanguage();
   const [translated, setTranslated] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.body);
 
   if (message.kind === "sistem") {
     return (
-      <div className="flex justify-center py-1">
+      <div id={`ticket-message-${message.id}`} className="flex justify-center py-1">
         <p className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{message.body}</p>
       </div>
     );
@@ -53,27 +78,89 @@ export function TicketMessageBubble({ message, own }: { message: TicketMessage; 
     setTranslated(sample ? sample[language] : t("ticket.translate.sampleOnly"));
   };
 
+  const saveEdit = () => {
+    if (!draft.trim()) return;
+    onEdit?.(message.id, draft);
+    setEditing(false);
+  };
+
   return (
-    <div className={cn("flex flex-col gap-1", own ? "items-end" : "items-start")}>
+    <div
+      id={`ticket-message-${message.id}`}
+      className={cn("flex flex-col gap-1 scroll-mt-4", own ? "items-end" : "items-start")}
+    >
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="font-medium">{t(teamLabelKey(message.team))}</span>
         <span>{formatDateTime(message.createdAt)}</span>
+        {message.editedAt && <span className="italic">{t("ticket.chat.edited")}</span>}
       </div>
+
       <div
         className={cn(
-          "max-w-[42rem] rounded-lg border px-3 py-2 text-sm",
+          "flex max-w-[42rem] flex-col gap-2 rounded-lg border px-3 py-2 text-sm",
           own ? "bg-primary/5" : "bg-muted/40",
+          highlight && "ring-2 ring-primary",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">{translated ?? message.body}</p>
-        {translated && (
-          <p className="mt-1 border-t pt-1 text-xs text-muted-foreground">{t("ticket.translate.notice")}</p>
+        {quoted && (
+          <button
+            type="button"
+            onClick={() => onJumpToQuoted?.(quoted.id)}
+            className="flex flex-col gap-0.5 rounded-md border-l-2 border-primary/60 bg-background/70 px-2 py-1 text-left text-xs"
+          >
+            <span className="font-medium text-muted-foreground">{t(teamLabelKey(quoted.team))}</span>
+            <span className="line-clamp-2 text-muted-foreground">{quoted.body}</span>
+          </button>
+        )}
+
+        {editing ? (
+          <div className="flex flex-col gap-2">
+            <Textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} />
+            <div className="flex items-center gap-2">
+              <Button size="xs" onClick={saveEdit} disabled={!draft.trim()}>
+                {t("common.save")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setDraft(message.body);
+                  setEditing(false);
+                }}
+              >
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap break-words">{translated ?? message.body}</p>
+        )}
+
+        {translated && !editing && (
+          <p className="border-t pt-1 text-xs text-muted-foreground">{t("ticket.translate.notice")}</p>
         )}
       </div>
-      <Button variant="ghost" size="xs" onClick={translated ? () => setTranslated(null) : handleTranslate}>
-        <Languages className="size-3.5" />
-        {t(translated ? "ticket.translate.original" : "ticket.translate.action")}
-      </Button>
+
+      <div className="flex items-center gap-1">
+        {onReply && (
+          <Button variant="ghost" size="xs" onClick={() => onReply(message.id)}>
+            <Reply className="size-3.5" />
+            {t("ticket.chat.reply")}
+          </Button>
+        )}
+        {canEdit && !editing && (
+          <Button variant="ghost" size="xs" onClick={() => setEditing(true)}>
+            <Pencil className="size-3.5" />
+            {t("ticket.chat.edit")}
+          </Button>
+        )}
+        {canTranslate && (
+          <Button variant="ghost" size="xs" onClick={translated ? () => setTranslated(null) : handleTranslate}>
+            <Languages className="size-3.5" />
+            {t(translated ? "ticket.translate.original" : "ticket.translate.action")}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

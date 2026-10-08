@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Headset, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -24,6 +25,7 @@ import type { DefectPickerRow } from "./ticket-defect-picker";
 import {
   getTicket,
   linkDefect,
+  markTicketRead,
   removeTicket,
   seedPreview,
   setDefects,
@@ -122,6 +124,7 @@ export default function TicketsPage() {
   const [deleteTarget, setDeleteTarget] = useState<PreviewTicket | null>(null);
 
   const openTicket = (ticket: PreviewTicket) => {
+    markTicketRead(ticket.id);
     const query = new URLSearchParams({ as: viewer.team });
     if (viewer.factoryId) query.set("factoryId", String(viewer.factoryId));
     router.push(`/tickets/${ticket.id}?${query.toString()}`);
@@ -308,7 +311,16 @@ export default function TicketsPage() {
             )}
             {pageRows.map((ticket) => (
               <TableRow key={ticket.id} className="cursor-pointer" onClick={() => openTicket(ticket)}>
-                <TableCell className="font-medium">{ticket.code}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="flex items-center gap-2">
+                    {ticket.code}
+                    {ticket.unread > 0 && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-[11px]">
+                        {t("ticket.list.unread")}
+                      </Badge>
+                    )}
+                  </span>
+                </TableCell>
                 <TableCell className="max-w-64 truncate" title={ticket.title}>
                   {ticket.title}
                 </TableCell>

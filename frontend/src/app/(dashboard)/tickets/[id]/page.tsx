@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Paperclip, RotateCcw, Send, Upload } from "lucide-react";
+import { ArrowLeft, Forward, Paperclip, RotateCcw, Send, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -16,15 +16,19 @@ import { formatDateTime } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import type { Factory, Product } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
-import { TicketAttachmentList } from "../ticket-attachment-list";
+import { cn } from "@/lib/utils";
+import { TicketAttachmentBubble } from "../ticket-attachment-bubble";
 import { TicketStageBadge } from "../ticket-badges";
 import { TicketDefectList, TicketDefectPicker, type DefectPickerRow } from "../ticket-defect-picker";
 import { TicketMessageBubble } from "../ticket-message-bubble";
 import {
   addMessage,
+  editMessage,
   escalate,
+  forwardAttachments,
   getTicket,
   linkDefect,
+  markTicketRead,
   reopenTicket,
   seedPreview,
   setDefects,
@@ -47,6 +51,10 @@ import {
  * diteruskan ke CS lewat ruang `all`. Tim Pabrik tidak pernah melihat ruang CS,
  * dan CS tidak pernah melihat ruang pabrik.
  */
+/** Jendela pesan: tampil 10, muat 10 lagi saat scroll ke atas, batas 50 lalu muat sisa. */
+const WINDOW_START = 10;
+const WINDOW_MAX = 50;
+
 function ChatRoom({
   title,
   hint,
@@ -54,9 +62,13 @@ function ChatRoom({
   attachments,
   viewer,
   canPost,
+  canForward,
+  canTranslate,
   draft,
   onDraftChange,
   onSend,
+  onEdit,
+  onForward,
   onAttach,
 }: {
   title: string;
@@ -66,12 +78,75 @@ function ChatRoom({
   attachments: TicketAttachment[];
   viewer: PreviewViewer;
   canPost: boolean;
+  /** Tim Produk: teruskan lampiran dari ruang CS ke ruang pabrik. */
+  canForward?: boolean;
+  /** Translate hanya tersedia di ruang Tim Produk ↔ Tim Pabrik. */
+  canTranslate?: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
-  onSend: () => void;
-  onAttach: () => void;
+  onSend: (replyToId: number | null) => void;
+  onEdit: (messageId: number, body: string) => void;
+  onForward?: () => void;
+  onAttach?: () => void;
 }) {
   const { t } = useLanguage();
+  const listRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<number | null>(null);
+  const pinnedRef = useRef(true);
+  const [windowCount, setWindowCount] = useState(WINDOW_START);
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [highlight, setHighlight] = useState<number | null>(null);
+
+  const total = messages.length;
+  const shownCount = Math.min(windowCount, total);
+  const shown = messages.slice(total - shownCount);
+  const filesFor = (messageId: number) => attachments.filter((item) => item.messageId === messageId);
+  // Lampiran hasil teruskan tidak menempel pada pesan ruang asal → bubble sendiri.
+  const forwardedFiles = attachments.filter((item) => item.messageId === undefined);
+
+  // Muat pesan lama: jaga posisi baca (tinggi yang hilang dikompensasi).
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || anchorRef.current === null) return;
+    el.scrollTop = el.scrollHeight - anchorRef.current;
+    anchorRef.current = null;
+  }, [windowCount]);
+
+  // Pesan baru masuk (polling 10 detik): kalau sedang di bawah, ikut ke bawah.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el || !pinnedRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [total]);
+
+  const loadMore = (count: number) => {
+    const el = listRef.current;
+    if (!el || shownCount >= total) return;
+    anchorRef.current = el.scrollHeight - el.scrollTop;
+    setWindowCount(Math.min(shownCount + count, total));
+  };
+
+  const handleScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    if (el.scrollTop <= 24 && shownCount < total && shownCount < WINDOW_MAX) loadMore(WINDOW_START);
+  };
+
+  const jumpToQuoted = (messageId: number) => {
+    const index = messages.findIndex((item) => item.id === messageId);
+    if (index < 0) return;
+    const needed = total - index;
+    if (needed > shownCount) setWindowCount(needed <= WINDOW_MAX ? needed : total);
+    setHighlight(messageId);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        document.getElementById(`ticket-message-${messageId}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }),
+    );
+    window.setTimeout(() => setHighlight(null), 2500);
+  };
+
   return (
     <Card size="sm">
       <CardHeader>
@@ -80,39 +155,109 @@ function ChatRoom({
       <CardContent className="flex flex-col gap-4">
         <p className="text-xs text-muted-foreground">{hint}</p>
 
-        {messages.length === 0 ? (
+        {total === 0 ? (
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
         ) : (
-          messages.map((message) => (
-            <TicketMessageBubble key={message.id} message={message} own={message.team === viewer.team} />
-          ))
-        )}
+          <div
+            ref={listRef}
+            onScroll={handleScroll}
+            className="flex max-h-[32rem] min-h-[14rem] flex-col gap-4 overflow-y-auto pr-1"
+          >
+            {shownCount < total && (
+              <div className="flex flex-col items-center gap-1 py-1">
+                {shownCount < WINDOW_MAX ? (
+                  <Button variant="ghost" size="xs" onClick={() => loadMore(WINDOW_START)}>
+                    {t("ticket.chat.loadMore")}
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="xs" onClick={() => setWindowCount(total)}>
+                    {t("ticket.chat.loadRest")}
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {t("ticket.chat.window", { shown: shownCount, total })}
+                </p>
+              </div>
+            )}
 
-        {attachments.length > 0 && (
-          <div className="flex flex-col gap-2 border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground">{t("ticket.detail.attachments")}</p>
-            <TicketAttachmentList attachments={attachments} />
-            <p className="text-xs text-muted-foreground">{t("ticket.detail.attachmentRule")}</p>
+            {shown.map((message) => {
+              const own = message.team === viewer.team;
+              const files = filesFor(message.id);
+              return (
+                <div key={message.id} className={cn("flex flex-col gap-2", own ? "items-end" : "items-start")}>
+                  <TicketMessageBubble
+                    message={message}
+                    own={own}
+                    quoted={message.replyToId ? (messages.find((item) => item.id === message.replyToId) ?? null) : null}
+                    canEdit={own && message.kind === "chat"}
+                    canTranslate={canTranslate}
+                    highlight={highlight === message.id}
+                    onEdit={onEdit}
+                    onReply={(messageId) => setReplyTo(messageId)}
+                    onJumpToQuoted={jumpToQuoted}
+                  />
+                  {files.length > 0 && (
+                    <div className={cn("flex flex-col gap-2", own ? "items-end" : "items-start")}>
+                      {files.map((file) => (
+                        <TicketAttachmentBubble key={file.id} attachment={file} own={own} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {forwardedFiles.length > 0 && (
+              <div className="flex flex-col gap-2 border-t pt-3">
+                <p className="text-xs font-medium text-muted-foreground">{t("ticket.chat.forwardedFiles")}</p>
+                {forwardedFiles.map((file) => (
+                  <TicketAttachmentBubble key={file.id} attachment={file} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {canPost && (
           <div className="flex flex-col gap-2 border-t pt-4">
+            {replyTo !== null && (
+              <div className="flex items-center justify-between gap-2 rounded-md border-l-2 border-primary/60 bg-muted/40 px-2 py-1 text-xs">
+                <span className="truncate text-muted-foreground">
+                  {t("ticket.chat.replying")}: {messages.find((item) => item.id === replyTo)?.body}
+                </span>
+                <Button variant="ghost" size="xs" onClick={() => setReplyTo(null)}>
+                  {t("ticket.chat.replyCancel")}
+                </Button>
+              </div>
+            )}
             <Textarea
               rows={2}
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
               placeholder={t("ticket.chat.placeholder")}
             />
-            <div className="flex items-center gap-2">
-              <Button size="sm" onClick={onSend} disabled={!draft.trim()}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  onSend(replyTo);
+                  setReplyTo(null);
+                }}
+                disabled={!draft.trim()}
+              >
                 <Send className="size-4" />
                 {t("ticket.chat.send")}
               </Button>
-              <Button variant="outline" size="sm" onClick={onAttach}>
+              <Button variant="outline" size="sm" onClick={() => onAttach?.()}>
                 <Paperclip className="size-4" />
                 {t("ticket.chat.attach")}
               </Button>
+              {canForward && (
+                <Button variant="outline" size="sm" onClick={() => onForward?.()}>
+                  <Forward className="size-4" />
+                  {t("ticket.forward.action")}
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -189,8 +334,16 @@ export default function TicketDetailPage() {
   const [solveOpen, setSolveOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<TicketVisibility, string>>({ all: "", factory: "" });
+  const [forwardOpen, setForwardOpen] = useState(false);
+  const [forwardIds, setForwardIds] = useState<number[]>([]);
+  const [escalateAttachmentIds, setEscalateAttachmentIds] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileRoomRef = useRef<TicketVisibility>("all");
+
+  // Membuka tiket = pembaruan dianggap terbaca (badge di daftar ikut hilang).
+  useEffect(() => {
+    markTicketRead(ticketId);
+  }, [ticketId]);
 
   if (!seeded) {
     return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
@@ -229,16 +382,47 @@ export default function TicketDetailPage() {
   const showPabrikRoom = !isCs && ticket.stage !== "produk";
   const canPostPabrikRoom = !isCs;
   const authorTeam: TicketTeam = viewer.team;
+  // Lampiran ruang CS yang belum pernah diteruskan ke ruang pabrik.
+  const csForwardable = ticket.attachments.filter(
+    (item) => item.visibility === "all" && item.forwardedFromId === undefined,
+  );
 
   const activeFactoryId = escalateFactoryId
     ? Number(escalateFactoryId)
     : (ticket.factoryId ?? products.find((product) => product.id === ticket.productId)?.factoryId ?? factories[0]?.id ?? null);
 
-  const handleSend = (room: TicketVisibility) => {
+  const handleSend = (room: TicketVisibility, replyToId: number | null) => {
     const body = drafts[room].trim();
     if (!body) return;
-    addMessage(ticket.id, { author: authorTeam, team: authorTeam, body, visibility: room });
+    addMessage(ticket.id, { author: authorTeam, team: authorTeam, body, visibility: room, replyToId });
     setDrafts((prev) => ({ ...prev, [room]: "" }));
+    refresh();
+  };
+
+  const handleEdit = (messageId: number, body: string) => {
+    if (editMessage(ticket.id, messageId, body)) {
+      toast.success(t("ticket.chat.editedToast"));
+      refresh();
+    }
+  };
+
+  const toggleForwardId = (attachmentId: number) => {
+    setForwardIds((prev) =>
+      prev.includes(attachmentId) ? prev.filter((id) => id !== attachmentId) : [...prev, attachmentId],
+    );
+  };
+
+  const toggleEscalateAttachment = (attachmentId: number) => {
+    setEscalateAttachmentIds((prev) =>
+      prev.includes(attachmentId) ? prev.filter((id) => id !== attachmentId) : [...prev, attachmentId],
+    );
+  };
+
+  const handleForward = () => {
+    const count = forwardAttachments(ticket.id, forwardIds, "factory");
+    setForwardOpen(false);
+    setForwardIds([]);
+    if (count > 0) toast.success(t("ticket.forward.done", { count }));
     refresh();
   };
 
@@ -273,10 +457,12 @@ export default function TicketDetailPage() {
       factoryName: factory?.name ?? ticket.factoryName,
       note: escalateNote.trim(),
       defects: pickedDefects,
+      attachmentIds: escalateAttachmentIds,
     });
     setEscalateOpen(false);
     setEscalateNote("");
     setPickedDefects([]);
+    setEscalateAttachmentIds([]);
     refresh();
     toast.success(t("ticket.escalated"));
   };
@@ -343,7 +529,8 @@ export default function TicketDetailPage() {
               canPost={canPostCsRoom}
               draft={drafts.all}
               onDraftChange={(value) => setDrafts((prev) => ({ ...prev, all: value }))}
-              onSend={() => handleSend("all")}
+              onSend={(replyToId) => handleSend("all", replyToId)}
+              onEdit={handleEdit}
               onAttach={() => {
                 fileRoomRef.current = "all";
                 fileInputRef.current?.click();
@@ -362,13 +549,22 @@ export default function TicketDetailPage() {
               canPost={canPostPabrikRoom}
               draft={drafts.factory}
               onDraftChange={(value) => setDrafts((prev) => ({ ...prev, factory: value }))}
-              onSend={() => handleSend("factory")}
+              onSend={(replyToId) => handleSend("factory", replyToId)}
+              onEdit={handleEdit}
+              canTranslate
+              canForward={viewer.team === "produk"}
+              onForward={() => {
+                setForwardIds([]);
+                setForwardOpen(true);
+              }}
               onAttach={() => {
                 fileRoomRef.current = "factory";
                 fileInputRef.current?.click();
               }}
             />
           )}
+
+          <p className="text-xs text-muted-foreground">{t("ticket.detail.attachmentRule")}</p>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -480,6 +676,26 @@ export default function TicketDetailPage() {
               </p>
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("ticket.escalate.attachments")}</Label>
+              <p className="text-xs text-muted-foreground">{t("ticket.escalate.attachmentsHint")}</p>
+              {csForwardable.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("ticket.escalate.attachmentsEmpty")}</p>
+              ) : (
+                <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+                  {csForwardable.map((file) => (
+                    <TicketAttachmentBubble
+                      key={file.id}
+                      attachment={file}
+                      selectable
+                      selected={escalateAttachmentIds.includes(file.id)}
+                      onToggleSelect={toggleEscalateAttachment}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <p className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               {t("ticket.escalate.fileNotice")}
             </p>
@@ -490,6 +706,38 @@ export default function TicketDetailPage() {
               {t("common.cancel")}
             </Button>
             <Button onClick={handleEscalate}>{t("ticket.escalate.confirm")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={forwardOpen} onOpenChange={setForwardOpen}>
+        <DialogContent className="grid-cols-1 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("ticket.forward.title")}</DialogTitle>
+            <DialogDescription>{t("ticket.forward.description")}</DialogDescription>
+          </DialogHeader>
+          {csForwardable.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("ticket.forward.empty")}</p>
+          ) : (
+            <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
+              {csForwardable.map((file) => (
+                <TicketAttachmentBubble
+                  key={file.id}
+                  attachment={file}
+                  selectable
+                  selected={forwardIds.includes(file.id)}
+                  onToggleSelect={toggleForwardId}
+                />
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForwardOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleForward} disabled={forwardIds.length === 0}>
+              {t("ticket.forward.confirm")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
