@@ -10,7 +10,10 @@
 import type { Defect, Factory, Product } from "@/lib/types";
 
 export type TicketStage = "produk" | "pabrik" | "selesai";
-/** Siapa yang boleh melihat pesan/lampiran: semua tim, atau hanya Produk + Pabrik. */
+/**
+ * Ruang percakapan tiket: "all" = CS ↔ Tim Produk, "factory" = Tim Produk ↔ Tim Pabrik.
+ * Tim Produk ikut di dua ruang dan meneruskan permintaan pabrik ke CS.
+ */
 export type TicketVisibility = "all" | "factory";
 export type TicketTeam = "cs" | "produk" | "pabrik";
 export type AttachmentStorage = "drive" | "server" | "lokal";
@@ -122,7 +125,11 @@ export function seedPreview(
   seeded = true;
 
   const product = (index: number) => products[index] ?? { id: index + 1, name: `Produk contoh ${index + 1}` };
-  const factory = (index: number) => factories[index] ?? { id: index + 1, name: `Pabrik contoh ${index + 1}` };
+  // Lewati pabrik "Unknown" (baris placeholder di data asli) supaya tiket contoh
+  // tidak menampilkan nama pabrik palsu.
+  const namedFactories = factories.filter((item) => item.name.trim() && !/^unknown$/i.test(item.name.trim()));
+  const factory = (index: number) =>
+    namedFactories[index] ?? namedFactories[0] ?? factories[index] ?? { id: index + 1, name: `Pabrik contoh ${index + 1}` };
   const p1 = product(0);
   const p2 = product(1);
   const p3 = product(2);
@@ -185,6 +192,7 @@ export function seedPreview(
         { id: 5, author: "sistem", team: "produk", body: "Dieskalasi ke Tim Pabrik — dengan 2 defect terkait.", kind: "sistem", visibility: "factory", createdAt: nowIso(-20) },
         { id: 6, author: "produk", team: "produk", body: "Pabrik, mohon dicek modul speaker batch ini.", kind: "chat", visibility: "factory", createdAt: nowIso(-19) },
         { id: 7, author: "pabrik", team: "pabrik", body: "收到，我们检查同一批次的扬声器模块。", kind: "chat", visibility: "factory", createdAt: nowIso(-2) },
+        { id: 12, author: "produk", team: "produk", body: "Pabrik minta foto kondisi kabel dalam unit. Bisa dibantu minta ke customer?", kind: "chat", visibility: "all", createdAt: nowIso(-1) },
       ],
       attachments: [
         { id: 3, fileName: "rekaman-kresek.mp3", mime: "audio/mpeg", size: 1_204_882, storage: "server", visibility: "factory" },
@@ -257,12 +265,20 @@ export function visibleTickets(viewer: PreviewViewer): PreviewTicket[] {
 }
 
 /** Pesan yang boleh dilihat penonton: CS tidak pernah menerima pesan pasca-eskalasi. */
+/**
+ * Pesan per ruang: CS hanya ruang CS ↔ Tim Produk, Tim Pabrik hanya ruang
+ * Tim Produk ↔ Tim Pabrik, Tim Produk melihat kedua ruang.
+ */
 export function visibleMessages(ticket: PreviewTicket, viewer: PreviewViewer): TicketMessage[] {
-  return ticket.messages.filter((m) => viewer.team !== "cs" || m.visibility === "all");
+  if (viewer.team === "cs") return ticket.messages.filter((m) => m.visibility === "all");
+  if (viewer.team === "pabrik") return ticket.messages.filter((m) => m.visibility === "factory");
+  return ticket.messages;
 }
 
 export function visibleAttachments(ticket: PreviewTicket, viewer: PreviewViewer): TicketAttachment[] {
-  return ticket.attachments.filter((a) => viewer.team !== "cs" || a.visibility === "all");
+  if (viewer.team === "cs") return ticket.attachments.filter((a) => a.visibility === "all");
+  if (viewer.team === "pabrik") return ticket.attachments.filter((a) => a.visibility === "factory");
+  return ticket.attachments;
 }
 
 export function getTicket(id: number): PreviewTicket | undefined {
@@ -333,14 +349,17 @@ export function addMessage(
   const ticket = getTicket(ticketId);
   if (!ticket) return;
   const stamp = nowIso();
-  const hidden = ticket.stage === "pabrik" || ticket.stage === "selesai";
+  // Ruang asal pesan. Pemanggil selalu mengirimnya eksplisit (satu composer per ruang);
+  // cadangan di bawah hanya jaring pengaman.
+  const visibility: TicketVisibility =
+    input.visibility ?? (input.team === "cs" || ticket.stage === "produk" ? "all" : "factory");
   ticket.messages.push({
     id: nextMessageId++,
     author: input.author,
     team: input.team,
     body: input.body,
     kind: input.kind ?? "chat",
-    visibility: input.visibility ?? (hidden && input.team !== "cs" ? "factory" : "all"),
+    visibility,
     createdAt: stamp,
   });
   if (input.attachment) {
@@ -350,7 +369,7 @@ export function addMessage(
       mime: input.attachment.mime,
       size: input.attachment.size,
       storage: "server",
-      visibility: ticket.stage === "pabrik" ? "factory" : "all",
+      visibility,
       objectUrl: input.attachment.objectUrl,
     });
   }
@@ -370,7 +389,7 @@ export function escalate(
   ticket.escalatedAt = stamp;
   ticket.updatedAt = stamp;
   // Salinan lampiran ke server baru terjadi di titik ini (koreksi user).
-  ticket.attachments = ticket.attachments.map((a) => ({ ...a, storage: "server", visibility: "factory" }));
+  ticket.attachments = ticket.attachments.map((a) => ({ ...a, storage: "server" }));
   ticket.defects = input.defects;
   const codes = input.defects.map((d) => d.codeGaransi).join(", ");
   ticket.messages.push({

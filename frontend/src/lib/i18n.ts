@@ -1331,6 +1331,18 @@ const translations = {
   "ticket.detail.chronology": { id: "Kronologi", en: "Chronology", zh: "问题经过" },
   "ticket.detail.triedSolutions": { id: "Solusi yang Sudah Dicoba", en: "Solutions Already Tried", zh: "已尝试的解决方案" },
   "ticket.detail.chat": { id: "Komunikasi Tim", en: "Team Conversation", zh: "团队沟通" },
+  "ticket.room.cs": { id: "CS ↔ Tim Produk", en: "CS ↔ Product Team", zh: "客服 ↔ 产品团队" },
+  "ticket.room.csHint": {
+    id: "Ruang antara CS dan Tim Produk. Tim Pabrik tidak melihat ruang ini.",
+    en: "Room between CS and the Product Team. The Factory Team cannot see this room.",
+    zh: "客服与产品团队之间的对话。工厂团队看不到此对话。",
+  },
+  "ticket.room.pabrik": { id: "Tim Produk ↔ Tim Pabrik", en: "Product Team ↔ Factory Team", zh: "产品团队 ↔ 工厂团队" },
+  "ticket.room.pabrikHint": {
+    id: "Ruang antara Tim Produk dan Tim Pabrik. Kalau pabrik minta sesuatu, Tim Produk meneruskannya ke CS lewat ruang atas.",
+    en: "Room between the Product Team and the Factory Team. If the factory asks for something, the Product Team relays it to CS in the room above.",
+    zh: "产品团队与工厂团队之间的对话。若工厂有要求，产品团队会在上方对话中转达客服。",
+  },
   "ticket.detail.attachments": { id: "Lampiran", en: "Attachments", zh: "附件" },
   "ticket.detail.attachmentRule": {
     id: "Tiket baru disimpan ke Google Drive. Saat diteruskan ke pabrik, berkas disalin ke server BARDI dan dihapus 30 hari setelah tiket selesai.",

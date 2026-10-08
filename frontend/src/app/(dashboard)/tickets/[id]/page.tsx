@@ -32,9 +32,94 @@ import {
   visibleAttachments,
   visibleMessages,
   type PreviewViewer,
+  type TicketAttachment,
   type TicketDefectLink,
+  type TicketMessage,
   type TicketTeam,
+  type TicketVisibility,
 } from "../ticket-preview-data";
+
+/**
+ * Satu ruang percakapan tiket.
+ *
+ * Ruang `all` = CS ↔ Tim Produk, ruang `factory` = Tim Produk ↔ Tim Pabrik.
+ * Tim Produk ada di dua ruang: kalau pabrik minta sesuatu, permintaan itu
+ * diteruskan ke CS lewat ruang `all`. Tim Pabrik tidak pernah melihat ruang CS,
+ * dan CS tidak pernah melihat ruang pabrik.
+ */
+function ChatRoom({
+  title,
+  hint,
+  messages,
+  attachments,
+  viewer,
+  canPost,
+  draft,
+  onDraftChange,
+  onSend,
+  onAttach,
+}: {
+  title: string;
+  hint: string;
+  room: TicketVisibility;
+  messages: TicketMessage[];
+  attachments: TicketAttachment[];
+  viewer: PreviewViewer;
+  canPost: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onSend: () => void;
+  onAttach: () => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-xs text-muted-foreground">{hint}</p>
+
+        {messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
+        ) : (
+          messages.map((message) => (
+            <TicketMessageBubble key={message.id} message={message} own={message.team === viewer.team} />
+          ))
+        )}
+
+        {attachments.length > 0 && (
+          <div className="flex flex-col gap-2 border-t pt-3">
+            <p className="text-xs font-medium text-muted-foreground">{t("ticket.detail.attachments")}</p>
+            <TicketAttachmentList attachments={attachments} />
+            <p className="text-xs text-muted-foreground">{t("ticket.detail.attachmentRule")}</p>
+          </div>
+        )}
+
+        {canPost && (
+          <div className="flex flex-col gap-2 border-t pt-4">
+            <Textarea
+              rows={2}
+              value={draft}
+              onChange={(event) => onDraftChange(event.target.value)}
+              placeholder={t("ticket.chat.placeholder")}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={onSend} disabled={!draft.trim()}>
+                <Send className="size-4" />
+                {t("ticket.chat.send")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={onAttach}>
+                <Paperclip className="size-4" />
+                {t("ticket.chat.attach")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -103,8 +188,9 @@ export default function TicketDetailPage() {
   const [pickedDefects, setPickedDefects] = useState<TicketDefectLink[]>([]);
   const [solveOpen, setSolveOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
-  const [chat, setChat] = useState("");
+  const [drafts, setDrafts] = useState<Record<TicketVisibility, string>>({ all: "", factory: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileRoomRef = useRef<TicketVisibility>("all");
 
   if (!seeded) {
     return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
@@ -125,30 +211,45 @@ export default function TicketDetailPage() {
   }
 
   const isCs = viewer.team === "cs";
+  const isPabrik = viewer.team === "pabrik";
   const messages = visibleMessages(ticket, viewer);
   const attachments = visibleAttachments(ticket, viewer);
-  const canChat = !isCs || ticket.stage === "produk";
+  const roomCs = {
+    messages: messages.filter((message) => message.visibility === "all"),
+    attachments: attachments.filter((item) => item.visibility === "all"),
+  };
+  const roomPabrik = {
+    messages: messages.filter((message) => message.visibility === "factory"),
+    attachments: attachments.filter((item) => item.visibility === "factory"),
+  };
+  // Ruang CS ↔ Tim Produk: Tim Pabrik tidak melihatnya sama sekali.
+  const showCsRoom = !isPabrik;
+  const canPostCsRoom = !isPabrik;
+  // Ruang Tim Produk ↔ Tim Pabrik: muncul setelah eskalasi, tertutup untuk CS.
+  const showPabrikRoom = !isCs && ticket.stage !== "produk";
+  const canPostPabrikRoom = !isCs;
   const authorTeam: TicketTeam = viewer.team;
 
   const activeFactoryId = escalateFactoryId
     ? Number(escalateFactoryId)
     : (ticket.factoryId ?? products.find((product) => product.id === ticket.productId)?.factoryId ?? factories[0]?.id ?? null);
 
-  const handleSend = () => {
-    const body = chat.trim();
+  const handleSend = (room: TicketVisibility) => {
+    const body = drafts[room].trim();
     if (!body) return;
-    addMessage(ticket.id, { author: authorTeam, team: authorTeam, body });
-    setChat("");
+    addMessage(ticket.id, { author: authorTeam, team: authorTeam, body, visibility: room });
+    setDrafts((prev) => ({ ...prev, [room]: "" }));
     refresh();
   };
 
-  const handleFile = (list: FileList | null) => {
+  const handleFile = (room: TicketVisibility, list: FileList | null) => {
     const file = list?.[0];
     if (!file) return;
     addMessage(ticket.id, {
       author: authorTeam,
       team: authorTeam,
       body: file.name,
+      visibility: room,
       attachment: {
         fileName: file.name,
         mime: file.type || "application/octet-stream",
@@ -231,73 +332,60 @@ export default function TicketDetailPage() {
             </CardContent>
           </Card>
 
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-base">{t("ticket.detail.chat")}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {messages.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
-              ) : (
-                messages.map((message) => (
-                  <TicketMessageBubble key={message.id} message={message} own={message.team === viewer.team} />
-                ))
-              )}
+          {showCsRoom && (
+            <ChatRoom
+              title={t("ticket.room.cs")}
+              hint={t("ticket.room.csHint")}
+              room="all"
+              messages={roomCs.messages}
+              attachments={roomCs.attachments}
+              viewer={viewer}
+              canPost={canPostCsRoom}
+              draft={drafts.all}
+              onDraftChange={(value) => setDrafts((prev) => ({ ...prev, all: value }))}
+              onSend={() => handleSend("all")}
+              onAttach={() => {
+                fileRoomRef.current = "all";
+                fileInputRef.current?.click();
+              }}
+            />
+          )}
 
-              {isCs && ticket.stage !== "produk" && (
-                <p className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  {t("ticket.detail.csLocked")}
-                </p>
-              )}
-
-              {canChat && (
-                <div className="flex flex-col gap-2 border-t pt-4">
-                  <Textarea
-                    rows={2}
-                    value={chat}
-                    onChange={(event) => setChat(event.target.value)}
-                    placeholder={t("ticket.chat.placeholder")}
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={handleSend} disabled={!chat.trim()}>
-                      <Send className="size-4" />
-                      {t("ticket.chat.send")}
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      className="hidden"
-                      onChange={(event) => handleFile(event.target.files)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                      <Paperclip className="size-4" />
-                      {t("ticket.chat.attach")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {showPabrikRoom && (
+            <ChatRoom
+              title={t("ticket.room.pabrik")}
+              hint={t("ticket.room.pabrikHint")}
+              room="factory"
+              messages={roomPabrik.messages}
+              attachments={roomPabrik.attachments}
+              viewer={viewer}
+              canPost={canPostPabrikRoom}
+              draft={drafts.factory}
+              onDraftChange={(value) => setDrafts((prev) => ({ ...prev, factory: value }))}
+              onSend={() => handleSend("factory")}
+              onAttach={() => {
+                fileRoomRef.current = "factory";
+                fileInputRef.current?.click();
+              }}
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-6">
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-base">{t("ticket.detail.attachments")}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <TicketAttachmentList attachments={attachments} />
-              <p className="text-xs text-muted-foreground">{t("ticket.detail.attachmentRule")}</p>
-            </CardContent>
-          </Card>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={(event) => handleFile(fileRoomRef.current, event.target.files)}
+          />
 
           <Card size="sm">
             <CardHeader>
               <CardTitle className="text-base">{t("ticket.detail.relatedDefects")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <TicketDefectList defects={ticket.defects} />
+              <TicketDefectList defects={ticket.defects} showFactory={!isCs} />
             </CardContent>
           </Card>
 

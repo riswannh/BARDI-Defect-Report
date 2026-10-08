@@ -47,6 +47,7 @@ Semua tabel di `frontend/src/lib/db/schema.ts`, mengikuti pola tabel `defects` (
 - `tickets` — `id`, `code` unik `TKT-YYYYMM-####`, `title`, `productId`, `virtualId`, `problemDetail`, `chronology`, `triedSolutions`, `status`, `factoryId`, `createdById` (CS), `escalatedById`, `escalatedAt`, `solvedAt`, `createdAt`.
 - `ticket_messages` — `id`, `ticketId`, `userId`, `body`, `kind` (`chat`/`sistem`), `visibility` (`all`/`factory`), `createdAt`.
 - `ticket_attachments` — `id`, `ticketId`, `messageId` (opsional), `fileName`, `mime`, `size`, `driveFileId`, `driveUrl`, `serverPath`, `visibility`, `createdAt`.
+- `visibility` adalah **penanda ruang**, bukan sekadar izin lihat: `all` = ruang "CS ↔ Tim Produk", `factory` = ruang "Tim Produk ↔ Tim Pabrik". Ruang tetap sama seumur tiket (tidak berubah saat eskalasi), jadi jumlah kolomnya tidak perlu ditambah.
 - `ticket_defects` — `ticketId` + `defectId` PK gabungan, cascade, index; pola `product_spare_parts`.
 - `translation_cache` — `hash` PK (teks + sumber + tujuan), `translated`, `createdAt`; pembersihan lazy.
 - `user.team` — `"cs" | "produk" | "pabrik"`; role Pabrik tetap memakai `user.factoryId`.
@@ -62,8 +63,9 @@ Semua tabel di `frontend/src/lib/db/schema.ts`, mengikuti pola tabel `defects` (
 
 ## 6. Chat, privasi CS, dan terjemahan
 
-- Thread chat di halaman detail: gelembung kiri/kanan, pesan `sistem` untuk kejadian (eskalasi, selesai, buka lagi), segarkan otomatis tiap 10 detik.
-- **Penyaringan di server**, bukan di UI: pesan/lampiran ber-`visibility='factory'` tidak pernah masuk respons untuk user CS.
+- Thread chat di halaman detail: **dua kartu ruang** — "CS ↔ Tim Produk" (`visibility='all'`) dan "Tim Produk ↔ Tim Pabrik" (`visibility='factory'`); gelembung kiri/kanan, pesan `sistem` untuk kejadian (eskalasi, selesai, buka lagi), segarkan otomatis tiap 10 detik.
+- **Penyaringan di server**, bukan di UI: CS hanya menerima ruang `all`, Tim Pabrik hanya ruang `factory`, Tim Produk menerima keduanya. Pesan/lampiran ruang `factory` tidak pernah masuk respons untuk user CS.
+- **Relay permintaan pabrik ke CS**: Tim Produk menuliskan permintaan pabrik di ruang `all` supaya CS membacanya, jadi CS tetap boleh mengirim pesan di ruang `all` setelah tiket dieskalasi (ruang CS tidak dikunci).
 - **Terjemahan per bubble**: tiap gelembung punya aksi "Terjemahkan ke <bahasa UI aktif>" (mengikuti bahasa aktif di `frontend/src/lib/i18n.ts`); hasil tampil di bawah teks asli + tombol sembunyikan, teks asli tidak pernah ditimpa.
 - `POST /api/translate` meneruskan ke `http://libretranslate:5000/translate` (jaringan internal Docker), hasilnya disimpan ke `translation_cache` supaya teks yang sama tidak dihitung ulang. Kalau layanan mati → 503, UI menampilkan "Terjemahan tidak tersedia".
 

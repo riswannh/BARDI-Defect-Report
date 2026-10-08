@@ -94,7 +94,14 @@ export function TicketDefectPicker({
 }
 
 /** Data defect yang sudah dikaitkan ke tiket — tanpa kolom Value (IDR). */
-export function TicketDefectList({ defects }: { defects: TicketDefectLink[] }) {
+export function TicketDefectList({
+  defects,
+  showFactory = true,
+}: {
+  defects: TicketDefectLink[];
+  /** CS tidak boleh melihat pabrik, jadi barisnya dimatikan untuk peran itu. */
+  showFactory?: boolean;
+}) {
   const { t } = useLanguage();
   if (defects.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("ticket.detail.noDefects")}</p>;
@@ -114,8 +121,12 @@ export function TicketDefectList({ defects }: { defects: TicketDefectLink[] }) {
             <dd>{defect.problemName || "-"}</dd>
             <dt>{t("common.qty")}</dt>
             <dd>{defect.quantity}</dd>
-            <dt>{t("common.factory")}</dt>
-            <dd>{defect.factoryName || "-"}</dd>
+            {showFactory && (
+              <>
+                <dt>{t("common.factory")}</dt>
+                <dd>{defect.factoryName || "-"}</dd>
+              </>
+            )}
           </dl>
           {(defect.photosLink || defect.videosLink) && (
             <div className="mt-2 flex flex-wrap gap-3 text-xs">
