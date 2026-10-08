@@ -210,7 +210,7 @@ export default function TicketDetailPage() {
               <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <InfoRow label={t("common.product")} value={ticket.productName} />
                 <InfoRow label="Virtual ID" value={ticket.virtualId} />
-                <InfoRow label={t("common.factory")} value={ticket.factoryName} />
+                {viewer.team !== "cs" && <InfoRow label={t("common.factory")} value={ticket.factoryName} />}
                 <InfoRow label={t("ticket.detail.createdAt")} value={formatDateTime(ticket.createdAt)} />
                 <InfoRow label={t("ticket.detail.escalatedAt")} value={ticket.escalatedAt ? formatDateTime(ticket.escalatedAt) : "-"} />
                 <InfoRow label={t("ticket.detail.solvedAt")} value={ticket.solvedAt ? formatDateTime(ticket.solvedAt) : "-"} />

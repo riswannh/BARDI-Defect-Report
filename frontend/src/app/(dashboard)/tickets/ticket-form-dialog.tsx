@@ -118,7 +118,13 @@ export function TicketFormDialog({
               items={productOptions}
               onValueChange={(value) => {
                 if (value === null) return;
-                setForm((prev) => ({ ...prev, productId: String(value) }));
+                // ponytail: ikuti konvensi form Defect/PO — pabrik terisi sendiri kalau produk punya kaitan pabrik.
+                const picked = products.find((item) => item.id === Number(value));
+                setForm((prev) => ({
+                  ...prev,
+                  productId: String(value),
+                  factoryId: picked?.factoryId ? String(picked.factoryId) : prev.factoryId,
+                }));
               }}
             >
               <SelectTrigger className="w-full">

@@ -293,7 +293,7 @@ export default function TicketsPage() {
               <TableHead>{t("common.product")}</TableHead>
               <TableHead>Virtual ID</TableHead>
               <TableHead>{t("ticket.table.stage")}</TableHead>
-              <TableHead>{t("common.factory")}</TableHead>
+              {team !== "cs" && <TableHead>{t("common.factory")}</TableHead>}
               <TableHead>{t("ticket.table.updated")}</TableHead>
               <TableHead className="text-right">{t("ticket.table.actions")}</TableHead>
             </TableRow>
@@ -301,7 +301,7 @@ export default function TicketsPage() {
           <TableBody>
             {pageRows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={team === "cs" ? 7 : 8} className="py-8 text-center text-muted-foreground">
                   {seeded ? t("ticket.empty") : t("common.loading")}
                 </TableCell>
               </TableRow>
@@ -317,7 +317,7 @@ export default function TicketsPage() {
                 <TableCell>
                   <TicketStageBadge stage={ticket.stage} viewer={viewer} />
                 </TableCell>
-                <TableCell>{ticket.factoryName || "-"}</TableCell>
+                {team !== "cs" && <TableCell>{ticket.factoryName || "-"}</TableCell>}
                 <TableCell>{formatDateTime(ticket.updatedAt)}</TableCell>
                 <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                   {team !== "pabrik" && (

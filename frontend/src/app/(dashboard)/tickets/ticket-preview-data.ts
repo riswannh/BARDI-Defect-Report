@@ -87,7 +87,10 @@ let tickets: PreviewTicket[] = [];
 let seeded = false;
 
 function nowIso(offsetHours = 0): string {
-  return new Date(Date.now() + offsetHours * 3600_000).toISOString().slice(0, 16).replace("T", " ");
+  // Dibulatkan ke jam penuh supaya HTML server dan hasil hidrasi klien identik
+  // (kalau memakai Date.now() mentah, menitnya beda → peringatan hidrasi React).
+  const base = Math.floor(Date.now() / 3600_000) * 3600_000;
+  return new Date(base + offsetHours * 3600_000).toISOString().slice(0, 16).replace("T", " ");
 }
 
 function emptyDefectLink(defectId: number): TicketDefectLink {
