@@ -1,0 +1,12 @@
+== en: login -> http://localhost:3100/report
+en NAV: ["/report :: Report","/po :: PO Product","/tickets :: Ticketing"]
+en report cards: ["Period Yearly Year 2026","Total Defect 4 Quantity","Total Sales 104 Quantity","Defect/Sales Ratio 3.85% Defect Qty ÷ Sales Qty","Replacement 0 Replacement PO Qty","Defect Quantity Difference -4 Negative rows only: Replacement − Defect","Total Defect — Quantity Defect Trend by Period Jan Feb Mar Apr May Jun","Total Sales — Quantity Defect Trend by Period Jan Feb Mar Apr May Jun ","Recap by Product Product Defect Qty Sales Qty Replacement Defect Diffe"]
+en PO kolom: ["PO NUMBER","TIMESTAMP","REMARKS","PRODUCT NAME","FACTORY","QUANTITY"]
+en baris tiket: ["TKT-202609-0007 Kendala BARDI Door Sensor Zigbee BARDI Door Sensor Zigbee VID-87980 Solved Unknown 2026-10-05 "]
+en detail tombol: ["EN","unknown","Ticket List","Show original","Load 10 earlier messages","Reply","Edit","Translate","Reply","Translate","Reply","Edit","Translate","Reply","Translate","Reply","Edit","Translate","Reply","Translate","Reply","Edit","Translate","Reply"]
+== zh: login -> http://localhost:3100/report
+zh NAV: ["/report :: 报告","/po :: 采购订单","/tickets :: 工单"]
+zh report cards: ["期间 年度 年份 2026","缺陷总数 4 数量","销售总数 104 数量","缺陷/销售比率 3.85% 缺陷数量 ÷ 销售数量","更换 0 更换采购数量","缺陷数量差额 -4 仅负数行：更换数量 − 缺陷数量","缺陷总数 — 数量 按期间缺陷趋势 Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 0 0.","销售总额 — 数量 按期间缺陷趋势 Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec 0 15","按产品汇总 产品 缺陷数量 销售数量 更换 缺陷差额 缺陷/销售比率 BARDI Smart Wake Up Clock Light 2 1"]
+zh PO kolom: ["采购单号","时间","备注","产品名称","工厂","数量"]
+zh baris tiket: ["TKT-202609-0007 Kendala BARDI Door Sensor Zigbee BARDI Door Sensor Zigbee VID-87980 已解决 Unknown 2026-10-05 22:"]
+zh detail tombol: ["中文","unknown","工单列表","查看原文","加载更早的 10 条消息","回复","编辑","翻译","回复","翻译","回复","编辑","翻译","回复","翻译","回复","编辑","翻译","回复","翻译","回复","编辑","翻译","回复"]
