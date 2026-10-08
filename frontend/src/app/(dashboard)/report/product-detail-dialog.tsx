@@ -29,6 +29,8 @@ import {
   sumByKey,
 } from "./report-charts";
 import type { ReportResponse } from "./report-data";
+import { DefectDetailDialog } from "../defects/defect-detail-dialog";
+import type { DefectRow } from "../defects/defect-form";
 
 /**
  * Dialog detail per produk: ringkasan, grafik defect (batang + pie per problem),
@@ -51,6 +53,8 @@ export function ProductDetailDialog({
   const { t } = useLanguage();
   const [pageState, setPageState] = useState({ signature: "", page: 1 });
   const [pageSize, setPageSize] = useState(10);
+  /** Baris defect yang dibuka di popup detail (sama dengan popup Data Defect). */
+  const [detailDefect, setDetailDefect] = useState<DefectRow | null>(null);
 
   const signature = String(productId ?? "");
   const page = pageState.signature === signature ? pageState.page : 1;
@@ -228,7 +232,11 @@ export function ProductDetailDialog({
               </TableHeader>
               <TableBody>
                 {pagedDefects.map((d) => (
-                  <TableRow key={d.id}>
+                  <TableRow
+                    key={d.id}
+                    className="cursor-pointer"
+                    onClick={() => setDetailDefect(d)}
+                  >
                     <TableCell className="font-mono text-xs">
                       {d.codeGaransi}
                     </TableCell>
@@ -249,7 +257,7 @@ export function ProductDetailDialog({
                         {formatIDR(d.value)}
                       </TableCell>
                     )}
-                    <TableCell>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
                       <div className="flex gap-1">
                         {d.photosLink && (
                           <a
@@ -305,6 +313,18 @@ export function ProductDetailDialog({
               </div>
             )}
           </div>
+
+          <DefectDetailDialog
+            defect={detailDefect}
+            onOpenChange={(open) => {
+              if (!open) setDetailDefect(null);
+            }}
+            productName={product?.name ?? "-"}
+            factories={report?.factories ?? []}
+            problems={problems}
+            statuses={statuses}
+            isAdmin={isAdmin}
+          />
         </div>
       </DialogContent>
     </Dialog>
