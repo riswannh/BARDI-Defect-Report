@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { teamLabelKey } from "./ticket-badges";
-import { translationSample } from "./ticket-translate";
+import { factoryLanguage, translationSample } from "./ticket-translate";
 import type { TicketMessage } from "./ticket-preview-data";
 
 export function TicketMessageBubble({
@@ -17,6 +17,7 @@ export function TicketMessageBubble({
   quoted,
   canEdit = false,
   canTranslate = false,
+  autoTranslate = false,
   highlight = false,
   onEdit,
   onReply,
@@ -29,15 +30,22 @@ export function TicketMessageBubble({
   canEdit?: boolean;
   /** Translate hanya ada di ruang Tim Produk ↔ Tim Pabrik. */
   canTranslate?: boolean;
+  /** Tim pabrik: terjemahan langsung tampil tanpa menekan tombol. */
+  autoTranslate?: boolean;
   highlight?: boolean;
   onEdit?: (messageId: number, body: string) => void;
   onReply?: (messageId: number) => void;
   onJumpToQuoted?: (messageId: number) => void;
 }) {
   const { t, language } = useLanguage();
-  const [translated, setTranslated] = useState<string | null>(null);
+  const target = autoTranslate ? factoryLanguage(language) : language;
+  // Terjemahan otomatis dihitung saat render (bukan disimpan) supaya ikut berubah
+  // waktu bahasa UI diganti; `manual` menampung hasil klik tombol.
+  const [manual, setManual] = useState<string | null>(null);
+  const [showOriginal, setShowOriginal] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.body);
+  const translated = showOriginal ? null : (manual ?? (autoTranslate ? translationSample(message.body, target) : null));
 
   if (message.kind === "sistem") {
     return (
@@ -48,7 +56,13 @@ export function TicketMessageBubble({
   }
 
   const handleTranslate = () => {
-    setTranslated(translationSample(message.body, language) ?? t("ticket.translate.sampleOnly"));
+    setShowOriginal(false);
+    setManual(translationSample(message.body, target) ?? t("ticket.translate.sampleOnly"));
+  };
+
+  const handleShowOriginal = () => {
+    setManual(null);
+    setShowOriginal(true);
   };
 
   const saveEdit = () => {
@@ -128,7 +142,7 @@ export function TicketMessageBubble({
           </Button>
         )}
         {canTranslate && (
-          <Button variant="ghost" size="xs" onClick={translated ? () => setTranslated(null) : handleTranslate}>
+          <Button variant="ghost" size="xs" onClick={translated ? handleShowOriginal : handleTranslate}>
             <Languages className="size-3.5" />
             {t(translated ? "ticket.translate.original" : "ticket.translate.action")}
           </Button>

@@ -46,3 +46,11 @@ const SAMPLE: Record<string, { id: string; en: string; zh: string }> = {
 export function translationSample(text: string, language: Language): string | null {
   return SAMPLE[text]?.[language] ?? null;
 }
+
+/**
+ * Bahasa tujuan untuk tim pabrik: mengikuti bahasa UI mereka, tapi TIDAK PERNAH
+ * Indonesia — bahasa UI default (id) jatuh ke China.
+ */
+export function factoryLanguage(language: Language): Language {
+  return language === "id" ? "zh" : language;
+}

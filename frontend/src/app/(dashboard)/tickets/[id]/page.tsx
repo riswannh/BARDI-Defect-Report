@@ -21,7 +21,7 @@ import { TicketAttachmentBubble } from "../ticket-attachment-bubble";
 import { TicketStageBadge } from "../ticket-badges";
 import { TicketDefectList, TicketDefectPicker, type DefectPickerRow } from "../ticket-defect-picker";
 import { TicketMessageBubble } from "../ticket-message-bubble";
-import { translationSample } from "../ticket-translate";
+import { factoryLanguage, translationSample } from "../ticket-translate";
 import {
   addMessage,
   editMessage,
@@ -66,6 +66,7 @@ function ChatRoom({
   canForward,
   forwardLabel,
   canTranslate,
+  autoTranslate,
   draft,
   onDraftChange,
   onSend,
@@ -86,6 +87,8 @@ function ChatRoom({
   forwardLabel?: string;
   /** Translate hanya tersedia di ruang Tim Produk ↔ Tim Pabrik. */
   canTranslate?: boolean;
+  /** Tim pabrik: bubble ruang pabrik langsung tampil terjemahan. */
+  autoTranslate?: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
   onSend: (replyToId: number | null) => void;
@@ -194,6 +197,7 @@ function ChatRoom({
                       quoted={message.replyToId ? (messages.find((item) => item.id === message.replyToId) ?? null) : null}
                       canEdit={own && message.kind === "chat"}
                       canTranslate={canTranslate}
+                      autoTranslate={autoTranslate}
                       highlight={highlight === message.id}
                       onEdit={onEdit}
                       onReply={(messageId) => setReplyTo(messageId)}
@@ -272,10 +276,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export default function TicketDetailPage() {
   const { t, language } = useLanguage();
-  // Terjemahan isi kartu info untuk tim pabrik (Fase 2: POST /api/translate).
-  const [cardTranslated, setCardTranslated] = useState(false);
-  const tr = (text: string) =>
-    cardTranslated ? (translationSample(text, language) ?? t("ticket.translate.sampleOnly")) : text;
+  // Terjemahan kartu info untuk tim pabrik (Fase 2: POST /api/translate).
+  // Tim pabrik: langsung tampil terjemahan, tombol cuma untuk kembali ke aslinya.
+  const [cardShowOriginal, setCardShowOriginal] = useState(false);
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -366,6 +369,12 @@ export default function TicketDetailPage() {
 
   const isCs = viewer.team === "cs";
   const isPabrik = viewer.team === "pabrik";
+  // Tim pabrik membuka tiket → isi kartu info sudah dalam bahasa terjemahan
+  // (bahasa UI mereka, tidak pernah Indonesia); tombol hanya untuk lihat asli.
+  const cardTranslated = isPabrik && !cardShowOriginal;
+  const cardTarget = isPabrik ? factoryLanguage(language) : language;
+  const tr = (text: string) =>
+    cardTranslated ? (translationSample(text, cardTarget) ?? t("ticket.translate.sampleOnly")) : text;
   const messages = visibleMessages(ticket, viewer);
   const attachments = visibleAttachments(ticket, viewer);
   const roomCs = {
@@ -507,7 +516,7 @@ export default function TicketDetailPage() {
               {/* Inline: varian kartu `size="sm"` mengunci CardTitle ke text-sm. */}
               <CardTitle className="pr-2" style={{ fontSize: "1.5rem", lineHeight: "2rem" }}>{tr(ticket.title)}</CardTitle>
               {viewer.team === "pabrik" && (
-                <Button variant="outline" size="sm" onClick={() => setCardTranslated((prev) => !prev)}>
+                <Button variant="outline" size="sm" onClick={() => setCardShowOriginal((prev) => !prev)}>
                   <Languages className="size-4" />
                   {t(cardTranslated ? "ticket.translate.original" : "ticket.translate.action")}
                 </Button>
@@ -576,6 +585,7 @@ export default function TicketDetailPage() {
               onSend={(replyToId) => handleSend("factory", replyToId)}
               onEdit={handleEdit}
               canTranslate
+              autoTranslate={isPabrik}
               canForward={viewer.team === "produk"}
               forwardLabel={t("ticket.forward.action")}
               onForward={() => openForward("toFactory")}

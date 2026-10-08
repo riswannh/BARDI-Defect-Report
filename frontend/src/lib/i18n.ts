@@ -1497,9 +1497,9 @@ const translations = {
     zh: "示例翻译 — 第二阶段使用 BARDI 服务器翻译。",
   },
   "ticket.translate.cardNotice": {
-    id: "Judul, penjelasan kendala, kronologi, dan solusi yang sudah dicoba ditampilkan dalam bahasa terjemahan contoh.",
-    en: "Title, problem description, chronology, and tried solutions are shown in sample translation.",
-    zh: "标题、问题说明、时间线和已尝试的解决方案均以示例翻译显示。",
+    id: "Isi kartu ditampilkan dalam terjemahan contoh — Fase 2 memakai penerjemah server BARDI.",
+    en: "Card contents are shown in sample translation — Phase 2 uses the BARDI server translator.",
+    zh: "卡片内容以示例翻译显示 — 第二阶段使用 BARDI 服务器翻译。",
   },
   "ticket.translate.sampleOnly": {
     id: "(contoh) teks terjemahan belum tersedia untuk pesan ini.",
