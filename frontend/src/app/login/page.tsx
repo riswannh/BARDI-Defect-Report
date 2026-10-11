@@ -92,7 +92,7 @@ export default function LoginPage() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder={t("common.username")}
                 autoComplete="username"
               />
             </div>
