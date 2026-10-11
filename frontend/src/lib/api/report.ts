@@ -9,6 +9,7 @@ import {
   totalSalesQty,
   totalSalesValue,
 } from "@/lib/analytics";
+import { allowanceYearFor, findAllowance } from "@/lib/allowance";
 import {
   matchesDefectPeriod,
   matchesSalePeriod,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/period";
 import { db } from "@/lib/db";
 import {
+  defectAllowances,
   defects,
   factories,
   problems,
@@ -97,7 +99,7 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows] =
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows] =
     await Promise.all([
       db.select().from(defects).where(defectWhere),
       db.select().from(sales).where(saleWhere),
@@ -131,6 +133,12 @@ export async function reportGET(req: NextRequest) {
             ? eq(purchaseOrders.factoryId, factory)
             : undefined
         ),
+      db
+        .select({
+          year: defectAllowances.year,
+          limitValue: defectAllowances.limitValue,
+        })
+        .from(defectAllowances),
     ]);
 
   const appDefects = defectRows.map((row) => ({
@@ -250,6 +258,11 @@ export async function reportGET(req: NextRequest) {
     replacementRwValue,
   };
 
+  // Limit allowance defect (Rupiah per tahun, master) diprorata ke periode
+  // filter — lihat `src/lib/allowance.ts`. Dihitung untuk admin saja.
+  const allowanceYear = allowanceYearFor(allowanceRows, f);
+  const allowance = findAllowance(allowanceRows, f);
+
   const years = Array.from(
     new Set(
       defectRows
@@ -287,6 +300,11 @@ export async function reportGET(req: NextRequest) {
           salesQty: totals.salesQty,
           replacementQty: totals.replacementQty,
         },
+    // Role Pabrik tidak boleh menerima angka Rupiah, jadi allowance = null.
+    allowance: user.isAdmin ? allowance : null,
+    // Tahun limit yang dituju filter — tetap dikirim walau barisnya belum ada
+    // supaya UI bisa menyebut tahun yang perlu diisi admin.
+    allowanceYear: user.isAdmin ? allowanceYear : "",
     years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),
     problems: problemRows.map((row) => ({ id: row.id, name: row.name })),

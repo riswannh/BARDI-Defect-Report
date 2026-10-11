@@ -36,6 +36,7 @@ import {
   Coins,
   Package,
   Percent,
+  PiggyBank,
   Receipt,
   Scale,
   ShoppingCart,
@@ -189,6 +190,11 @@ export default function ReportPage() {
     report?.recap ?? [],
     (row) => (row.replacementRwValue ?? 0) - (row.defectValue ?? 0)
   );
+  // Allowance Defect: limit Rupiah SETAHUN dari Data Master, sudah diprorata
+  // server mengikuti periode filter, lalu dikurangi nilai defect periode ini.
+  // Minus = nilai defect periode sudah melewati limit.
+  const allowance = report?.allowance ?? null;
+  const allowanceLeft = (allowance?.prorated ?? 0) - dVal;
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -457,6 +463,26 @@ export default function ReportPage() {
             }
             description={t("report.selisihValueDesc")}
             icon={Coins}
+          />
+        )}
+        {isAdmin && (
+          <SummaryCard
+            title={t("report.allowance")}
+            value={
+              <span className={selisihTextClass(allowanceLeft)}>
+                {allowance ? formatIDR(allowanceLeft) : "-"}
+              </span>
+            }
+            description={
+              allowance
+                ? t("report.allowanceDesc", {
+                    year: allowance.year,
+                    limit: formatIDR(allowance.prorated),
+                    value: formatIDR(dVal),
+                  })
+                : t("report.allowanceMissing", { year: report?.allowanceYear ?? "" })
+            }
+            icon={PiggyBank}
           />
         )}
       </div>

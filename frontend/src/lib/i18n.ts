@@ -282,6 +282,21 @@ const translations = {
     en: "Negative rows only: Replacement Value − Defect Value",
     zh: "仅负数行：更换金额 − 缺陷金额",
   },
+  "report.allowance": {
+    id: "Sisa Allowance Defect",
+    en: "Defect Allowance Left",
+    zh: "缺陷额度余额",
+  },
+  "report.allowanceDesc": {
+    id: "Limit {year} {limit} − Nilai Defect {value}",
+    en: "Limit {year} {limit} − Defect Value {value}",
+    zh: "{year} 年限额 {limit} − 缺陷金额 {value}",
+  },
+  "report.allowanceMissing": {
+    id: "Limit tahun {year} belum diisi di Data Master.",
+    en: "The {year} limit is not set in Master Data.",
+    zh: "{year} 年限额尚未在主数据中设置。",
+  },
   "report.replacementValue": {
     id: "Nilai Replacement",
     en: "Replacement Value",
@@ -965,6 +980,70 @@ const translations = {
   },
 
   // Master
+  // Allowance Defect (Data Master, admin saja)
+  "allowance.tab": {
+    id: "Allowance Defect",
+    en: "Defect Allowance",
+    zh: "缺陷额度",
+  },
+  "allowance.hint": {
+    id: "Limit defect dalam Rupiah untuk SATU TAHUN. Halaman Report memprorata limit ini mengikuti filter: setahun penuh, sebulan ÷ 12, seminggu ÷ 12 ÷ 4,33, sehari ÷ 365, rentang tanggal × jumlah hari ÷ 365 — lalu dikurangi Nilai Defect periode itu.",
+    en: "Defect limit in Rupiah for ONE YEAR. The Report page prorates it to the active filter: full year, one month ÷ 12, one week ÷ 12 ÷ 4.33, one day ÷ 365, a date range × days ÷ 365 — then subtracts that period's Defect Value.",
+    zh: "缺陷额度为一年度的印尼盾限额。报表页会按当前筛选按比例折算：全年为全额，一个月 ÷ 12，一周 ÷ 12 ÷ 4.33，一天 ÷ 365，日期区间按天数 ÷ 365，再减去该期间的缺陷金额。",
+  },
+  "allowance.year": { id: "Tahun", en: "Year", zh: "年度" },
+  "allowance.yearPlaceholder": { id: "2026", en: "2026", zh: "2026" },
+  "allowance.limit": {
+    id: "Limit (Rupiah)",
+    en: "Limit (Rupiah)",
+    zh: "限额（印尼盾）",
+  },
+  "allowance.limitPlaceholder": {
+    id: "1500000000",
+    en: "1500000000",
+    zh: "1500000000",
+  },
+  "allowance.perMonth": {
+    id: "Per bulan (÷ 12)",
+    en: "Per month (÷ 12)",
+    zh: "每月（÷ 12）",
+  },
+  "allowance.action": { id: "Aksi", en: "Action", zh: "操作" },
+  "allowance.add": { id: "Tambah", en: "Add", zh: "添加" },
+  "allowance.update": { id: "Simpan", en: "Save", zh: "保存" },
+  "allowance.cancel": { id: "Batal", en: "Cancel", zh: "取消" },
+  "allowance.edit": { id: "Ubah", en: "Edit", zh: "编辑" },
+  "allowance.delete": { id: "Hapus", en: "Delete", zh: "删除" },
+  "allowance.empty": {
+    id: "Belum ada limit allowance. Tambahkan satu baris per tahun.",
+    en: "No allowance limit yet. Add one row per year.",
+    zh: "尚无额度限额。请每年添加一行。",
+  },
+  "allowance.saved": {
+    id: "Limit allowance tersimpan.",
+    en: "Allowance limit saved.",
+    zh: "额度限额已保存。",
+  },
+  "allowance.deleted": {
+    id: "Limit allowance {year} dihapus.",
+    en: "Allowance limit {year} deleted.",
+    zh: "{year} 年额度已删除。",
+  },
+  "allowance.saveFailed": {
+    id: "Gagal menyimpan limit allowance.",
+    en: "Failed to save the allowance limit.",
+    zh: "保存额度限额失败。",
+  },
+  "allowance.yearInvalid": {
+    id: "Tahun harus empat angka, mis. 2026.",
+    en: "Year must be four digits, e.g. 2026.",
+    zh: "年份必须是四位数字，例如 2026。",
+  },
+  "allowance.limitInvalid": {
+    id: "Limit harus angka Rupiah (boleh 0).",
+    en: "Limit must be a Rupiah amount (0 allowed).",
+    zh: "限额必须是印尼盾金额（可为 0）。",
+  },
   "master.title": { id: "Data Master", en: "Master Data", zh: "主数据" },
   "master.description": {
     id: "Kelola daftar produk, problem, harga produk, dan status.",

@@ -445,6 +445,24 @@ Catatan perilaku Report yang harus dijaga:
   Nama identifier lama (`replacementRwValue`, `rwPrice`, dst.) sengaja TIDAK diganti — hanya label
   yang dibaca pengguna yang berubah.
 
+- **Allowance Defect** (kartu `report.allowance`, admin saja, ditambahkan 2 Okt 2026) = Limit tahunan
+  dalam Rupiah dikurangi **Nilai Defect** hasil filter yang sedang aktif. Limitnya master tersendiri:
+  tabel `defect_allowances` (`year` TEXT unik 4 angka + `limitValue` real, **satu limit per tahun**,
+  tahun yang sama = 409 `Limit allowance {year} sudah ada. Ubah baris itu.`), endpoint
+  `/api/defect-allowances` (GET/POST) + `/api/defect-allowances/[id]` (PATCH/DELETE), **semua
+  requireAdmin** — role non-admin tidak menerima field `allowance`/`allowanceYear` sama sekali di
+  `/api/report` (pola sama seperti angka Rupiah lain). Dikelola di tab **Allowance Defect** pada Data
+  Master (`src/app/(dashboard)/master/allowance-tab.tsx`, input tahun + Limit Rupiah; titik ribuan
+  dibuang sebelum dikirim, kolom "Per bulan" = `limitValue / 12` untuk gambaran saja).
+  Limit diprorata mengikuti filter Report — SATU sumber aturan di `src/lib/allowance.ts`
+  (`prorationFactor`): `yearly` = penuh, `monthly` = ÷12 (bulan "all" = penuh), `weekly` = ÷(12 × 4.33),
+  `daily` = ÷365, `custom` = jumlah hari inklusif ÷365 (batas tanggal kosong dilengkapi ke ujung tahun).
+  Tahun limit yang dipakai = tahun filter; kalau filter tidak memuat tahun (mis. rentang 2025–2027)
+  dipakai **tahun terbaru** yang punya limit (`allowanceYearFor`). Kalau tahun itu belum diisi, kartu
+  menampilkan `-` + keterangan `report.allowanceMissing` (tahun berapa yang perlu diisi) — nilai tidak
+  pernah jatuh ke 0 diam-diam. Kartu non-admin tidak dirender. Self-check aturan prorata:
+  `cmd /c "npx tsx scripts/allowance-check.ts"` (dijalankan dari `frontend/`).
+
 ### Aturan alur input defect
 
 - Timestamp entri baru = waktu sekarang (`localDateTimeValue()`), bukan konstanta.

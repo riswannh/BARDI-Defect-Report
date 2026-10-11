@@ -265,6 +265,14 @@ baris baru untuk periode berikutnya. Baris lama (dibuat sebelum kolom `priceType
 Satu produk boleh punya banyak sparepart dan **satu sparepart boleh dipakai beberapa produk**;
 mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `product_factories`).
 
+**`defect_allowances`** — limit allowance defect per tahun (Rupiah, dipakai kartu Sisa Allowance Defect)
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `year` | text (unik) | tahun 4 angka; satu tahun hanya boleh punya satu limit |
+| `limitValue` | real (default 0) | limit setahun penuh, sebelum diprorata filter |
+
 **`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
 
 | Kolom | Tipe | Keterangan |
@@ -484,6 +492,24 @@ sedangkan kartu **Selisih Defect Quantity** dan **Selisih Defect Value** (admin 
 produk yang surplus tidak mengurangi totalnya. Angka-angka itu **tidak dikirim server** — klien
 menghitungnya dari `recap` + `totals` di atas, jadi tidak ada lagi field angka bersih seperti dulu.
 
+### Allowance Defect (limit tahunan, admin saja)
+
+Kartu **Sisa Allowance Defect** = Limit tahunan (Rupiah) − Nilai Defect pada filter yang sedang aktif.
+Limitnya master tersendiri: tabel `defect_allowances` (**satu limit per tahun**, `year` 4 angka unik +
+`limitValue`), endpoint `/api/defect-allowances` (GET/POST) dan `/api/defect-allowances/[id]`
+(PATCH/DELETE), semuanya admin saja — role non-admin tidak menerima `allowance`/`allowanceYear` di
+`/api/report` sama sekali, dan kartunya tidak dirender untuk mereka. Dikelola di tab **Allowance
+Defect** pada Data Master (tahun + Limit Rupiah; titik ribuan dibuang sebelum dikirim).
+
+Limitnya **diprorata mengikuti filter** (satu sumber aturan di `src/lib/allowance.ts`): `yearly` penuh,
+`monthly` ÷ 12 (bulan "all" = penuh), `weekly` ÷ (12 × 4.33), `daily` ÷ 365, dan rentang tanggal bebas
+(`custom`) = jumlah hari inklusif ÷ 365 — batas tanggal yang kosong dilengkapi ke ujung tahun. Tahun
+limit yang dipakai adalah tahun filter; kalau filter tidak memuat tahun (mis. rentang 2025–2027), dipakai
+**tahun terbaru** yang sudah punya limit. Kalau tahun itu belum diisi, kartu menampilkan `-` beserta
+keterangan tahun mana yang perlu diisi (tidak jatuh ke 0 diam-diam). Kartu ini **tidak mengurangi**
+kartu Nilai Defect maupun Selisih Defect yang sudah ada — ia kartu tambahan. Aturan proratanya diuji
+`cmd /c "npx tsx scripts/allowance-check.ts"` dari `frontend/`.
+
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan
 `Replacement` produk itu pada periode terpilih (periode sama dengan kartu Replacement, jadi jumlah
 seluruh `recap[].replacementQty` = `totals.replacementQty`). Halaman Report menampilkan kolom
@@ -562,6 +588,9 @@ periode tujuan dilewati, jadi aman dijalankan berulang.
 | PATCH / DELETE | `/api/spare-part-prices/{id}` | admin | ubah / hapus satu baris harga |
 | DELETE | `/api/spare-part-prices` | admin | hapus semua harga sparepart + backup |
 | POST | `/api/spare-part-prices/carry-forward` | admin | `{ month, year }` — salin harga dari periode terakhir sebelum periode itu |
+| GET | `/api/defect-allowances` | admin | daftar limit allowance, tahun terbaru dulu |
+| POST | `/api/defect-allowances` | admin | `{ year, limitValue }`; 409 bila tahun itu sudah punya limit |
+| PATCH / DELETE | `/api/defect-allowances/{id}` | admin | ubah / hapus satu limit tahunan |
 
 **Sparepart adalah child produk, tetapi kaitannya many-to-many**: satu sparepart boleh dipakai
 beberapa produk sekaligus, jadi mengaitkan sparepart di produk B **tidak** melepasnya dari produk A.
@@ -790,8 +819,9 @@ cuma dihitung sebagai informasi), dengan tambahan:
 ### 8.5 Data Master
 
 - Tab (urutan tampil): **Produk**, **Harga Produk**, **Sparepart**, **Harga Sparepart**, **Problem**,
-  **Status**
-  (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga).
+  **Status**, **Allowance Defect**
+  (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga, `allowance-tab.tsx`
+  untuk limit tahunan).
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."

@@ -220,6 +220,31 @@ export const statuses = sqliteTable("statuses", {
 });
 
 /**
+ * Limit allowance defect per tahun — satu baris per tahun, dipakai kartu
+ * "Allowance Defect" di halaman Report (admin saja).
+ *
+ * Namanya `limitValue` karena `limit` kata kunci SQL. Angkanya Rupiah; limit
+ * diprorata mengikuti periode filter (lihat `src/lib/allowance.ts`), jadi yang
+ * disimpan di sini selalu limit SETAHUN penuh.
+ */
+export const defectAllowances = sqliteTable(
+  "defect_allowances",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Tahun allowance, "YYYY" (teks, sama seperti kolom `year` tabel harga). */
+    year: text("year").notNull(),
+    limitValue: real("limitValue").notNull().default(0),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [unique("defect_allowances_year_unique").on(t.year)]
+);
+
+/**
  * Master keterangan DIHAPUS. Keterangan PO kini nilai tetap — lihat
  * `KETERANGAN_OPTIONS` di `src/lib/api/validation.ts` — sehingga tidak perlu
  * tabel, CRUD, maupun tab Data Master. Baris PO menyimpan namanya langsung

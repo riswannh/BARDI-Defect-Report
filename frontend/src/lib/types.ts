@@ -35,6 +35,18 @@ export interface Status {
 }
 
 /**
+ * Limit allowance defect SETAHUN (Rupiah), satu baris per tahun.
+ *
+ * Halaman Report memprorata angka ini mengikuti periode filter dan
+ * menguranginya dengan nilai defect periode itu — lihat `src/lib/allowance.ts`.
+ */
+export interface DefectAllowance {
+  id: number;
+  year: string;
+  limitValue: number;
+}
+
+/**
  * Harga produk per bulan dan tahun (selalu Rupiah).
  *
  * Satu produk boleh punya banyak baris — satu per periode. Baris PO merujuk ke

@@ -60,6 +60,14 @@ export interface ReportResponse {
     replacementRwValue?: number;
   };
   years: number[];
+  /**
+   * Limit allowance defect yang sudah diprorata ke periode filter (Rupiah).
+   * Hanya dikirim untuk admin; `null` bila tahun yang dituju belum diisi, dan
+   * `null` juga untuk role Pabrik (tidak boleh menerima angka Rupiah).
+   */
+  allowance?: { year: string; prorated: number } | null;
+  /** Tahun limit yang dituju filter, dikirim walau barisnya belum ada — admin saja. */
+  allowanceYear?: string;
   products: Product[];
   problems: Problem[];
   statuses: Status[];

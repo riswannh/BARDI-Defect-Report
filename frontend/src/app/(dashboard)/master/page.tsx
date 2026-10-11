@@ -45,6 +45,7 @@ import {
 import { Boxes, Download, FileDown, History, Trash2, Upload, Wrench } from "lucide-react";
 import { ProductSparePartsDialog } from "./product-spare-parts-dialog";
 import { SparePartProductsDialog } from "./sparepart-products-dialog";
+import { AllowanceTab } from "./allowance-tab";
 import { SparePartPricesTab } from "./sparepart-prices-tab";
 
 /**
@@ -465,6 +466,7 @@ export default function MasterPage() {
           </TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
           <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
+          <TabsTrigger value="allowances">{t("allowance.tab")}</TabsTrigger>
         </TabsList>
 
         <Card size="sm" className="mt-4">
@@ -759,6 +761,9 @@ export default function MasterPage() {
                   />
                 </div>
               )}
+            </TabsContent>
+            <TabsContent value="allowances">
+              <AllowanceTab />
             </TabsContent>
           </CardContent>
         </Card>

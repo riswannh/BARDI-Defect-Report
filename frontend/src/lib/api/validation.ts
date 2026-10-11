@@ -319,6 +319,29 @@ export const sparePartPriceSchema = buildCreate(sparePartPriceFields, {
 
 export const sparePartPriceUpdateSchema = buildUpdate(sparePartPriceFields);
 
+/**
+ * Limit allowance defect per tahun (Rupiah, satu baris per tahun).
+ *
+ * Update schema ditulis manual (bukan `.partial()`) supaya field yang tidak
+ * dikirim benar-benar absen — lihat catatan jebakan `.default()` di atas.
+ */
+export const defectAllowanceSchema = z.object({
+  year: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/),
+  limitValue: z.coerce.number().min(0),
+});
+
+export const defectAllowanceUpdateSchema = z.object({
+  year: z
+    .string()
+    .trim()
+    .regex(/^\d{4}$/)
+    .optional(),
+  limitValue: z.coerce.number().min(0).optional(),
+});
+
 export const userCreateSchema = z.object({
   username: z.string().trim().min(3),
   password: z.string().min(6),
