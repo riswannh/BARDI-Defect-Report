@@ -12,6 +12,7 @@ import {
   Users,
   ClipboardList,
   Headset,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
@@ -39,6 +40,12 @@ const navItems: NavItem[] = [
     href: "/defects",
     labelKey: "nav.defects",
     icon: AlertTriangle,
+    adminOnly: true,
+  },
+  {
+    href: "/repairs",
+    labelKey: "nav.repairs",
+    icon: Wrench,
     adminOnly: true,
   },
   { href: "/master", labelKey: "nav.master", icon: Database, adminOnly: true },

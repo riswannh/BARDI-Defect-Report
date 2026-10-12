@@ -9,6 +9,7 @@ import {
   productPrices,
   products,
   purchaseOrders,
+  repairs,
   sales,
   sparePartPrices,
   spareParts,
@@ -22,6 +23,13 @@ import {
   DEFAULT_KETERANGAN,
   PRICE_TYPES,
   DEFAULT_PRICE_TYPE,
+  DEFAULT_REPAIR_ORIGIN,
+  DEFAULT_REPAIR_STATUS,
+  REPAIR_ORIGINS,
+  REPAIR_PICS,
+  REPAIR_RESOLUTIONS,
+  REPAIR_STATUSES,
+  normalizeDateOnly,
   normalizeSku,
   normalizeCurrency,
   normalizeKeterangan,
@@ -37,8 +45,15 @@ import {
   listPurchaseOrderRows,
   listSaleRows,
 } from "@/lib/api/records";
+import { repairMonth } from "@/lib/api/repairs";
+import { pickProductPrice } from "@/lib/prices";
+import {
+  resolveRepairHeaderIndex,
+  repairSavingValue,
+} from "@/lib/gsheet/repair-mapping";
+import { normalizeCode, normalizeName } from "@/lib/gsheet/mapping";
 import { MONTHS } from "@/lib/format";
-import type { ImportResult } from "@/lib/types";
+import type { ImportIssue, ImportResult, ProductPrice } from "@/lib/types";
 
 type SheetRow = Record<string, unknown>;
 
@@ -224,6 +239,47 @@ const PRICE_HEADERS = ["Produk", "Jenis Harga", "Bulan", "Tahun", "Harga"];
 
 const SPARE_PART_PRICE_HEADERS = ["Sparepart", "Bulan", "Tahun", "Harga"];
 
+const REPAIR_MODULE = "repairs";
+
+/**
+ * Kolom modul Repair Data. Nama header di sini adalah nama yang SUDAH dikenal
+ * `REPAIR_HEADER_ALIASES` (repair-mapping.ts), jadi file yang diekspor app bisa
+ * langsung diimpor kembali — header yang sama, alias yang sama.
+ */
+const REPAIR_HEADERS = [
+  "Claim ID",
+  "Tanggal",
+  "Produk",
+  "Quantity",
+  "Saving Value",
+  "Jenis Harga",
+  "Asal",
+  "Nama",
+  "No Telp",
+  "Resi",
+  "Kendala dari Cust",
+  "Foto Kelengkapan",
+  "Status",
+  "Start",
+  "Finish",
+  "Note",
+  "PIC",
+  "Penyelesaian",
+  "Teknis Device",
+  "Sparepart 1",
+  "Sparepart 2",
+  "Sparepart 3",
+  "Note Closing",
+];
+
+/** Pilihan dropdown modul Repair; dipakai impor untuk menolak nilai di luar daftar. */
+const REPAIR_OPTIONS: Record<string, readonly string[]> = {
+  origin: REPAIR_ORIGINS,
+  status: REPAIR_STATUSES,
+  pic: REPAIR_PICS,
+  resolution: REPAIR_RESOLUTIONS,
+};
+
 /* ------------------------------- export ------------------------------- */
 
 export async function excelExport(moduleName: string, req: NextRequest) {
@@ -362,6 +418,79 @@ export async function excelExport(moduleName: string, req: NextRequest) {
     return downloadResponse(sheetBuffer(data, headers), "sales.xlsx");
   }
 
+  if (moduleName === REPAIR_MODULE) {
+    // Saving Value memuat Rupiah, jadi modul ini admin saja — sama seperti kartu
+    // Allowance Defect: role Pabrik tidak menerima filenya sama sekali.
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
+
+    // Filter query sengaja TIDAK dipakai: sama seperti ekspor sales & defect,
+    // berkas selalu memuat seluruh baris modul.
+    const rows = await db
+      .select({
+        claimId: repairs.claimId,
+        date: repairs.date,
+        productName: products.name,
+        quantity: repairs.quantity,
+        value: repairs.value,
+        priceType: repairs.priceType,
+        origin: repairs.origin,
+        customerName: repairs.customerName,
+        customerPhone: repairs.customerPhone,
+        resi: repairs.resi,
+        customerIssue: repairs.customerIssue,
+        photoCompletenessLink: repairs.photoCompletenessLink,
+        status: repairs.status,
+        startAt: repairs.startAt,
+        finishAt: repairs.finishAt,
+        note: repairs.note,
+        pic: repairs.pic,
+        resolution: repairs.resolution,
+        problemName: problems.name,
+        sparePart1Id: repairs.sparePart1Id,
+        sparePart2Id: repairs.sparePart2Id,
+        sparePart3Id: repairs.sparePart3Id,
+        noteClosing: repairs.noteClosing,
+      })
+      .from(repairs)
+      .leftJoin(products, eq(repairs.productId, products.id))
+      .leftJoin(problems, eq(repairs.problemId, problems.id))
+      .orderBy(desc(repairs.date), desc(repairs.id));
+
+    const sparePartRows = await db
+      .select({ id: spareParts.id, name: spareParts.name })
+      .from(spareParts);
+    const partName = new Map(sparePartRows.map((row) => [row.id, row.name]));
+    const part = (id: number | null) => (id === null ? "" : partName.get(id) ?? "");
+
+    const data = rows.map((row) => ({
+      "Claim ID": row.claimId,
+      Tanggal: row.date,
+      Produk: row.productName ?? "",
+      Quantity: row.quantity,
+      "Saving Value": row.value,
+      "Jenis Harga": row.priceType,
+      Asal: row.origin,
+      Nama: row.customerName,
+      "No Telp": row.customerPhone,
+      Resi: row.resi,
+      "Kendala dari Cust": row.customerIssue,
+      "Foto Kelengkapan": row.photoCompletenessLink,
+      Status: row.status,
+      Start: displayDateTime(row.startAt),
+      Finish: displayDateTime(row.finishAt),
+      Note: row.note,
+      PIC: row.pic,
+      Penyelesaian: row.resolution,
+      "Teknis Device": row.problemName ?? "",
+      "Sparepart 1": part(row.sparePart1Id),
+      "Sparepart 2": part(row.sparePart2Id),
+      "Sparepart 3": part(row.sparePart3Id),
+      "Note Closing": row.noteClosing,
+    }));
+    return downloadResponse(sheetBuffer(data, REPAIR_HEADERS), "repair-data.xlsx");
+  }
+
   if (moduleName === "users") {
     const admin = await requireAdmin();
     if (!admin.ok) return admin.response;
@@ -406,6 +535,7 @@ export async function excelImport(moduleName: string, req: NextRequest) {
   if (moduleName === SPARE_PART_PRICE_MODULE) return importSparePartPrices(sheet);
   if (moduleName === "defects") return importDefects(sheet);
   if (moduleName === "sales") return importSales(sheet);
+  if (moduleName === REPAIR_MODULE) return importRepairs(sheet);
   if (moduleName === "users") return importUsers(sheet);
   return jsonError("Modul tidak dikenal.", 404);
 }
@@ -810,6 +940,218 @@ async function importSales(sheet: SheetRow[]) {
   return jsonOk(result);
 }
 
+/**
+ * Impor Repair Data.
+ *
+ * Kolom dicocokkan lewat `resolveRepairHeaderIndex` — helper yang sama dengan
+ * sync "Reparasi RFB", jadi nama kolom yang diterima berkas impor persis sama
+ * dengan yang diterima sync (termasuk alias lamanya).
+ *
+ * ponytail: `readSheet` mengubah baris jadi objek ber-kunci header, jadi dua
+ * kolom yang namanya sama persis ("Note" awal dan "Note" akhir) saling menimpa —
+ * nilainya jadi sama. Batas ini ada di `readSheet` yang dipakai semua modul;
+ * impor dari sheet asli tetap benar karena sync membaca sel sebagai array.
+ *
+ * Kunci dedupe adalah Claim ID: baris dengan Claim ID baru disisipkan, yang
+ * sudah ada di-update. Nama produk/problem/sparepart diterjemahkan ke id lewat
+ * Data Master; produk yang tidak dikenal membuat baris DILEWATI, sedangkan
+ * problem/sparepart yang tidak dikenal cuma dikosongkan dan dicatat sebagai
+ * baris yang terlewat.
+ */
+async function importRepairs(sheet: SheetRow[]) {
+  // `resolveRepairHeaderIndex` sudah menormalkan sendiri nama kolomnya.
+  const header = Object.keys(sheet[0] ?? {});
+  const { index } = resolveRepairHeaderIndex(header);
+
+  const [productRows, problemRows, partRows, priceRows, repairRows] = await Promise.all([
+    db.select({ id: products.id, name: products.name }).from(products),
+    db.select({ id: problems.id, name: problems.name }).from(problems),
+    db.select({ id: spareParts.id, name: spareParts.name }).from(spareParts),
+    db.select().from(productPrices),
+    db
+      .select({ id: repairs.id, claimId: repairs.claimId })
+      .from(repairs),
+  ]);
+
+  const productMap = new Map(
+    productRows.map((row) => [normalizeName(row.name), row.id])
+  );
+  const problemMap = new Map(
+    problemRows.map((row) => [normalizeName(row.name), row.id])
+  );
+  const partMap = new Map(partRows.map((row) => [normalizeName(row.name), row.id]));
+  const repairMap = new Map(repairRows.map((row) => [row.claimId, row.id]));
+
+  const result = newImportResult(REPAIR_MODULE, sheet.length);
+  for (let i = 0; i < sheet.length; i++) {
+    const rowNumber = i + 2;
+    const row = sheet[i];
+    const at = (key: string): unknown => {
+      const column = index[key as keyof typeof index];
+      return column >= 0 ? row[header[column]] : "";
+    };
+
+    const claimId = normalizeCode(cellString(at("claimId")));
+    const productName = cellString(at("productId"));
+    if (!claimId) {
+      result.errors.push({ row: rowNumber, key: "", reason: "Claim ID kosong" });
+      continue;
+    }
+
+    const date = normalizeDateOnly(cellString(at("date")));
+    if (!date) {
+      result.errors.push({
+        row: rowNumber,
+        key: claimId,
+        reason: "Tanggal kosong atau tidak dikenali",
+      });
+      continue;
+    }
+
+    const productId = productMap.get(normalizeName(productName));
+    if (!productId) {
+      result.errors.push({
+        row: rowNumber,
+        key: claimId,
+        reason: `Produk "${productName || "(kosong)"}" tidak ada di Data Master`,
+      });
+      continue;
+    }
+
+    const quantity = cellNumber(at("quantity"));
+    const priceType = cellString(at("priceType")) || DEFAULT_PRICE_TYPE;
+    const price = pickProductPrice(
+      priceRows as ProductPrice[],
+      productId,
+      repairMonth(date),
+      priceType
+    );
+    const sentValue = cellPrice(at("value"));
+    // Saving Value kosong -> dihitung Quantity x harga RW, persis rumus app.
+    const value =
+      sentValue === null
+        ? repairSavingValue(quantity, price?.price ?? 0)
+        : sentValue;
+
+    const skipped: ImportIssue[] = [];
+    let problemId: number | null = null;
+    let sparePart1Id: number | null = null;
+    let sparePart2Id: number | null = null;
+    let sparePart3Id: number | null = null;
+
+    const problemName = cellString(at("problemId"));
+    if (problemName) {
+      const found = problemMap.get(normalizeName(problemName));
+      if (found === undefined) {
+        skipped.push({
+          row: rowNumber,
+          key: claimId,
+          reason: `Problem "${problemName}" tidak ada di Data Master`,
+        });
+      } else problemId = found;
+    }
+
+    const partId = (key: string): number | null => {
+      const name = cellString(at(key));
+      if (!name) return null;
+      const found = partMap.get(normalizeName(name));
+      if (found === undefined) {
+        skipped.push({
+          row: rowNumber,
+          key: claimId,
+          reason: `Sparepart "${name}" tidak ada di Data Master`,
+        });
+        return null;
+      }
+      return found;
+    };
+    sparePart1Id = partId("sparePart1Id");
+    sparePart2Id = partId("sparePart2Id");
+    sparePart3Id = partId("sparePart3Id");
+
+    // Dropdown modul ini di-hardcode; nilai di luar daftar ditolak seperti
+    // impor PO, bukan disimpan diam-diam.
+    const readOption = (field: keyof typeof REPAIR_OPTIONS): string | null => {
+      const value = cellString(at(field));
+      if (!value) return "";
+      if (REPAIR_OPTIONS[field].includes(value)) return value;
+      result.errors.push({
+        row: rowNumber,
+        key: claimId,
+        reason: `${field} "${value}" tidak termasuk pilihan modul Repair`,
+      });
+      return null;
+    };
+    const originCell = readOption("origin");
+    const statusCell = readOption("status");
+    const pic = readOption("pic");
+    const resolution = readOption("resolution");
+    if (
+      originCell === null ||
+      statusCell === null ||
+      pic === null ||
+      resolution === null
+    ) {
+      continue;
+    }
+    const origin = originCell || DEFAULT_REPAIR_ORIGIN;
+    const status = statusCell || DEFAULT_REPAIR_STATUS;
+
+    const values = {
+      claimId,
+      date,
+      month: repairMonth(date),
+      productId,
+      quantity,
+      value,
+      priceType,
+      productPriceId: price?.id ?? null,
+      origin,
+      status,
+      pic,
+      resolution,
+      customerName: cellString(at("customerName")),
+      customerPhone: cellString(at("customerPhone")),
+      resi: cellString(at("resi")),
+      customerIssue: cellString(at("customerIssue")),
+      photoCompletenessLink: cellString(at("photoCompletenessLink")),
+      startAt: normalizeTimestamp(cellString(at("startAt"))),
+      finishAt: normalizeTimestamp(cellString(at("finishAt"))),
+      note: cellString(at("note")),
+      noteClosing: cellString(at("noteClosing")),
+      problemId,
+      sparePart1Id,
+      sparePart2Id,
+      sparePart3Id,
+    };
+
+    try {
+      const rowId = repairMap.get(claimId);
+      if (rowId === undefined) {
+        await db.insert(repairs).values(values);
+        result.inserted++;
+      } else {
+        await db
+          .update(repairs)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(repairs.id, rowId));
+      }
+      if (skipped.length > 0) {
+        result.skipped++;
+        result.skippedDetails.push(...skipped);
+      }
+    } catch (err) {
+      result.errors.push({
+        row: rowNumber,
+        key: claimId,
+        reason: err instanceof Error ? err.message : "Gagal menyimpan",
+      });
+    }
+  }
+  logImport(result);
+  return jsonOk(result);
+}
+
 async function importUsers(sheet: SheetRow[]) {
   const factoryRows = await db.select().from(factories);
   const factoryMap = new Map(
@@ -1174,6 +1516,37 @@ export async function excelTemplate(moduleName: string) {
     return downloadResponse(
       sheetBuffer([example], SALES_HEADERS, "Template"),
       "template-sales.xlsx"
+    );
+  }
+  if (moduleName === REPAIR_MODULE) {
+    const example: SheetRow = {
+      "Claim ID": "RFB-0001",
+      Tanggal: "2026-04-07",
+      Produk: "Kulkas 2 Pintu",
+      Quantity: 3,
+      "Saving Value": 4500000,
+      "Jenis Harga": DEFAULT_PRICE_TYPE,
+      Asal: DEFAULT_REPAIR_ORIGIN,
+      Nama: "Budi",
+      "No Telp": "08123456789",
+      Resi: "JNE-0001",
+      "Kendala dari Cust": "Tidak dingin",
+      "Foto Kelengkapan": "https://drive.google.com/…",
+      Status: DEFAULT_REPAIR_STATUS,
+      Start: "2026-04-07 11:10",
+      Finish: "",
+      Note: "",
+      PIC: "Aji",
+      Penyelesaian: "Ganti Sparepart",
+      "Teknis Device": "Cacat Cat",
+      "Sparepart 1": "Adaptor 12V",
+      "Sparepart 2": "",
+      "Sparepart 3": "",
+      "Note Closing": "",
+    };
+    return downloadResponse(
+      sheetBuffer([example], REPAIR_HEADERS, "Template"),
+      "template-repair-data.xlsx"
     );
   }
   if (moduleName === "users") {

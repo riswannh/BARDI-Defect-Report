@@ -47,6 +47,57 @@ export interface DefectAllowance {
 }
 
 /**
+ * Repair Data — satu baris = satu klaim reparasi (tab "Data Reparasi").
+ *
+ * Modul ini admin saja; `value` adalah Saving Value (Rupiah) = `quantity` ×
+ * harga master jenis "Regional Warehouse" produk itu, tapi tetap boleh diubah
+ * operator — lihat `src/lib/api/repairs.ts`.
+ */
+export interface Repair {
+  id: number;
+  /** CLAIM ID sheet, unik. */
+  claimId: string;
+  /** "YYYY-MM-DD". */
+  date: string;
+  /** "Jan"…"Des", diturunkan dari `date`. */
+  month: string;
+  productId: number;
+  productName?: string | null;
+  quantity: number;
+  /** Saving Value (Rupiah, angka bulat). */
+  value: number;
+  priceType?: string;
+  productPriceId?: number | null;
+  /** "Distri" | "OR" | "Customer". */
+  origin: string;
+  customerName: string;
+  customerPhone: string;
+  resi: string;
+  customerIssue: string;
+  photoPackageLink: string;
+  photoCompletenessLink: string;
+  /** "Done Repair" | "Proses" | "Belum Di Buka" | "Tidak Ada Data" | "Done Kirim". */
+  status: string;
+  /** "YYYY-MM-DD HH:mm" atau "". */
+  startAt: string;
+  finishAt: string;
+  note: string;
+  /** "Aji" | "Roland" | … */
+  pic: string;
+  /** "Replacement BJ" | "Ganti Sparepart" | … */
+  resolution: string;
+  problemId?: number | null;
+  problemName?: string | null;
+  sparePart1Id?: number | null;
+  sparePart2Id?: number | null;
+  sparePart3Id?: number | null;
+  sparePartNames?: (string | null)[];
+  noteClosing: string;
+  /** Diisi hanya kalau baris pernah disinkronkan dari Google Sheet. */
+  sheetSyncedAt?: string | null;
+}
+
+/**
  * Harga produk per bulan dan tahun (selalu Rupiah).
  *
  * Satu produk boleh punya banyak baris — satu per periode. Baris PO merujuk ke

@@ -147,6 +147,137 @@ export const saleSchema = buildCreate(saleFields, {
 
 export const saleUpdateSchema = buildUpdate(saleFields);
 
+/* ------------------------------ Repair Data ------------------------------ */
+
+/**
+ * Pilihan dropdown modul Repair Data — DI-HARDCODE, disamakan dengan isi sheet
+ * "Reparasi RFB" (tab `Dropdown` kolom A/B plus kolom Asal/PIC/Status), sama
+ * seperti pola `KETERANGAN_OPTIONS` di modul PO.
+ *
+ * "Teknis Device" TIDAK ada di sini: kolom itu memakai master Problem yang sama
+ * dengan modul Defect (`repairs.problemId`).
+ */
+export const REPAIR_ORIGINS = ["Distri", "OR", "Customer"] as const;
+export type RepairOrigin = (typeof REPAIR_ORIGINS)[number];
+
+export const REPAIR_STATUSES = [
+  "Done Repair",
+  "Proses",
+  "Belum Di Buka",
+  "Tidak Ada Data",
+  "Done Kirim",
+] as const;
+export type RepairStatus = (typeof REPAIR_STATUSES)[number];
+
+export const REPAIR_PICS = [
+  "Aji",
+  "Roland",
+  "Danu",
+  "Aziz",
+  "Danang",
+  "Almer",
+  "Hendi",
+] as const;
+export type RepairPic = (typeof REPAIR_PICS)[number];
+
+export const REPAIR_RESOLUTIONS = [
+  "Replacement BJ",
+  "Ganti Sparepart",
+  "Maintenance",
+  "Ganti Komponen",
+  "Replacement Produk Baru",
+] as const;
+export type RepairResolution = (typeof REPAIR_RESOLUTIONS)[number];
+
+export const DEFAULT_REPAIR_ORIGIN: RepairOrigin = "Distri";
+/** Status baris baru; "Proses" karena baris yang baru dicatat belum selesai. */
+export const DEFAULT_REPAIR_STATUS: RepairStatus = "Proses";
+
+/**
+ * "2026-05-04", "2026-05-04 10:30", atau "04/05/2026" → "2026-05-04".
+ *
+ * Kosong / tidak dikenali → "" supaya impor bisa melaporkannya sebagai error
+ * tanpa membatalkan seluruh baris.
+ */
+export function normalizeDateOnly(value: unknown): string {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (raw === "") return "";
+  if (/^\d+(\.\d+)?$/.test(raw)) {
+    // Serial tanggal Google (hari sejak 1899-12-30) — dipakai kolom "Tanggal".
+    const serial = Number(raw);
+    if (serial > 0 && serial < 200_000) {
+      return new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+    }
+  }
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(raw.replace(" ", "T"));
+  if (iso) {
+    return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
+  }
+  const dmy = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(raw);
+  if (dmy) {
+    return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
+export const repairFields = {
+  claimId: z.string().trim().min(1),
+  date: z.string().trim().min(1),
+  productId: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().int().min(0),
+  value: z.coerce.number().int().min(0),
+  priceType: z.string().trim(),
+  origin: z.string().trim(),
+  customerName: z.string().trim(),
+  customerPhone: z.string().trim(),
+  resi: z.string().trim(),
+  customerIssue: z.string().trim(),
+  photoPackageLink: z.string().trim(),
+  photoCompletenessLink: z.string().trim(),
+  status: z.string().trim(),
+  startAt: z.string().trim(),
+  finishAt: z.string().trim(),
+  note: z.string().trim(),
+  pic: z.string().trim(),
+  resolution: z.string().trim(),
+  // Foreign key opsional: 0 berarti "tidak ada" dan diterjemahkan ke NULL oleh
+  // handler API, supaya satu bentuk schema bisa dipakai create maupun update.
+  problemId: z.coerce.number().int().min(0),
+  sparePart1Id: z.coerce.number().int().min(0),
+  sparePart2Id: z.coerce.number().int().min(0),
+  sparePart3Id: z.coerce.number().int().min(0),
+  noteClosing: z.string().trim(),
+} satisfies z.ZodRawShape;
+
+export const repairSchema = buildCreate(repairFields, {
+  quantity: z.coerce.number().int().min(0).default(0),
+  value: z.coerce.number().int().min(0).default(0),
+  priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),
+  origin: z.string().trim().default(DEFAULT_REPAIR_ORIGIN),
+  status: z.string().trim().default(DEFAULT_REPAIR_STATUS),
+  customerName: z.string().trim().default(""),
+  customerPhone: z.string().trim().default(""),
+  resi: z.string().trim().default(""),
+  customerIssue: z.string().trim().default(""),
+  photoPackageLink: z.string().trim().default(""),
+  photoCompletenessLink: z.string().trim().default(""),
+  startAt: z.string().trim().default(""),
+  finishAt: z.string().trim().default(""),
+  note: z.string().trim().default(""),
+  pic: z.string().trim().default(""),
+  resolution: z.string().trim().default(""),
+  problemId: z.coerce.number().int().min(0).default(0),
+  sparePart1Id: z.coerce.number().int().min(0).default(0),
+  sparePart2Id: z.coerce.number().int().min(0).default(0),
+  sparePart3Id: z.coerce.number().int().min(0).default(0),
+  noteClosing: z.string().trim().default(""),
+});
+
+export const repairUpdateSchema = buildUpdate(repairFields);
+
 /** Mata uang yang didukung modul PO. */
 export const CURRENCIES = ["Rp", "USD", "RMB"] as const;
 export type Currency = (typeof CURRENCIES)[number];

@@ -463,6 +463,31 @@ Catatan perilaku Report yang harus dijaga:
   pernah jatuh ke 0 diam-diam. Kartu non-admin tidak dirender. Self-check aturan prorata:
   `cmd /c "npx tsx scripts/allowance-check.ts"` (dijalankan dari `frontend/`).
 
+- **Repair Data** (menu `/repairs`, **admin saja**, ditambahkan 11 Okt 2026) = cermin tab "Data Reparasi"
+  sheet Reparasi RFB (`REPAIR_GSHEET_ID`, default sudah ada di kode). Tabel `repairs`, satu baris = satu
+  `claimId` (UNIQUE — kunci dedupe impor & sync). Endpoint `/api/repairs` (GET/POST),
+  `/api/repairs/[id]` (PATCH/DELETE), `/api/repairs/bulk-delete`, `DELETE /api/repairs`,
+  `POST /api/repairs/gsheet/sync`, plus Excel `repairs` — **semuanya `requireAdmin()`** karena
+  `value` (Saving Value) memuat Rupiah; role Pabrik tidak menerima data ini sama sekali.
+  - Saving Value = `quantity × harga RW` bulan tanggal baris (`resolveRepairPrice` +
+    `pickProductPrice`, `DEFAULT_PRICE_TYPE`); dihitung server saat create dan hanya dipakai kalau
+    klien mengirim 0/kosong. `month` selalu diturunkan dari `date` (`repairMonth()`) — kolom Bulan di
+    sheet isinya campur (serial + teks), jadi TIDAK pernah dibaca.
+  - Sync satu arah sheet → app: header dibaca dari **baris 3**, data dari **baris 5**, kolom dicocokkan
+    per NAMA header (`src/lib/gsheet/repair-mapping.ts`, dua kolom bernama "Note" dibedakan lewat alias
+    `noteClosing`), nilai dibaca `UNFORMATTED_VALUE`. Aturan konflik memakai `planFields`
+    (`src/lib/gsheet/repair-sync.ts`): sheet berubah & app belum → timpa; dua-duanya berubah → **nilai app
+    dipertahankan** dan dilaporkan sebagai "dilewati" (TANPA dialog `/resolve` seperti Defect — itu
+    upgrade path kalau nanti dibutuhkan); `value` tidak pernah ikut ditimpa.
+  - Nama Produk / Teknis Device / Sparepart dicocokkan ke master; yang tidak ketemu **tidak** dibuat
+    otomatis: produk → baris dilewati, teknis device/sparepart → kolom dikosongkan, keduanya dilaporkan
+    di `ImportResult`. Daftar Teknis Device bisa dilengkapi dari `Dropdown!B` lewat
+    `cmd /c "npx tsx scripts/repair-problem-seed.ts"` (idempotent; sengaja BUKAN di `src/lib/db/seed.ts`
+    yang hanya mengisi DB kosong).
+  - Dropdown Asal/Status/PIC/Penyelesaian di-hardcode di `src/lib/api/validation.ts` (pola
+    `KETERANGAN_OPTIONS`), bukan tabel master. Self-check pemetaan + aturan sync:
+    `cmd /c "npx tsx scripts/repair-check.ts"`.
+
 ### Aturan alur input defect
 
 - Timestamp entri baru = waktu sekarang (`localDateTimeValue()`), bukan konstanta.

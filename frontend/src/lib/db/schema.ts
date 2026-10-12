@@ -519,4 +519,87 @@ export const purchaseOrders = sqliteTable(
     index("purchase_orders_keterangan_idx").on(t.keterangan),
     index("purchase_orders_date_idx").on(t.poDate),
   ]
-)
+);
+
+/**
+ * Repair Data — satu baris = satu klaim reparasi, inputannya mengikuti tab
+ * "Data Reparasi" pada spreadsheet "Reparasi RFB".
+ *
+ * Modul ini ADMIN SAJA (semua endpoint `requireAdmin()`) karena memuat angka
+ * Rupiah pada `value`.
+ *
+ * Dua hal yang sengaja tidak mengikuti sheet:
+ * - Kolom "Bulan" di sheet isinya campur (serial tanggal dan teks bebas),
+ *   jadi `month` di sini DITURUNKAN dari `date` (format `YYYY-MM-DD`).
+ * - `value` (Saving Value) = `quantity` × harga master jenis
+ *   "Regional Warehouse" produk itu; form mengisinya otomatis, operator boleh
+ *   mengubahnya. `productPriceId` menyimpan baris harga yang dipakai supaya
+ *   asal angkanya bisa ditelusuri.
+ */
+export const repairs = sqliteTable(
+  "repairs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** CLAIM ID dari sheet; dipakai sebagai kunci dedupe impor & sync. */
+    claimId: text("claimId").notNull().unique(),
+    /** "YYYY-MM-DD" (sheet menyimpannya sebagai serial tanggal). */
+    date: text("date").notNull(),
+    /** "YYYY-MM", diturunkan dari `date` — dipakai filter bulan/tahun. */
+    month: text("month").notNull().default(""),
+    productId: integer("productId")
+      .notNull()
+      .references(() => products.id),
+    quantity: integer("quantity").notNull().default(0),
+    /** Saving Value (Rupiah), angka bulat seperti `defects.value`. */
+    value: integer("value").notNull().default(0),
+    priceType: text("priceType").notNull().default("Regional Warehouse"),
+    /** Baris harga master yang dipakai; NULL kalau produk belum punya harga RW. */
+    productPriceId: integer("productPriceId").references(() => productPrices.id),
+    /** Asal unit: "Distri" | "OR" | "Customer" (lihat REPAIR_ORIGINS). */
+    origin: text("origin").notNull().default(""),
+    /** Nama & nomor telepon customer (kolom "Nama" dan "No Telp" sheet). */
+    customerName: text("customerName").notNull().default(""),
+    customerPhone: text("customerPhone").notNull().default(""),
+    resi: text("resi").notNull().default(""),
+    /** "Kendala dari cust" — teks bebas (di sheet asalnya hasil XLOOKUP). */
+    customerIssue: text("customerIssue").notNull().default(""),
+    photoPackageLink: text("photoPackageLink").notNull().default(""),
+    photoCompletenessLink: text("photoCompletenessLink").notNull().default(""),
+    /** "Done Repair" | "Proses" | … (lihat REPAIR_STATUSES). */
+    status: text("status").notNull().default(""),
+    /** "YYYY-MM-DD HH:mm" seperti `defects.timeStamp`; boleh kosong. */
+    startAt: text("startAt").notNull().default(""),
+    finishAt: text("finishAt").notNull().default(""),
+    /** Kolom P sheet. */
+    note: text("note").notNull().default(""),
+    /** PIC pengerjaan (lihat REPAIR_PICS). */
+    pic: text("pic").notNull().default(""),
+    /** "Penyelesaian" (lihat REPAIR_RESOLUTIONS). */
+    resolution: text("resolution").notNull().default(""),
+    /** Kolom "Teknis Device" — master Problem yang sama dengan modul Defect. */
+    problemId: integer("problemId").references(() => problems.id),
+    sparePart1Id: integer("sparePart1Id").references(() => spareParts.id),
+    sparePart2Id: integer("sparePart2Id").references(() => spareParts.id),
+    sparePart3Id: integer("sparePart3Id").references(() => spareParts.id),
+    /** Kolom W sheet — header di sheet juga "Note", jadi diberi nama sendiri. */
+    noteClosing: text("noteClosing").notNull().default(""),
+    /**
+     * Pembukuan sync Google Sheet — pola sama dengan `defects`: hash nilai tiap
+     * field saat sync terakhir, sehingga sync tahu baris mana yang sudah diubah
+     * di aplikasi dan tidak boleh ditimpa diam-diam.
+     */
+    sheetFields: text("sheetFields"),
+    sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    index("repairs_product_idx").on(t.productId),
+    index("repairs_status_idx").on(t.status),
+    index("repairs_date_idx").on(t.date),
+  ]
+);

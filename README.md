@@ -82,6 +82,8 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Value Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Big Data") satu arah sheet → aplikasi, konflik per field lewat popup | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
+| + | **Allowance Defect** (limit tahunan, admin saja) — kartu Sisa Allowance di Report, limit diprorata mengikuti filter | ✅ Selesai + deploy |
+| + | **Repair Data** (`/repairs`, admin saja) — cermin tab "Data Reparasi" sheet Reparasi RFB: CRUD, filter, Saving Value = Quantity × harga RW, sync Google Sheet satu arah, Excel | ✅ Selesai |
 
 ---
 
@@ -272,6 +274,26 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `id` | integer PK auto | |
 | `year` | text (unik) | tahun 4 angka; satu tahun hanya boleh punya satu limit |
 | `limitValue` | real (default 0) | limit setahun penuh, sebelum diprorata filter |
+
+**`repairs`** — data reparasi (isi tab "Data Reparasi" sheet Reparasi RFB), **admin saja**
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `claimId` | text (unik) | CLAIM ID dari sheet — kunci dedupe impor/sync |
+| `date` / `month` | text | `date` = `YYYY-MM-DD`, `month` = `YYYY-MM` (diturunkan dari `date`) |
+| `productId` | FK → products | nama produk dicocokkan ke Data Master saat impor |
+| `quantity` | integer (default 0) | Quantity |
+| `value` | integer (default 0) | Saving Value, Rupiah |
+| `priceType` / `productPriceId` | text / FK → product_prices | jenis harga dipakai (default `Regional Warehouse`) + baris harga yang terpilih |
+| `origin` / `status` / `pic` / `resolution` | text | pilihan tetap, di-hardcode di `src/lib/api/validation.ts` |
+| `customerName` / `customerPhone` / `resi` / `customerIssue` | text | data pelanggan + kendala dari cust |
+| `photoPackageLink` / `photoCompletenessLink` | text | tautan foto paket & kelengkapan (tautan Drive apa adanya) |
+| `startAt` / `finishAt` | text | `YYYY-MM-DDTHH:mm` bila sheet berisi tanggal+jam |
+| `note` / `noteClosing` | text | dua kolom "Note" pada sheet (yang kedua = Note Closing) |
+| `problemId` | FK → problems | "Teknis Device" |
+| `sparePart1Id` / `sparePart2Id` / `sparePart3Id` | FK → spare_parts | Sparepart/Komponen 1–3 |
+| `sheetFields` / `sheetSyncedAt` | text / timestamp | salinan nilai sheet terakhir yang sudah sepakat + waktu sync (aturan baseline sama seperti Defect) |
 
 **`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
 
@@ -510,6 +532,36 @@ keterangan tahun mana yang perlu diisi (tidak jatuh ke 0 diam-diam). Kartu ini *
 kartu Nilai Defect maupun Selisih Defect yang sudah ada — ia kartu tambahan. Aturan proratanya diuji
 `cmd /c "npx tsx scripts/allowance-check.ts"` dari `frontend/`.
 
+### Repair Data (admin saja)
+
+Menu **Repair Data** (`/repairs`) memuat isi tab **"Data Reparasi"** sheet
+[Reparasi RFB](https://docs.google.com/spreadsheets/d/1kmRdS3eREi-6-ZyDZboeWxJYNiCoeeRt8wVt81ZQHUg/edit).
+Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Saving Value | Aksi**.
+
+- Satu baris = satu **CLAIM ID**; itu kunci dedupe saat impor maupun sync (baris dengan CLAIM ID
+  yang sudah ada tidak dibuat dua kali).
+- **Saving Value** = `Quantity × harga produk jenis Regional Warehouse` untuk bulan tanggal baris itu
+  (master `product_prices`, dihitung dengan `pickProductPrice`). Angkanya terisi otomatis di form saat
+  Produk/Quantity/Tanggal diisi, tetap bisa diubah manual, dan **tidak pernah ditimpa sync** — angka itu
+  milik app, bukan sheet (tab "Save Value" di sheet sudah rusak/tidak dipakai sebagai acuan).
+- **Sinkron Sheet** (tombol di halaman, admin) membaca tab `Data Reparasi` dengan header di **baris 3**
+  dan data mulai **baris 5**, kolom dicocokkan **per nama header** (`src/lib/gsheet/repair-mapping.ts`).
+  Nama Produk / Teknis Device / Sparepart dicocokkan ke Data Master: nama yang tidak ketemu **tidak**
+  dibuatkan master baru — baris dilewati (produk) atau kolomnya dikosongkan (teknis device/sparepart) dan
+  dilaporkan. Field yang berubah di sheet **dan** di app sekaligus tidak ditimpa; nilai app dipertahankan
+  dan dilaporkan sebagai "dilewati" (tanpa dialog keputusan seperti sync Defect). Hasilnya ditampilkan
+  lewat `ImportResultDialog`.
+- Sheet **tidak pernah ditulis** (read-only), sama seperti sync Defect.
+- Dropdown Asal / Status / PIC / Penyelesaian di-hardcode di `src/lib/api/validation.ts`; **Teknis Device**
+  memakai master Problem, yang daftarnya bisa dilengkapi dari kolom `Dropdown!B` sheet lewat
+  `cmd /c "npx tsx scripts/repair-problem-seed.ts"` (idempotent, butuh kredensial service account).
+- Excel: **Ekspor / Impor / Template** modul `repairs` (impor upsert berdasar CLAIM ID; `value` dihitung
+  dari harga RW kalau kolomnya kosong).
+- Modul ini **admin saja** (`/api/repairs*` memakai `requireAdmin()`, menu `adminOnly`) karena Saving
+  Value memuat Rupiah — role Pabrik tidak boleh menerimanya, sama seperti kartu Allowance Defect.
+- Verifikasi: `cmd /c "npx tsx scripts/repair-check.ts"` (pemetaan kolom + aturan sync) dan
+  `verify-repair.cjs` (Playwright: CRUD, filter, hitung Saving Value, gerbang admin).
+
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan
 `Replacement` produk itu pada periode terpilih (periode sama dengan kartu Replacement, jadi jumlah
 seluruh `recap[].replacementQty` = `totals.replacementQty`). Halaman Report menampilkan kolom
@@ -591,6 +643,13 @@ periode tujuan dilewati, jadi aman dijalankan berulang.
 | GET | `/api/defect-allowances` | admin | daftar limit allowance, tahun terbaru dulu |
 | POST | `/api/defect-allowances` | admin | `{ year, limitValue }`; 409 bila tahun itu sudah punya limit |
 | PATCH / DELETE | `/api/defect-allowances/{id}` | admin | ubah / hapus satu limit tahunan |
+| GET | `/api/repairs` | admin | daftar reparasi; filter `search`, `productId`, `problemId`, `status`, `pic`, `origin`, `resolution`, `year`, `month` |
+| POST | `/api/repairs` | admin | tambah baris; 409 `Claim ID sudah ada.` bila CLAIM ID kembar |
+| PATCH / DELETE | `/api/repairs/{id}` | admin | ubah / hapus satu baris reparasi |
+| POST | `/api/repairs/bulk-delete` | admin | `{ ids: number[] }` — hapus baris terpilih |
+| DELETE | `/api/repairs` | admin | hapus semua baris (dengan backup otomatis) |
+| POST | `/api/repairs/gsheet/sync` | admin | tarik tab "Data Reparasi" → app (satu arah, read-only ke sheet) |
+| GET | `/api/excel/repairs/export` `/import` `/template` | admin | Excel modul repairs (impor upsert berdasar CLAIM ID) |
 
 **Sparepart adalah child produk, tetapi kaitannya many-to-many**: satu sparepart boleh dipakai
 beberapa produk sekaligus, jadi mengaitkan sparepart di produk B **tidak** melepasnya dari produk A.
@@ -1122,7 +1181,9 @@ Hal yang wajib diperhatikan saat deploy:
 
 Env opsional untuk sync: `GSHEET_ID` (default spreadsheet `Data Garansi Produk`),
 `GSHEET_TAB` (default `Big Data`, untuk defect), dan `GSHEET_SALES_TAB`
-(default `Data Penjualan`, untuk sales).
+(default `Data Penjualan`, untuk sales). Untuk modul Repair Data: `REPAIR_GSHEET_ID`
+(default spreadsheet `Reparasi RFB`) dan `REPAIR_GSHEET_TAB` (default `Data Reparasi`) —
+keduanya boleh dikosongkan karena default-nya sudah ada di kode.
 
 Spreadsheet harus di-share ke email service account itu (minimal **Viewer**) —
 aplikasi tidak butuh izin tulis dan tidak pernah memakainya.
