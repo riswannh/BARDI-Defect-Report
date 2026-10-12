@@ -36,7 +36,9 @@ import type { ImportIssue, ImportResult, ProductPrice } from "@/lib/types";
  * Sama seperti sync Defect, sheet TIDAK pernah ditulis (read-only).
  */
 
-const MAX_ISSUES = 50;
+// Daftar baris bermasalah ikut dikirim ke dialog sync, jadi plafonnya longgar:
+// satu baris = satu keluhan, user butuh daftar lengkap untuk dibetulkan di sheet.
+const MAX_ISSUES = 500;
 
 /** Salinan kecil dari `friendly()` di api/gsheet.ts, label log beda modul. */
 function friendly(error: unknown, fallback: string) {
@@ -105,11 +107,14 @@ function appFieldsFromRow(
 
 export type RepairSyncSummary = {
   sheetRows: number;
+  localRows: number;
   created: number;
   updated: number;
   unchanged: number;
   keepLocal: number;
   skippedRows: number;
+  /** Baris yang ada di app tapi Claim ID-nya tidak ada lagi di sheet. */
+  onlyInApp: number;
 };
 
 export async function runRepairSync(): Promise<{
@@ -186,21 +191,45 @@ export async function runRepairSync(): Promise<{
   const updates = new Map<number, Partial<typeof repairs.$inferInsert>>();
   const summary: RepairSyncSummary = {
     sheetRows: rows.length,
+    localRows: appRows.length,
     created: 0,
     updated: 0,
     unchanged: 0,
     keepLocal: 0,
     skippedRows: 0,
+    onlyInApp: 0,
   };
 
   const note = (list: ImportIssue[], row: number, key: string, reason: string) => {
     if (list.length < MAX_ISSUES) list.push({ row, key, reason });
   };
 
+  /** Claim ID pertama yang dipakai di sheet, untuk mendeteksi baris ganda. */
+  const claimedAt = new Map<string, number>();
+
   for (const { sheetRow, cells } of rows) {
     const sheetFields = repairFieldsFromRow(cells, resolved.index);
     const claimId = sheetFields.claimId ?? "";
-    if (!claimId) continue;
+    const blank = cells.every((cell) => text(cell) === "");
+    if (!claimId) {
+      if (!blank) {
+        note(errors, sheetRow, "", "Claim ID di sheet kosong — baris dilewati.");
+        summary.skippedRows += 1;
+      }
+      continue;
+    }
+    const firstRow = claimedAt.get(claimId);
+    if (firstRow !== undefined) {
+      note(
+        errors,
+        sheetRow,
+        claimId,
+        `Claim ID sudah dipakai baris ${firstRow} di sheet — baris ini dilewati (data baris pertama yang masuk).`
+      );
+      summary.skippedRows += 1;
+      continue;
+    }
+    claimedAt.set(claimId, sheetRow);
 
     const productId = productNames.toId.get(normalizeName(sheetFields.productId ?? ""));
     const date = normalizeDateOnly(sheetFields.date ?? "");
@@ -424,6 +453,11 @@ export async function runRepairSync(): Promise<{
     errors,
     skippedDetails,
   };
+
+  // Baris yang masih ada di app tapi Claim ID-nya sudah tidak ada di sheet.
+  for (const row of appRows) {
+    if (!claimedAt.has(row.claimId)) summary.onlyInApp += 1;
+  }
 
   return { result, summary, tab };
 }

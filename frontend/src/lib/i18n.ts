@@ -858,9 +858,9 @@ const translations = {
     zh: "仅在应用",
   },
   "gsheet.statOnlyAppHint": {
-    id: "{fields} field beda, tidak dikirim ke sheet",
-    en: "{fields} fields differ, not sent to sheet",
-    zh: "{fields} 个字段不同，不会写回表格",
+    id: "Tidak ikut dikirim balik ke sheet ({fields})",
+    en: "Not sent back to the sheet ({fields})",
+    zh: "不会回写到工作表（{fields}）",
   },
   "gsheet.readOnly": {
     id: "Sheet hanya dibaca (kolomnya formula)",
@@ -938,9 +938,19 @@ const translations = {
     zh: "应用",
   },
   "gsheet.issueTitle": {
-    id: "{count} catatan",
-    en: "{count} notes",
-    zh: "{count} 条说明",
+    id: "{count} baris tidak masuk",
+    en: "{count} rows not imported",
+    zh: "{count} 行未导入",
+  },
+  "gsheet.issueSkipped": {
+    id: "Total {count} baris dilewati karena datanya belum lengkap atau kembar.",
+    en: "Total {count} rows skipped because the data is incomplete or duplicated.",
+    zh: "共 {count} 行因数据不完整或重复而被跳过。",
+  },
+  "gsheet.issueRow": {
+    id: "Baris {row} —",
+    en: "Row {row} —",
+    zh: "第 {row} 行 —",
   },
   "gsheet.apply": {
     id: "Terapkan pilihan",
@@ -1072,9 +1082,9 @@ const translations = {
     zh: "已删除 {count} 条维修数据。",
   },
   "repair.syncDone": {
-    id: "Sinkron sheet selesai: {inserted} masuk, {updated} baris diperbarui, {conflicts} konflik.",
-    en: "Sheet sync finished: {inserted} inserted, {updated} rows updated, {conflicts} conflicts.",
-    zh: "工作表同步完成：新增 {inserted} 条，更新 {updated} 行，冲突 {conflicts} 个。",
+    id: "Sinkron sheet selesai: {inserted} masuk, {updated} baris diperbarui, {skipped} baris tidak masuk.",
+    en: "Sheet sync finished: {inserted} inserted, {updated} rows updated, {skipped} rows not imported.",
+    zh: "工作表同步完成：新增 {inserted} 条，更新 {updated} 行，{skipped} 行未导入。",
   },
   "repair.syncTitle": {
     id: "Sinkron Google Sheet Repair",

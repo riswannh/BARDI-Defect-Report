@@ -57,6 +57,7 @@ import type {
   Repair,
   SparePart,
 } from "@/lib/types";
+import type { RepairSyncSummary } from "@/lib/api/repair-gsheet";
 import { RepairFormDialog, type RepairFormValues } from "./repair-form-dialog";
 import { RepairDetailDialog } from "./repair-detail-dialog";
 
@@ -284,23 +285,45 @@ export default function RepairsPage() {
       const response = await apiPost<{
         ok: boolean;
         result: ImportResult;
-        summary: { inserted: number; rowsUpdated: number; conflicts: number };
+        summary: RepairSyncSummary;
         tab: string;
       }>("/api/repairs/gsheet/sync", {});
-      // Dialog sinkron menampilkan `ImportResult`; ringkasannya dipakai untuk toast.
+      const s = response.summary;
+      // Dialog sinkron memakai bentuk umum `GsheetSyncSummary`; angka di bawah
+      // dipetakan apa adanya dari ringkasan Repair (tanpa konflik field).
       setSyncResult({
         ok: response.ok,
         tab: response.tab,
-        summary: response.summary as GsheetSyncResult["summary"],
+        summary: {
+          sheetRows: s.sheetRows,
+          localRows: s.localRows,
+          matched: s.updated,
+          inserted: s.created,
+          appliedFields: s.updated,
+          rowsUpdated: s.updated,
+          conflicts: 0,
+          conflictsResolved: 0,
+          unchanged: s.unchanged,
+          appOnlyChanges: s.onlyInApp,
+          onlyInApp: s.onlyInApp,
+          // Angka ini yang muncul di lencana "baris dilewati" — samakan dengan daftar error.
+          skipped: s.skippedRows,
+          skippedRows: s.skippedRows,
+        },
         conflicts: [],
-        issues: [],
+        // Baris yang tidak masuk (ditambah daftar detail) ditampilkan di dialog.
+        issues: [...response.result.errors, ...response.result.skippedDetails].map((issue) => ({
+          row: issue.row,
+          code: issue.key,
+          reason: issue.reason,
+        })),
         conflictsTruncated: false,
       });
       toast.success(
         t("repair.syncDone", {
-          inserted: response.summary.inserted,
-          updated: response.summary.rowsUpdated,
-          conflicts: response.summary.conflicts,
+          inserted: s.created,
+          updated: s.updated,
+          skipped: s.skippedRows,
         })
       );
       reload();

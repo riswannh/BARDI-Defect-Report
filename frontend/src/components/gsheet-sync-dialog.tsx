@@ -44,6 +44,8 @@ export type GsheetSyncSummary = {
   appOnlyChanges: number;
   onlyInApp: number;
   skipped: number;
+  /** Jumlah baris yang tidak bisa dipakai (kosong/ganda/produk tak dikenal). */
+  skippedRows?: number;
   /** Bulan yang di sheet 0 semua dan dilewati (khusus modul sales). */
   emptyMonths?: number;
 };
@@ -172,7 +174,7 @@ export function GsheetSyncDialog({
         </div>
 
         <div className="flex max-h-[45vh] flex-col gap-3 overflow-y-auto pr-1">
-          {conflictCount === 0 ? (
+          {conflictCount === 0 && result.issues.length === 0 ? (
             <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
               <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
               {t("gsheet.noConflict")}
@@ -289,9 +291,15 @@ export function GsheetSyncDialog({
               <div className="mb-1 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="size-4" /> {t("gsheet.issueTitle", { count: result.issues.length })}
               </div>
-              <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-                {result.issues.slice(0, 20).map((issue, index) => (
+              {result.summary.skippedRows ? (
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {t("gsheet.issueSkipped", { count: result.summary.skippedRows })}
+                </p>
+              ) : null}
+              <ul className="max-h-72 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-muted-foreground">
+                {result.issues.map((issue, index) => (
                   <li key={index}>
+                    {issue.row ? `${t("gsheet.issueRow", { row: issue.row })} ` : ""}
                     {issue.code ? `${issue.code}: ` : ""}
                     {issue.reason}
                   </li>
