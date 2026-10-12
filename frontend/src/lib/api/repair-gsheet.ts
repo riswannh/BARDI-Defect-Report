@@ -125,10 +125,11 @@ export async function runRepairSync(): Promise<{
     "UNFORMATTED_VALUE"
   );
   const values = first?.values ?? [];
-  if (values.length < REPAIR_HEADER_ROW) {
+  if (values.length === 0) {
     throw new GsheetError("empty-sheet", `Tab "${tab}" kosong atau header tidak ada.`);
   }
-  const header = (values[REPAIR_HEADER_ROW - 1] ?? []).map((cell) => text(cell));
+  // Range sudah mulai di baris header (A3), jadi baris pertama hasil baca = header.
+  const header = (values[0] ?? []).map((cell) => text(cell));
   const resolved = resolveRepairHeaderIndex(header);
   if (resolved.missing.length > 0) {
     // Sengaja ketat: kolom yang tidak ketemu akan terbaca kosong dan bisa
@@ -141,7 +142,7 @@ export async function runRepairSync(): Promise<{
   }
 
   const rows = values
-    .slice(REPAIR_FIRST_DATA_ROW - 1)
+    .slice(REPAIR_FIRST_DATA_ROW - REPAIR_HEADER_ROW)
     .map((cells: SheetCell[], i) => ({
       sheetRow: i + REPAIR_FIRST_DATA_ROW,
       cells: cells ?? [],
