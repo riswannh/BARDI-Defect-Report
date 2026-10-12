@@ -3,7 +3,7 @@ import {
   type RepairField,
   type RepairRowFields,
 } from "./repair-mapping";
-import { baselineFromSheet, parseBaseline, planFields } from "./sync";
+import { baselineFromSheet, parseBaseline, planFields, type DiffField } from "./sync";
 
 /**
  * Aksi sync untuk satu baris repair.
@@ -60,8 +60,21 @@ export function planRepairRow(input: {
     ignore: ["claimId"],
   });
 
-  const apply = plan.apply.map((diff) => diff.field);
-  const conflicts = plan.conflicts.map((diff) => diff.field);
+  /**
+   * Kolom app yang masih KOSONG tidak pernah dianggap "sudah diubah manusia":
+   * isian yang dulu terlanjur dikosongkan (sparepart / Teknis Device yang belum
+   * ada di Data Master) boleh diisi ulang oleh sheet.
+   */
+  const fillable = (diff: DiffField<RepairField>) => diff.app === "" && diff.sheet !== "";
+
+  const apply = [
+    ...new Set([
+      ...plan.apply.map((diff) => diff.field),
+      ...plan.appOnly.filter(fillable).map((diff) => diff.field),
+      ...plan.conflicts.filter(fillable).map((diff) => diff.field),
+    ]),
+  ];
+  const conflicts = plan.conflicts.filter((diff) => !fillable(diff)).map((diff) => diff.field);
   const changed = [...new Set([...apply, ...conflicts])];
 
   let action: RepairAction = "skip";

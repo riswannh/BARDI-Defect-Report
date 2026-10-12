@@ -191,6 +191,17 @@ assert.equal(mixed.action, "update", "field lain tetap diambil dari sheet");
 assert.deepEqual(mixed.apply, ["resi"], "hanya field yang tidak bentrok");
 assert.deepEqual(mixed.conflicts, ["status"], "field bentrok tetap dilaporkan");
 
+// Kolom app yang KOSONG diisi ulang sheet: isian yang dulu terlanjur dikosongkan
+// (sparepart / Teknis Device belum ada di master) tidak dianggap pilihan manusia.
+const refill = planRepairRow({
+  sheet: { ...sheetRow, sparePart1Id: "Baterai" },
+  app: { ...sheetRow, sparePart1Id: "" },
+  baseline: inserted.baseline,
+});
+assert.equal(refill.action, "update", "app kosong -> diisi sheet, bukan dianggap konflik");
+assert.deepEqual(refill.apply, ["sparePart1Id"], "kolom kosong ikut diambil dari sheet");
+assert.deepEqual(refill.conflicts, [], "kolom kosong bukan konflik");
+
 // Sparepart dari sheet: yang tidak ada di Data Master disimpan TEKS-nya, bukan dikosongkan.
 const masters = new Map<string, number>([["baterai", 7]]);
 assert.deepEqual(
