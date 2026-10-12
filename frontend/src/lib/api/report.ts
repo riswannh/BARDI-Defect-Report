@@ -24,9 +24,11 @@ import {
   productPrices,
   products,
   purchaseOrders,
+  repairs,
   sales,
   statuses,
 } from "@/lib/db/schema";
+import { isRepairDone } from "@/lib/repair-value";
 import {
   requireUser,
   scopedFactoryId,
@@ -99,7 +101,7 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows] =
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows] =
     await Promise.all([
       db.select().from(defects).where(defectWhere),
       db.select().from(sales).where(saleWhere),
@@ -139,6 +141,15 @@ export async function reportGET(req: NextRequest) {
           limitValue: defectAllowances.limitValue,
         })
         .from(defectAllowances),
+      // Kartu "Repair Value": hanya butuh tanggal, status, dan Saving Value
+      // dari Repair Data (permintaan user 12 Okt 2026).
+      db
+        .select({
+          date: repairs.date,
+          status: repairs.status,
+          value: repairs.value,
+        })
+        .from(repairs),
     ]);
 
   const appDefects = defectRows.map((row) => ({
@@ -169,6 +180,17 @@ export async function reportGET(req: NextRequest) {
     matchesDefectPeriod(d.timestamp, f)
   );
   const filteredSales = appSales.filter((s) => matchesSalePeriod(s.month, f));
+
+  /**
+   * Baris Repair berstatus "Done Kirim" / "Done Repair" pada periode filter —
+   * dasar kartu "Repair Value" (Saving Value, Rupiah; admin saja).
+   *
+   * `repairs.date` berformat `YYYY-MM-DD`, sama seperti 10 huruf pertama
+   * timestamp defect, jadi pencocokan periode memakai `matchesDefectPeriod`.
+   */
+  const filteredRepairs = repairRows.filter(
+    (row) => isRepairDone(row.status) && matchesDefectPeriod(row.date, f)
+  );
 
   /**
    * PO dengan keterangan "Replacement", mengikuti filter periode halaman Report.
@@ -256,6 +278,10 @@ export async function reportGET(req: NextRequest) {
     replacementQty,
     replacementValue,
     replacementRwValue,
+    // Kartu "Repair Value": Σ Saving Value Repair Data berstatus selesai pada
+    // periode filter, plus jumlah barisnya untuk keterangan kartu.
+    repairValue: filteredRepairs.reduce((sum, row) => sum + row.value, 0),
+    repairQty: filteredRepairs.length,
   };
 
   // Limit allowance defect (Rupiah per tahun, master) diprorata ke periode
@@ -295,7 +321,8 @@ export async function reportGET(req: NextRequest) {
       ? totals
       : {
           // Angka kuantitas tetap dikirim ke role Pabrik; angka Rupiah
-          // (defectValue, salesValue, replacementValue) tetap disembunyikan.
+          // (defectValue, salesValue, replacementValue, repairValue) tetap
+          // disembunyikan.
           defectQty: totals.defectQty,
           salesQty: totals.salesQty,
           replacementQty: totals.replacementQty,

@@ -10,6 +10,7 @@ import {
 import { planRepairRow } from "../src/lib/gsheet/repair-sync";
 import { baselineFromSheet } from "../src/lib/gsheet/sync";
 import { repairMatchKey } from "../src/lib/repair-match";
+import { isRepairDone } from "../src/lib/repair-value";
 
 // Self-check modul Repair Data: pemetaan kolom sheet, konversi nilai, dan aturan
 // sync. Jalankan: npx tsx scripts/repair-check.ts
@@ -250,5 +251,13 @@ assert.equal(
   repairMatchKey("202606793", "2026-04-01", null),
   "produk kosong tetap punya identitas"
 );
+
+// Kartu "Repair Value" halaman Report: hanya dua status ini yang dihitung.
+assert.equal(isRepairDone("Done Kirim"), true, "Done Kirim dihitung");
+assert.equal(isRepairDone("Done Repair"), true, "Done Repair dihitung");
+assert.equal(isRepairDone("  done kirim  "), true, "spasi & huruf besar-kecil tidak masalah");
+assert.equal(isRepairDone("Proses"), false, "Proses tidak dihitung");
+assert.equal(isRepairDone("Tidak Ada Data"), false, "Tidak Ada Data tidak dihitung");
+assert.equal(isRepairDone(""), false, "status kosong tidak dihitung");
 
 console.log("repair-check: semua pemeriksaan lulus");

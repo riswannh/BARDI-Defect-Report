@@ -37,6 +37,7 @@ import {
   Package,
   Percent,
   PiggyBank,
+  Wrench,
   Receipt,
   Scale,
   ShoppingCart,
@@ -195,6 +196,10 @@ export default function ReportPage() {
   // Minus = nilai defect periode sudah melewati limit.
   const allowance = report?.allowance ?? null;
   const allowanceLeft = (allowance?.prorated ?? 0) - dVal;
+  // Kartu "Repair Value": Σ Saving Value Repair Data yang statusnya sudah
+  // selesai (Done Kirim / Done Repair) pada periode filter — dihitung di server.
+  const repairValue = report?.totals.repairValue ?? 0;
+  const repairQty = report?.totals.repairQty ?? 0;
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -483,6 +488,14 @@ export default function ReportPage() {
                 : t("report.allowanceMissing", { year: report?.allowanceYear ?? "" })
             }
             icon={PiggyBank}
+          />
+        )}
+        {isAdmin && (
+          <SummaryCard
+            title={t("report.repairValue")}
+            value={formatIDR(repairValue)}
+            description={t("report.repairValueDesc", { rows: repairQty })}
+            icon={Wrench}
           />
         )}
       </div>

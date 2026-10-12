@@ -301,6 +301,16 @@ const translations = {
     en: "The {year} limit is not set in Master Data.",
     zh: "{year} 年限额尚未在主数据中设置。",
   },
+  "report.repairValue": {
+    id: "Repair Value",
+    en: "Repair Value",
+    zh: "维修价值",
+  },
+  "report.repairValueDesc": {
+    id: "Saving Value Repair Data berstatus Done Kirim / Done Repair pada periode ini ({rows} baris).",
+    en: "Saving Value of Repair Data rows with status Done Kirim / Done Repair in this period ({rows} rows).",
+    zh: "本期状态为 Done Kirim / Done Repair 的维修数据 Saving Value（{rows} 行）。",
+  },
   "report.replacementValue": {
     id: "Nilai Replacement",
     en: "Replacement Value",

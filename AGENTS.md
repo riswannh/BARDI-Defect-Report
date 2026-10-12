@@ -463,6 +463,15 @@ Catatan perilaku Report yang harus dijaga:
   pernah jatuh ke 0 diam-diam. Kartu non-admin tidak dirender. Self-check aturan prorata:
   `cmd /c "npx tsx scripts/allowance-check.ts"` (dijalankan dari `frontend/`).
 
+- **Repair Value** (kartu `report.repairValue`, admin saja, ditambahkan 12 Okt 2026) = Σ kolom `value`
+  (Saving Value) baris Repair Data yang statusnya sudah selesai — HANYA `"Done Kirim"` dan
+  `"Done Repair"` (keputusan user). Pencocokan lewat `isRepairDone()` di `src/lib/repair-value.ts`
+  (tanpa peduli huruf besar-kecil/spasi, satu-satunya tempat daftar status selesai). Baris ikut
+  dihitung kalau `repairs.date` (`YYYY-MM-DD`) cocok filter periode yang sama seperti defect
+  (`matchesDefectPeriod`). `/api/report` mengirim `totals.repairValue` + `totals.repairQty` (jumlah
+  baris) **hanya ke admin** — cabang non-admin tidak memuat keduanya dan kartunya tidak dirender.
+  Self-check aturan status: `cmd /c "npx tsx scripts/repair-check.ts"` (dijalankan dari `frontend/`).
+
 - **Repair Data** (menu `/repairs`, **admin saja**, ditambahkan 11 Okt 2026) = cermin tab "Data Reparasi"
   sheet Reparasi RFB (`REPAIR_GSHEET_ID`, default sudah ada di kode). Tabel `repairs`, identitas baris =
   `claimId` + `date` + `productId` (`repairMatchKey()` di `src/lib/repair-match.ts`) — **`claimId` TIDAK

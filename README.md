@@ -84,6 +84,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
 | + | **Allowance Defect** (limit tahunan, admin saja) — kartu Sisa Allowance di Report, limit diprorata mengikuti filter | ✅ Selesai + deploy |
 | + | **Repair Data** (`/repairs`, admin saja) — cermin tab "Data Reparasi" sheet Reparasi RFB: CRUD, filter, Saving Value = Quantity × harga RW, sync Google Sheet satu arah, Excel | ✅ Selesai |
+| + | **Kartu Repair Value** di Report (admin saja) — Σ Saving Value Repair Data berstatus `Done Kirim`/`Done Repair` pada periode filter | ✅ Selesai |
 
 ---
 
@@ -533,6 +534,16 @@ limit yang dipakai adalah tahun filter; kalau filter tidak memuat tahun (mis. re
 keterangan tahun mana yang perlu diisi (tidak jatuh ke 0 diam-diam). Kartu ini **tidak mengurangi**
 kartu Nilai Defect maupun Selisih Defect yang sudah ada — ia kartu tambahan. Aturan proratanya diuji
 `cmd /c "npx tsx scripts/allowance-check.ts"` dari `frontend/`.
+
+### Repair Value (kartu Report, admin saja)
+
+Kartu **Repair Value** = Σ kolom `value` (Saving Value) **Repair Data** yang statusnya sudah selesai:
+hanya `Done Kirim` dan `Done Repair` (keputusan user 12 Okt 2026), dicocokkan tanpa peduli huruf
+besar-kecil lewat `isRepairDone()` di `src/lib/repair-value.ts` — satu-satunya tempat daftar status
+selesai. Baris ikut dihitung kalau `repairs.date` (`YYYY-MM-DD`) cocok dengan filter periode yang sama
+seperti defect (`matchesDefectPeriod`), jadi angkanya ikut berubah saat filter diganti.
+Dikirim server sebagai `totals.repairValue` + `totals.repairQty` (jumlah baris) dan **tidak dikirim**
+ke role non-admin (kartunya juga tidak dirender). Aturannya diuji `cmd /c "npx tsx scripts/repair-check.ts"`.
 
 ### Repair Data (admin saja)
 

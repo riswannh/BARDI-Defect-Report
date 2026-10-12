@@ -58,6 +58,14 @@ export interface ReportResponse {
     replacementValue?: number;
     /** Value RW PO Replacement (quantity × harga master, Rupiah) — dasar Selisih Defect Value. */
     replacementRwValue?: number;
+    /**
+     * Σ Saving Value baris Repair Data berstatus "Done Kirim"/"Done Repair"
+     * pada periode filter (Rupiah) — dasar kartu "Repair Value". Tidak dikirim
+     * ke role Pabrik.
+     */
+    repairValue?: number;
+    /** Jumlah baris Repair yang ikut dihitung ke `repairValue`. */
+    repairQty?: number;
   };
   years: number[];
   /**
