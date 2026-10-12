@@ -56,6 +56,9 @@ const repairSelect = {
   sparePart1Id: repairs.sparePart1Id,
   sparePart2Id: repairs.sparePart2Id,
   sparePart3Id: repairs.sparePart3Id,
+  sparePart1Text: repairs.sparePart1Text,
+  sparePart2Text: repairs.sparePart2Text,
+  sparePart3Text: repairs.sparePart3Text,
   noteClosing: repairs.noteClosing,
   sheetSyncedAt: repairs.sheetSyncedAt,
 };

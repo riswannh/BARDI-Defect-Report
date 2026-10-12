@@ -12,6 +12,7 @@ import {
   REPAIR_FIRST_DATA_ROW,
   REPAIR_HEADER_ROW,
   repairFieldsFromRow,
+  resolveSparePart,
   repairSavingValue,
   repairSheetId,
   repairSheetRange,
@@ -95,9 +96,9 @@ function appFieldsFromRow(
     pic: row.pic,
     resolution: row.resolution,
     problemId: nameOf(problemNames, row.problemId),
-    sparePart1Id: nameOf(spareNames, row.sparePart1Id),
-    sparePart2Id: nameOf(spareNames, row.sparePart2Id),
-    sparePart3Id: nameOf(spareNames, row.sparePart3Id),
+    sparePart1Id: row.sparePart1Text || nameOf(spareNames, row.sparePart1Id),
+    sparePart2Id: row.sparePart2Text || nameOf(spareNames, row.sparePart2Id),
+    sparePart3Id: row.sparePart3Text || nameOf(spareNames, row.sparePart3Id),
     noteClosing: row.noteClosing,
   };
 }
@@ -230,21 +231,22 @@ export async function runRepairSync(): Promise<{
         `Teknis Device "${sheetFields.problemId}" belum ada di Data Master — dikosongkan.`
       );
     }
-    const spareIds = [sheetFields.sparePart1Id, sheetFields.sparePart2Id, sheetFields.sparePart3Id].map(
+    const spares = [sheetFields.sparePart1Id, sheetFields.sparePart2Id, sheetFields.sparePart3Id].map(
       (name, i) => {
-        if (!name) return null;
-        const id = spareNames.toId.get(normalizeName(name)) ?? null;
-        if (id === null) {
+        const resolved = resolveSparePart(name ?? "", spareNames.toId);
+        if (resolved.text && resolved.id === null) {
           note(
             skippedDetails,
             sheetRow,
             claimId,
-            `Sparepart ${i + 1} "${name}" belum ada di Data Master — dikosongkan.`
+            `Sparepart ${i + 1} "${resolved.text}" belum ada di Data Master — teksnya disimpan apa adanya.`
           );
         }
-        return id;
+        return resolved;
       }
     );
+    const spareIds = spares.map((item) => item.id);
+    const spareTexts = spares.map((item) => item.text);
 
     const quantity = Number.parseInt(sheetFields.quantity || "0", 10) || 0;
     const price = priceOf(productId, date);
@@ -284,6 +286,9 @@ export async function runRepairSync(): Promise<{
           sparePart1Id: spareIds[0],
           sparePart2Id: spareIds[1],
           sparePart3Id: spareIds[2],
+          sparePart1Text: spareTexts[0],
+          sparePart2Text: spareTexts[1],
+          sparePart3Text: spareTexts[2],
           noteClosing: sheetFields.noteClosing ?? "",
           sheetFields: JSON.stringify(baselineFromSheet(sheetFields, REPAIR_FIELDS)),
           sheetSyncedAt: now,
@@ -336,12 +341,15 @@ export async function runRepairSync(): Promise<{
           return;
         case "sparePart1Id":
           patch.sparePart1Id = spareIds[0];
+          patch.sparePart1Text = spareTexts[0];
           return;
         case "sparePart2Id":
           patch.sparePart2Id = spareIds[1];
+          patch.sparePart2Text = spareTexts[1];
           return;
         case "sparePart3Id":
           patch.sparePart3Id = spareIds[2];
+          patch.sparePart3Text = spareTexts[2];
           return;
         default:
           patch[field] = value;

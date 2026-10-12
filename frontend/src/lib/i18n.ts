@@ -1056,6 +1056,11 @@ const translations = {
     en: "Spare part {n}",
     zh: "备件 {n}",
   },
+  "repair.sparePartCustom": {
+    id: "Belum ada di Data Master",
+    en: "Not in Data Master yet",
+    zh: "数据主表中暂无",
+  },
   "repair.form.note": { id: "Note", en: "Note", zh: "备注" },
   "repair.form.noteClosing": { id: "Note Closing", en: "Closing Note", zh: "结案备注" },
   "repair.form.pickPlaceholder": { id: "Pilih…", en: "Select…", zh: "请选择…" },

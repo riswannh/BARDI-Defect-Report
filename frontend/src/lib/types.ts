@@ -91,6 +91,10 @@ export interface Repair {
   sparePart1Id?: number | null;
   sparePart2Id?: number | null;
   sparePart3Id?: number | null;
+  /** Nama sparepart apa adanya dari sheet, disimpan walau belum ada di Data Master. */
+  sparePart1Text?: string;
+  sparePart2Text?: string;
+  sparePart3Text?: string;
   sparePartNames?: (string | null)[];
   noteClosing: string;
   /** Diisi hanya kalau baris pernah disinkronkan dari Google Sheet. */

@@ -249,6 +249,10 @@ export const repairFields = {
   sparePart1Id: z.coerce.number().int().min(0),
   sparePart2Id: z.coerce.number().int().min(0),
   sparePart3Id: z.coerce.number().int().min(0),
+  // Nama sparepart apa adanya; dipakai kalau namanya belum ada di Data Master.
+  sparePart1Text: z.string().trim().max(200),
+  sparePart2Text: z.string().trim().max(200),
+  sparePart3Text: z.string().trim().max(200),
   noteClosing: z.string().trim(),
 } satisfies z.ZodRawShape;
 
@@ -273,6 +277,9 @@ export const repairSchema = buildCreate(repairFields, {
   sparePart1Id: z.coerce.number().int().min(0).default(0),
   sparePart2Id: z.coerce.number().int().min(0).default(0),
   sparePart3Id: z.coerce.number().int().min(0).default(0),
+  sparePart1Text: z.string().trim().max(200).default(""),
+  sparePart2Text: z.string().trim().max(200).default(""),
+  sparePart3Text: z.string().trim().max(200).default(""),
   noteClosing: z.string().trim().default(""),
 });
 

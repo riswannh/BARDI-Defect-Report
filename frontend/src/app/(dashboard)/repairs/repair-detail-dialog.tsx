@@ -64,13 +64,22 @@ export function RepairDetailDialog({
   spareParts: { id: number; name: string }[];
 }) {
   const { t } = useLanguage();
+  // Tiap slot: pakai teks apa adanya dari sheet kalau ada; kalau kosong baru
+  // turunkan nama dari id master. Nama sparepart tidak boleh hilang.
   const partNames = [
-    repair?.sparePart1Id,
-    repair?.sparePart2Id,
-    repair?.sparePart3Id,
+    { id: repair?.sparePart1Id, text: repair?.sparePart1Text },
+    { id: repair?.sparePart2Id, text: repair?.sparePart2Text },
+    { id: repair?.sparePart3Id, text: repair?.sparePart3Text },
   ]
-    .filter((id): id is number => typeof id === "number" && id > 0)
-    .map((id) => spareParts.find((s) => s.id === id)?.name ?? `#${id}`);
+    .map((slot) => {
+      const text = (slot.text ?? "").trim();
+      if (text !== "") return text;
+      const id =
+        typeof slot.id === "number" && slot.id > 0 ? slot.id : null;
+      if (id === null) return "";
+      return spareParts.find((s) => s.id === id)?.name ?? `#${id}`;
+    })
+    .filter((name) => name !== "");
 
   return (
     <Dialog

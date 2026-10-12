@@ -480,8 +480,13 @@ Catatan perilaku Report yang harus dijaga:
     dipertahankan** dan dilaporkan sebagai "dilewati" (TANPA dialog `/resolve` seperti Defect — itu
     upgrade path kalau nanti dibutuhkan); `value` tidak pernah ikut ditimpa.
   - Nama Produk / Teknis Device / Sparepart dicocokkan ke master; yang tidak ketemu **tidak** dibuat
-    otomatis: produk → baris dilewati, teknis device/sparepart → kolom dikosongkan, keduanya dilaporkan
-    di `ImportResult`. Daftar Teknis Device bisa dilengkapi dari `Dropdown!B` lewat
+    otomatis: produk → baris dilewati, teknis device → kolom dikosongkan, **sparepart → teksnya disimpan
+    apa adanya** di `sparePart1Text`/`sparePart2Text`/`sparePart3Text` (`resolveSparePart()` di
+    `src/lib/gsheet/repair-mapping.ts`; `sparePartNId` dibiarkan kosong) dan tetap dilaporkan sebagai
+    catatan di `ImportResult`. JANGAN mengosongkan nama sparepart yang belum ada di master — permintaan
+    user 12 Okt 2026. Teks diisi juga saat sparepart ketemu di master (nama kanoniknya), jadi nama selalu
+    bisa dibaca dari `sparePartNText` dan id hanya penunjuk ke master. Daftar Teknis Device bisa
+    dilengkapi dari `Dropdown!B` lewat
     `cmd /c "npx tsx scripts/repair-problem-seed.ts"` (idempotent; sengaja BUKAN di `src/lib/db/seed.ts`
     yang hanya mengisi DB kosong).
   - Dropdown Asal/Status/PIC/Penyelesaian di-hardcode di `src/lib/api/validation.ts` (pola

@@ -581,6 +581,14 @@ export const repairs = sqliteTable(
     sparePart1Id: integer("sparePart1Id").references(() => spareParts.id),
     sparePart2Id: integer("sparePart2Id").references(() => spareParts.id),
     sparePart3Id: integer("sparePart3Id").references(() => spareParts.id),
+    /**
+     * Nama sparepart apa adanya dari sheet (kolom T/U/V). Diisi juga saat
+     * sparepart-nya ketemu di Data Master, tapi yang penting: nama yang TIDAK ada
+     * di master tetap disimpan utuh di sini, tidak dikosongkan.
+     */
+    sparePart1Text: text("sparePart1Text").notNull().default(""),
+    sparePart2Text: text("sparePart2Text").notNull().default(""),
+    sparePart3Text: text("sparePart3Text").notNull().default(""),
     /** Kolom W sheet — header di sheet juga "Note", jadi diberi nama sendiri. */
     noteClosing: text("noteClosing").notNull().default(""),
     /**

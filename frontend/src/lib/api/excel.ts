@@ -49,6 +49,7 @@ import { repairMonth } from "@/lib/api/repairs";
 import { pickProductPrice } from "@/lib/prices";
 import {
   resolveRepairHeaderIndex,
+  resolveSparePart,
   repairSavingValue,
 } from "@/lib/gsheet/repair-mapping";
 import { normalizeCode, normalizeName } from "@/lib/gsheet/mapping";
@@ -450,6 +451,9 @@ export async function excelExport(moduleName: string, req: NextRequest) {
         sparePart1Id: repairs.sparePart1Id,
         sparePart2Id: repairs.sparePart2Id,
         sparePart3Id: repairs.sparePart3Id,
+        sparePart1Text: repairs.sparePart1Text,
+        sparePart2Text: repairs.sparePart2Text,
+        sparePart3Text: repairs.sparePart3Text,
         noteClosing: repairs.noteClosing,
       })
       .from(repairs)
@@ -461,7 +465,8 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       .select({ id: spareParts.id, name: spareParts.name })
       .from(spareParts);
     const partName = new Map(sparePartRows.map((row) => [row.id, row.name]));
-    const part = (id: number | null) => (id === null ? "" : partName.get(id) ?? "");
+    const part = (id: number | null, text: string) =>
+      text.trim() !== "" ? text : id === null ? "" : partName.get(id) ?? "";
 
     const data = rows.map((row) => ({
       "Claim ID": row.claimId,
@@ -483,9 +488,9 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       PIC: row.pic,
       Penyelesaian: row.resolution,
       "Teknis Device": row.problemName ?? "",
-      "Sparepart 1": part(row.sparePart1Id),
-      "Sparepart 2": part(row.sparePart2Id),
-      "Sparepart 3": part(row.sparePart3Id),
+      "Sparepart 1": part(row.sparePart1Id, row.sparePart1Text),
+      "Sparepart 2": part(row.sparePart2Id, row.sparePart2Text),
+      "Sparepart 3": part(row.sparePart3Id, row.sparePart3Text),
       "Note Closing": row.noteClosing,
     }));
     return downloadResponse(sheetBuffer(data, REPAIR_HEADERS), "repair-data.xlsx");
@@ -1038,6 +1043,9 @@ async function importRepairs(sheet: SheetRow[]) {
     let sparePart1Id: number | null = null;
     let sparePart2Id: number | null = null;
     let sparePart3Id: number | null = null;
+    let sparePart1Text = "";
+    let sparePart2Text = "";
+    let sparePart3Text = "";
 
     const problemName = cellString(at("problemId"));
     if (problemName) {
@@ -1051,23 +1059,29 @@ async function importRepairs(sheet: SheetRow[]) {
       } else problemId = found;
     }
 
-    const partId = (key: string): number | null => {
+    const partId = (key: string): { id: number | null; text: string } => {
       const name = cellString(at(key));
-      if (!name) return null;
-      const found = partMap.get(normalizeName(name));
-      if (found === undefined) {
+      const found = resolveSparePart(name, partMap);
+      if (found.text && found.id === null) {
         skipped.push({
           row: rowNumber,
           key: claimId,
-          reason: `Sparepart "${name}" tidak ada di Data Master`,
+          reason: `Sparepart "${found.text}" tidak ada di Data Master — teksnya disimpan apa adanya`,
         });
-        return null;
       }
       return found;
     };
-    sparePart1Id = partId("sparePart1Id");
-    sparePart2Id = partId("sparePart2Id");
-    sparePart3Id = partId("sparePart3Id");
+    const part1 = partId("sparePart1Id");
+    const part2 = partId("sparePart2Id");
+    const part3 = partId("sparePart3Id");
+    sparePart1Id = part1.id;
+    sparePart2Id = part2.id;
+    sparePart3Id = part3.id;
+    // Nama apa adanya dari sheet tetap disimpan (tidak dikosongkan) supaya
+    // sparepart yang belum ada di Data Master tidak hilang saat diekspor lagi.
+    sparePart1Text = part1.text;
+    sparePart2Text = part2.text;
+    sparePart3Text = part3.text;
 
     // Dropdown modul ini di-hardcode; nilai di luar daftar ditolak seperti
     // impor PO, bukan disimpan diam-diam.
@@ -1123,6 +1137,9 @@ async function importRepairs(sheet: SheetRow[]) {
       sparePart1Id,
       sparePart2Id,
       sparePart3Id,
+      sparePart1Text,
+      sparePart2Text,
+      sparePart3Text,
     };
 
     try {

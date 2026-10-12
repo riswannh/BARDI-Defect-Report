@@ -105,6 +105,10 @@ export interface RepairFormValues {
   sparePart1Id: number;
   sparePart2Id: number;
   sparePart3Id: number;
+  /** Nama sparepart apa adanya dari sheet, dipakai kalau belum ada di Data Master. */
+  sparePart1Text: string;
+  sparePart2Text: string;
+  sparePart3Text: string;
   noteClosing: string;
 }
 
@@ -134,6 +138,10 @@ export interface RepairRowValues {
   sparePart1Id?: number | null;
   sparePart2Id?: number | null;
   sparePart3Id?: number | null;
+  /** Teks sparepart apa adanya dari sheet kalau namanya belum ada di Data Master. */
+  sparePart1Text?: string;
+  sparePart2Text?: string;
+  sparePart3Text?: string;
   noteClosing: string;
 }
 
@@ -197,6 +205,11 @@ export function RepairFormDialog({
   const [spare1, setSpare1] = useState(String(row?.sparePart1Id ?? 0));
   const [spare2, setSpare2] = useState(String(row?.sparePart2Id ?? 0));
   const [spare3, setSpare3] = useState(String(row?.sparePart3Id ?? 0));
+  // Teks apa adanya untuk sparepart yang belum ada di Data Master; dipakai
+  // sebagai nilai select supaya namanya tetap terlihat dan tidak hilang.
+  const [spare1Text] = useState((row?.sparePart1Text ?? "").trim());
+  const [spare2Text] = useState((row?.sparePart2Text ?? "").trim());
+  const [spare3Text] = useState((row?.sparePart3Text ?? "").trim());
   const [noteClosing, setNoteClosing] = useState(row?.noteClosing ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -220,6 +233,11 @@ export function RepairFormDialog({
   const problemKnown = problems.some((p) => p.id === Number(problemId));
   const spareKnown = (value: string) =>
     spareParts.some((s) => s.id === Number(value));
+  /** Teks yang dikirim ke API: nama master kalau id-nya ada, kalau tidak teks apa adanya. */
+  const textOf = (value: string, fallback: string) =>
+    spareKnown(value)
+      ? (spareParts.find((s) => s.id === Number(value))?.name ?? fallback)
+      : fallback;
 
   function handleQuantity(next: string) {
     setQuantity(next);
@@ -267,6 +285,9 @@ export function RepairFormDialog({
       sparePart1Id: idOf(spare1),
       sparePart2Id: idOf(spare2),
       sparePart3Id: idOf(spare3),
+      sparePart1Text: textOf(spare1, spare1Text),
+      sparePart2Text: textOf(spare2, spare2Text),
+      sparePart3Text: textOf(spare3, spare3Text),
       noteClosing: noteClosing.trim(),
     };
 
@@ -565,12 +586,15 @@ export function RepairFormDialog({
               const current = slot === 1 ? spare1 : slot === 2 ? spare2 : spare3;
               const setCurrent =
                 slot === 1 ? setSpare1 : slot === 2 ? setSpare2 : setSpare3;
+              const text =
+                slot === 1 ? spare1Text : slot === 2 ? spare2Text : spare3Text;
               const known = spareKnown(current);
+              const custom = !known && text !== "" ? text : "";
               return (
                 <div key={slot} className="flex flex-col gap-2">
                   <Label>{t("repair.form.sparePart", { n: slot })}</Label>
                   <Select
-                    value={known ? current : NONE}
+                    value={custom !== "" ? custom : known ? current : NONE}
                     onValueChange={(v) => setCurrent(String(v))}
                     items={[
                       { value: NONE, label: t("repair.form.pickPlaceholder") },
@@ -578,6 +602,9 @@ export function RepairFormDialog({
                         value: String(s.id),
                         label: s.name,
                       })),
+                      ...(custom !== ""
+                        ? [{ value: custom, label: custom }]
+                        : []),
                     ]}
                   >
                     <SelectTrigger className="w-full">
@@ -592,8 +619,16 @@ export function RepairFormDialog({
                           {s.name}
                         </SelectItem>
                       ))}
+                      {custom !== "" && (
+                        <SelectItem value={custom}>{custom}</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
+                  {custom !== "" && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("repair.sparePartCustom")}
+                    </span>
+                  )}
                 </div>
               );
             })}

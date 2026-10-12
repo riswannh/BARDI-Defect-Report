@@ -5,6 +5,7 @@ import {
   repairSavingValue,
   repairSheetRange,
   resolveRepairHeaderIndex,
+  resolveSparePart,
 } from "../src/lib/gsheet/repair-mapping";
 import { planRepairRow } from "../src/lib/gsheet/repair-sync";
 import { baselineFromSheet } from "../src/lib/gsheet/sync";
@@ -189,5 +190,19 @@ const mixed = planRepairRow({
 assert.equal(mixed.action, "update", "field lain tetap diambil dari sheet");
 assert.deepEqual(mixed.apply, ["resi"], "hanya field yang tidak bentrok");
 assert.deepEqual(mixed.conflicts, ["status"], "field bentrok tetap dilaporkan");
+
+// Sparepart dari sheet: yang tidak ada di Data Master disimpan TEKS-nya, bukan dikosongkan.
+const masters = new Map<string, number>([["baterai", 7]]);
+assert.deepEqual(
+  resolveSparePart("Baterai", masters),
+  { id: 7, text: "Baterai" },
+  "sparepart yang ada di master dapat id"
+);
+assert.deepEqual(
+  resolveSparePart("  Kabel   Fleksibel ", masters),
+  { id: null, text: "Kabel Fleksibel" },
+  "sparepart yang belum ada di master tetap disimpan teksnya"
+);
+assert.deepEqual(resolveSparePart("", masters), { id: null, text: "" }, "sel kosong -> tanpa id dan tanpa teks");
 
 console.log("repair-check: semua pemeriksaan lulus");

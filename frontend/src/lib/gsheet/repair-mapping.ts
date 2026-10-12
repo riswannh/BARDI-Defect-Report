@@ -172,3 +172,17 @@ export const repairSavingValue = (quantity: number, pricePerUnit: number): numbe
 /** Range A1 untuk membaca header + seluruh baris data tab Repair. */
 export const repairSheetRange = (tab: string): string =>
   `${quoteTab(tab)}!A${REPAIR_HEADER_ROW}:W`;
+
+/**
+ * Sparepart/Komponen dari sheet: kalau namanya ada di Data Master pakai id-nya,
+ * kalau tidak ada teksnya TETAP disimpan apa adanya (jangan dikosongkan).
+ */
+export function resolveSparePart(
+  name: string,
+  toId: Map<string, number>
+): { id: number | null; text: string } {
+  const text = String(name ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return { id: null, text: "" };
+  const id = toId.get(normalizeName(text)) ?? null;
+  return { id, text };
+}

@@ -293,6 +293,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `note` / `noteClosing` | text | dua kolom "Note" pada sheet (yang kedua = Note Closing) |
 | `problemId` | FK → problems | "Teknis Device" |
 | `sparePart1Id` / `sparePart2Id` / `sparePart3Id` | FK → spare_parts | Sparepart/Komponen 1–3 |
+| `sparePart1Text` / `sparePart2Text` / `sparePart3Text` | text (default "") | nama sparepart apa adanya dari sheet — tetap diisi walau namanya belum ada di Data Master (jangan dikosongkan) |
 | `sheetFields` / `sheetSyncedAt` | text / timestamp | salinan nilai sheet terakhir yang sudah sepakat + waktu sync (aturan baseline sama seperti Defect) |
 
 **`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
@@ -547,10 +548,16 @@ Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Sav
 - **Sinkron Sheet** (tombol di halaman, admin) membaca tab `Data Reparasi` dengan header di **baris 3**
   dan data mulai **baris 5**, kolom dicocokkan **per nama header** (`src/lib/gsheet/repair-mapping.ts`).
   Nama Produk / Teknis Device / Sparepart dicocokkan ke Data Master: nama yang tidak ketemu **tidak**
-  dibuatkan master baru — baris dilewati (produk) atau kolomnya dikosongkan (teknis device/sparepart) dan
-  dilaporkan. Field yang berubah di sheet **dan** di app sekaligus tidak ditimpa; nilai app dipertahankan
+  dibuatkan master baru — baris dilewati (produk), kolomnya dikosongkan (teknis device) atau **teksnya
+  disimpan apa adanya** (sparepart) dan dilaporkan. Field yang berubah di sheet **dan** di app sekaligus
+  tidak ditimpa; nilai app dipertahankan
   dan dilaporkan sebagai "dilewati" (tanpa dialog keputusan seperti sync Defect). Hasilnya ditampilkan
   lewat `ImportResultDialog`.
+- **Sparepart/Komponen 1–3 tanpa master**: nama dari sheet disimpan utuh di kolom `sparePart1Text` /
+  `sparePart2Text` / `sparePart3Text` (bukan dikosongkan), `sparePartNId` dibiarkan kosong. Kalau nanti
+  sparepart-nya ditambahkan ke Data Master, sync akan mengisi id-nya dan baris itu hilang dari daftar
+  catatan. Di dropdown form, nilai non-master ikut ditampilkan sebagai pilihan + keterangan
+  "Belum ada di Data Master"; memilih sparepart dari master mengisi id **dan** teks namanya.
 - Sheet **tidak pernah ditulis** (read-only), sama seperti sync Defect.
 - Dropdown Asal / Status / PIC / Penyelesaian di-hardcode di `src/lib/api/validation.ts`; **Teknis Device**
   memakai master Problem, yang daftarnya bisa dilengkapi dari kolom `Dropdown!B` sheet lewat
