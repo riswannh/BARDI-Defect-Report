@@ -49,6 +49,7 @@ import { repairMonth } from "@/lib/api/repairs";
 import { pickProductPrice } from "@/lib/prices";
 import { repairMatchKey } from "@/lib/repair-match";
 import {
+  REPAIR_FIELDS,
   resolveRepairHeaderIndex,
   resolveSparePart,
   repairSavingValue,
@@ -960,10 +961,14 @@ async function importSales(sheet: SheetRow[]) {
  *
  * Kunci pencocokan = Claim ID + tanggal + produk (`repairMatchKey()`): baris
  * yang cocok di-update, yang tidak ada disisipkan. Claim ID sendiri boleh ganda.
- * Nama produk/problem/sparepart diterjemahkan ke id lewat
- * Data Master; produk yang tidak dikenal membuat baris DILEWATI, sedangkan
- * problem/sparepart yang tidak dikenal cuma dikosongkan dan dicatat sebagai
- * baris yang terlewat.
+ * Nama produk/problem/sparepart diterjemahkan ke id lewat Data Master.
+ *
+ * Baris tidak lengkap TETAP diimpor, cuma ditandai (keputusan user 12 Okt 2026,
+ * sama seperti sync "Data Reparasi"): Claim ID/tanggal kosong dan produk yang
+ * belum ada di Data Master disimpan di `incompleteFields` ("" = lengkap) plus
+ * catatan di `skippedDetails`. HANYA baris yang semua kolomnya kosong yang tidak
+ * dimasukkan. Problem/sparepart yang tidak dikenal tetap cuma dikosongkan
+ * (sparepart: teksnya disimpan apa adanya) dan dicatat sebagai catatan baris.
  */
 async function importRepairs(sheet: SheetRow[]) {
   // `resolveRepairHeaderIndex` sudah menormalkan sendiri nama kolomnya.
@@ -1013,39 +1018,57 @@ async function importRepairs(sheet: SheetRow[]) {
 
     const claimId = normalizeCode(cellString(at("claimId")));
     const productName = cellString(at("productId"));
-    if (!claimId) {
-      result.errors.push({ row: rowNumber, key: "", reason: "Claim ID kosong" });
+
+    // Hanya baris yang SEMUA kolomnya kosong yang tidak diimpor: tidak ada satu
+    // pun data yang bisa disimpan dari baris itu (keputusan user 12 Okt 2026).
+    if (REPAIR_FIELDS.every((field) => cellString(at(field)) === "")) {
+      result.errors.push({
+        row: rowNumber,
+        key: "",
+        reason: "Semua kolom kosong — tidak ada data untuk diimpor.",
+      });
       continue;
     }
+
+    /**
+     * Baris tidak lengkap TETAP masuk sistem, cuma ditandai: kolom yang kosong
+     * atau produk yang belum ada di Data Master dicatat di `incompleteFields`
+     * supaya bisa dibetulkan dari aplikasi, bukan dibuang diam-diam.
+     */
+    const incomplete: string[] = [];
+    if (!claimId) incomplete.push("claimId");
 
     const date = normalizeDateOnly(cellString(at("date")));
-    if (!date) {
-      result.errors.push({
-        row: rowNumber,
-        key: claimId,
-        reason: "Tanggal kosong atau tidak dikenali",
-      });
-      continue;
-    }
+    if (!date) incomplete.push("date");
 
-    const productId = productMap.get(normalizeName(productName));
-    if (!productId) {
-      result.errors.push({
+    /** Baris yang tetap masuk tapi ada bagiannya yang tidak bisa dipakai apa adanya. */
+    const skipped: ImportIssue[] = [];
+
+    const productId = productMap.get(normalizeName(productName)) ?? null;
+    if (productId === null) {
+      // Produk tak dikenal bukan alasan membuang baris: disimpan sebagai NULL
+      // (`repairs.productId` boleh NULL) dan ditandai tidak lengkap.
+      incomplete.push("product");
+      skipped.push({
         row: rowNumber,
         key: claimId,
-        reason: `Produk "${productName || "(kosong)"}" tidak ada di Data Master`,
+        reason: `Produk "${productName || "(kosong)"}" tidak ada di Data Master — baris tetap diimpor sebagai tidak lengkap.`,
       });
-      continue;
     }
 
     const quantity = cellNumber(at("quantity"));
     const priceType = cellString(at("priceType")) || DEFAULT_PRICE_TYPE;
-    const price = pickProductPrice(
-      priceRows as ProductPrice[],
-      productId,
-      repairMonth(date),
-      priceType
-    );
+    // Produk NULL (dan tanggal kosong) tidak punya periode harga, jadi Saving
+    // Value dihitung dengan harga 0 — sama seperti sync sheet.
+    const price =
+      productId === null || !date
+        ? undefined
+        : pickProductPrice(
+            priceRows as ProductPrice[],
+            productId,
+            repairMonth(date),
+            priceType
+          );
     const sentValue = cellPrice(at("value"));
     // Saving Value kosong -> dihitung Quantity x harga RW, persis rumus app.
     const value =
@@ -1053,7 +1076,6 @@ async function importRepairs(sheet: SheetRow[]) {
         ? repairSavingValue(quantity, price?.price ?? 0)
         : sentValue;
 
-    const skipped: ImportIssue[] = [];
     let problemId: number | null = null;
     let sparePart1Id: number | null = null;
     let sparePart2Id: number | null = null;
@@ -1131,6 +1153,9 @@ async function importRepairs(sheet: SheetRow[]) {
       date,
       month: repairMonth(date),
       productId,
+      // "" = baris lengkap; daftar kunci (claimId/product/date) = ditandai tidak
+      // lengkap. Selalu ditulis supaya tanda hilang setelah baris dibetulkan.
+      incompleteFields: incomplete.join(","),
       quantity,
       value,
       priceType,

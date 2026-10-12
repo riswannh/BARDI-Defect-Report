@@ -56,14 +56,20 @@ export interface DefectAllowance {
  */
 export interface Repair {
   id: number;
-  /** CLAIM ID sheet, unik. */
+  /** CLAIM ID sheet. Boleh ganda selama tanggal/produknya beda; "" = tidak diisi di sheet. */
   claimId: string;
   /** "YYYY-MM-DD". */
   date: string;
-  /** "Jan"…"Des", diturunkan dari `date`. */
+  /** "YYYY-MM", diturunkan dari `date`. */
   month: string;
-  productId: number;
+  /** NULL = nama produk di sheet belum ada di Data Master (baris tetap diimpor). */
+  productId: number | null;
   productName?: string | null;
+  /**
+   * Kolom yang kosong/tidak dikenal saat impor sheet, dipisah koma
+   * (mis. "claimId,product"). "" = baris lengkap.
+   */
+  incompleteFields?: string;
   quantity: number;
   /** Saving Value (Rupiah, angka bulat). */
   value: number;

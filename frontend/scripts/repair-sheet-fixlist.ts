@@ -42,6 +42,7 @@ async function main() {
   out.push(["Bagian", "Baris sheet", "Claim ID", "Produk", "Quantity", "Tanggal", "Keterangan"].join(";"));
 
   const noClaim: string[][] = [];
+  const blankRows: string[][] = [];
   const noDate: string[][] = [];
   const missing = new Map<string, { rows: number; qty: number }>();
 
@@ -52,6 +53,20 @@ async function main() {
     const product = text(fields.productId ?? "");
     const date = text(fields.date ?? "");
 
+    // Hanya baris yang SEMUA kolomnya kosong yang tidak diimpor (keputusan user
+    // 12 Okt 2026); baris tidak lengkap lain tetap masuk dan cuma ditandai.
+    if (row.cells.every((cell) => text(cell) === "")) {
+      blankRows.push([
+        "Semua kolom kosong",
+        String(row.sheetRow),
+        "",
+        "",
+        "0",
+        "",
+        "tidak diimpor — tidak ada data sama sekali",
+      ]);
+      continue;
+    }
     if (claimId === "") {
       noClaim.push([
         "Tanpa Claim ID",
@@ -60,7 +75,7 @@ async function main() {
         product,
         String(qty),
         date,
-        qty > 0 ? "ada unitnya tapi Claim ID kosong" : "baris belum diisi",
+        "diimpor sebagai TIDAK LENGKAP (Claim ID kosong)",
       ]);
       continue;
     }
@@ -87,6 +102,7 @@ async function main() {
 
   noClaim.forEach((line) => out.push(line.map(csv).join(";")));
   noDate.forEach((line) => out.push(line.map(csv).join(";")));
+  blankRows.forEach((line) => out.push(line.map(csv).join(";")));
   [...missing.entries()]
     .sort((a, b) => b[1].qty - a[1].qty)
     .forEach(([name, v]) =>
@@ -106,7 +122,7 @@ async function main() {
     );
   console.log(out.join("\n"));
   console.error(
-    `tanpa Claim ID: ${noClaim.length} | tanggal kosong: ${noDate.length} | produk asing: ${missing.size}`
+    `tanpa Claim ID (diimpor tidak lengkap): ${noClaim.length} | tanggal kosong: ${noDate.length} | produk asing: ${missing.size} | semua kolom kosong: ${blankRows.length}`
   );
 }
 

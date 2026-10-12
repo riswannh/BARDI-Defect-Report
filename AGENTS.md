@@ -482,7 +482,8 @@ Catatan perilaku Report yang harus dijaga:
     dipertahankan** dan dilaporkan sebagai "dilewati" (TANPA dialog `/resolve` seperti Defect — itu
     upgrade path kalau nanti dibutuhkan); `value` tidak pernah ikut ditimpa.
   - Nama Produk / Teknis Device / Sparepart dicocokkan ke master; yang tidak ketemu **tidak** dibuat
-    otomatis: produk → baris dilewati, teknis device → kolom dikosongkan, **sparepart → teksnya disimpan
+    otomatis: **produk → `productId` dibiarkan NULL tapi barisnya tetap masuk** (ditandai tidak lengkap),
+    teknis device → kolom dikosongkan, **sparepart → teksnya disimpan
     apa adanya** di `sparePart1Text`/`sparePart2Text`/`sparePart3Text` (`resolveSparePart()` di
     `src/lib/gsheet/repair-mapping.ts`; `sparePartNId` dibiarkan kosong) dan tetap dilaporkan sebagai
     catatan di `ImportResult`. JANGAN mengosongkan nama sparepart yang belum ada di master — permintaan
@@ -491,13 +492,29 @@ Catatan perilaku Report yang harus dijaga:
     dilengkapi dari `Dropdown!B` lewat
     `cmd /c "npx tsx scripts/repair-problem-seed.ts"` (idempotent; sengaja BUKAN di `src/lib/db/seed.ts`
     yang hanya mengisi DB kosong).
+  - **Baris tidak lengkap TETAP diimpor, cuma ditandai** (permintaan user 12 Okt 2026): Claim ID kosong,
+    produk belum ada di Data Master, dan tanggal kosong disimpan di kolom `repairs.incompleteFields`
+    (daftar kunci dipisah koma: `claimId`, `product`, `date`) dan ditampilkan sebagai tanda "Tidak
+    lengkap" di daftar + keterangan di dialog detail (`repair-incomplete.ts` menerjemahkan kuncinya).
+    HANYA baris yang **semua kolomnya kosong** yang tidak dimasukkan, dan itulah satu-satunya isi laporan
+    "baris tidak masuk" di dialog sync. JANGAN menghidupkan lagi aturan lama "baris dilewati" untuk data
+    tidak lengkap. Kunci pencocokan tetap `repairMatchKey()` sehingga sync ulang TIDAK menggandakan baris
+    (produk NULL cocok dengan NULL). Tanda ikut diperbarui saat sync/impor, jadi hilang sendiri setelah
+    sheet atau Data Master dibetulkan.
+  - Impor Excel `repairs` (`importRepairs`) memakai aturan yang sama: baris tidak lengkap masuk bertanda,
+    hanya baris yang semua kolom terpetakannya kosong yang dilewati ("Semua kolom kosong — tidak ada data
+    untuk diimpor."), upsert lewat `repairMatchKey()`. **Jebakan lama**: kolom "Saving Value" dan
+    "Jenis Harga" di berkas impor DIABAIKAN (`at("value")`/`at("priceType")` bukan anggota
+    `REPAIR_FIELDS`) — `value` selalu dihitung `quantity × harga RW`. Kalau operator perlu memaksa nilai
+    dari berkas, itu perubahan terpisah.
   - Dropdown Asal/Status/PIC/Penyelesaian di-hardcode di `src/lib/api/validation.ts` (pola
     `KETERANGAN_OPTIONS`), bukan tabel master. Self-check pemetaan + aturan sync:
     `cmd /c "npx tsx scripts/repair-check.ts"`.
-  - Baris yang gagal masuk (produk belum ada di Data Master, tanggal kosong, Claim ID kembar/kosong)
+  - Baris yang datanya kurang (produk belum ada di Data Master, tanggal kosong, Claim ID kosong/ganda)
     bisa didaftar per baris sheet untuk dibetulkan di Google Sheet:
     `cmd /c "npx tsx scripts/repair-sync-report.ts <berkas.csv>"` (butuh kredensial service account,
-    jalan juga di dalam container produksi).
+    jalan juga di dalam container produksi); `scripts/repair-sheet-fixlist.ts` mencetak daftar serupa
+    (kolom "Semua kolom kosong" = satu-satunya yang tidak diimpor).
 
 ### Aturan alur input defect
 

@@ -44,8 +44,10 @@ export type GsheetSyncSummary = {
   appOnlyChanges: number;
   onlyInApp: number;
   skipped: number;
-  /** Jumlah baris yang tidak bisa dipakai (kosong/ganda/produk tak dikenal). */
+  /** Jumlah baris yang tidak diimpor (semua kolomnya kosong). */
   skippedRows?: number;
+  /** Baris yang tetap diimpor tapi ditandai tidak lengkap. */
+  incompleteRows?: number;
   /** Bulan yang di sheet 0 semua dan dilewati (khusus modul sales). */
   emptyMonths?: number;
 };
@@ -171,6 +173,11 @@ export function GsheetSyncDialog({
               {t("gsheet.skippedBadge", { count: result.summary.skipped })}
             </Badge>
           )}
+          {result.summary.incompleteRows ? (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              {t("repair.syncIncomplete", { count: result.summary.incompleteRows })}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex max-h-[45vh] flex-col gap-3 overflow-y-auto pr-1">

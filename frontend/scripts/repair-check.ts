@@ -133,6 +133,16 @@ assert.equal(
   "range baca dimulai dari baris header"
 );
 
+/* -------------------- 4b. Kunci baris tidak lengkap ----------------------- */
+
+// Baris tanpa Claim ID tetap punya kunci stabil, jadi sync berikutnya
+// mencocokkannya lagi (tidak menggandakan baris).
+assert.equal(
+  repairMatchKey("", "2026-10-02", null),
+  "|2026-10-02|",
+  "kunci baris tanpa Claim ID & tanpa produk"
+);
+
 /* -------------------------------- 5. Sync --------------------------------- */
 
 const sheetRow = {
@@ -217,7 +227,7 @@ assert.deepEqual(
 );
 assert.deepEqual(resolveSparePart("", masters), { id: null, text: "" }, "sel kosong -> tanpa id dan tanpa teks");
 
-/* ------------------- 5. Identitas baris: Claim ID tidak unik ------------------ */
+/* ------------------- 6. Identitas baris: Claim ID tidak unik ------------------ */
 
 // Satu Claim ID boleh dipakai beberapa baris selama tanggal/produknya beda.
 assert.notEqual(

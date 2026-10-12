@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { problems, productPrices, products, repairs } from "@/lib/db/schema";
@@ -62,6 +62,7 @@ const repairSelect = {
   sparePart2Text: repairs.sparePart2Text,
   sparePart3Text: repairs.sparePart3Text,
   noteClosing: repairs.noteClosing,
+  incompleteFields: repairs.incompleteFields,
   sheetSyncedAt: repairs.sheetSyncedAt,
 };
 
@@ -254,26 +255,25 @@ export async function repairsPATCH(
   if (!date) return jsonError("Tanggal tidak valid.", 422);
 
   const productId = parsed.data.productId ?? before.productId;
+  // Baris tidak lengkap boleh punya produk NULL (nama produk di sheet belum ada
+  // di Data Master), jadi pembandingnya ikut menangani NULL.
+  const sameProduct =
+    productId === null ? isNull(repairs.productId) : eq(repairs.productId, productId);
 
   // Claim ID boleh dipakai beberapa baris; yang dicegah hanya baris kembar
   // persis (Claim ID + tanggal + produk sama).
   const duplicate = await db
     .select({ id: repairs.id })
     .from(repairs)
-    .where(
-      and(
-        eq(repairs.claimId, claimId),
-        eq(repairs.date, date),
-        eq(repairs.productId, productId)
-      )
-    );
+    .where(and(eq(repairs.claimId, claimId), eq(repairs.date, date), sameProduct));
   if (duplicate.some((row) => row.id !== rowId)) {
     return jsonError("Baris ini sudah ada (Claim ID, tanggal, dan produk sama).", 409);
   }
 
   const priceType = parsed.data.priceType || before.priceType || DEFAULT_PRICE_TYPE;
   const quantity = parsed.data.quantity ?? before.quantity;
-  const price = await resolveRepairPrice(productId, date, priceType);
+  const price =
+    productId === null ? null : await resolveRepairPrice(productId, date, priceType);
   // Saving Value hanya dihitung ulang kalau form tidak mengirim angkanya —
   // angka yang sudah diisi operator tidak boleh ditimpa diam-diam.
   const value =

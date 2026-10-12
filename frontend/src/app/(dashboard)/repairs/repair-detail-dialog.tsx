@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatIDR, formatNumber } from "@/lib/format";
 import { Camera, Check, Package } from "lucide-react";
+import { incompleteFieldsLabel } from "./repair-incomplete";
 import type { Repair } from "@/lib/types";
 
 const STATUS_KEYS: Record<string, TranslationKey> = {
@@ -97,8 +98,15 @@ export function RepairDetailDialog({
         </DialogHeader>
         {repair && (
           <dl className="grid max-h-[60vh] grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto text-sm sm:grid-cols-2">
+            {repair.incompleteFields ? (
+              <div className="rounded border border-amber-500/60 px-3 py-2 text-xs text-amber-700 sm:col-span-2 dark:text-amber-400">
+                {t("repair.incompleteHint", {
+                  fields: incompleteFieldsLabel(t, repair.incompleteFields),
+                })}
+              </div>
+            ) : null}
             <Field label={t("repair.table.claim")}>
-              <span className="font-mono text-xs">{repair.claimId}</span>
+              <span className="font-mono text-xs">{repair.claimId || "-"}</span>
             </Field>
             <Field label={t("repair.table.date")}>
               {repair.date} · {repair.month}

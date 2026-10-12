@@ -114,6 +114,8 @@ export type RepairSyncSummary = {
   unchanged: number;
   keepLocal: number;
   skippedRows: number;
+  /** Baris yang masuk tapi ditandai tidak lengkap (kolom kosong/produk tak dikenal). */
+  incompleteRows: number;
   /** Baris yang ada di app tapi Claim ID-nya tidak ada lagi di sheet. */
   onlyInApp: number;
 };
@@ -206,6 +208,7 @@ export async function runRepairSync(): Promise<{
     unchanged: 0,
     keepLocal: 0,
     skippedRows: 0,
+    incompleteRows: 0,
     onlyInApp: 0,
   };
 
@@ -220,31 +223,49 @@ export async function runRepairSync(): Promise<{
     const sheetFields = repairFieldsFromRow(cells, resolved.index);
     const claimId = sheetFields.claimId ?? "";
     const blank = cells.every((cell) => text(cell) === "");
-    if (!claimId) {
-      if (!blank) {
-        note(errors, sheetRow, "", "Claim ID di sheet kosong — baris dilewati.");
-        summary.skippedRows += 1;
-      }
-      continue;
-    }
-
-    const productId = productNames.toId.get(normalizeName(sheetFields.productId ?? ""));
-    const date = normalizeDateOnly(sheetFields.date ?? "");
-    if (productId === undefined) {
+    // Hanya baris yang SEMUA kolomnya kosong yang tidak diimpor (keputusan user
+    // 12 Okt 2026): tidak ada satu pun data yang bisa disimpan dari baris itu.
+    if (blank) {
       note(
         errors,
         sheetRow,
-        claimId,
-        `Produk "${sheetFields.productId ?? ""}" belum ada di Data Master — baris dilewati.`
+        "",
+        "Semua kolom kosong — tidak ada data untuk diimpor."
       );
       summary.skippedRows += 1;
       continue;
     }
-    if (!date) {
-      note(errors, sheetRow, claimId, "Tanggal di sheet kosong/tidak dikenali — baris dilewati.");
-      summary.skippedRows += 1;
-      continue;
+
+    /**
+     * Baris tidak lengkap TETAP masuk sistem, cuma ditandai: kolom yang kosong
+     * atau produk yang belum ada di Data Master dicatat di `incompleteFields`
+     * supaya bisa dibetulkan dari aplikasi, bukan dibuang diam-diam.
+     */
+    const incomplete: string[] = [];
+    if (!claimId) incomplete.push("claimId");
+
+    const productId = productNames.toId.get(normalizeName(sheetFields.productId ?? ""));
+    const productUnresolved = productId === undefined;
+    if (productUnresolved) {
+      incomplete.push("product");
+      note(
+        skippedDetails,
+        sheetRow,
+        claimId,
+        `Produk "${sheetFields.productId ?? ""}" belum ada di Data Master — baris tetap diimpor sebagai tidak lengkap.`
+      );
     }
+
+    const date = normalizeDateOnly(sheetFields.date ?? "");
+    if (!date) incomplete.push("date");
+    const incompleteFields = incomplete.join(",");
+    if (incompleteFields) summary.incompleteRows += 1;
+
+    // Nama produk yang tidak dikenal tidak bisa disimpan di kolom produk, jadi
+    // pembanding sheet-nya dikosongkan supaya baris itu tidak terus dianggap berubah.
+    const planSheetFields: RepairRowFields = productUnresolved
+      ? { ...sheetFields, productId: "" }
+      : sheetFields;
 
     const problemId = sheetFields.problemId
       ? (problemNames.toId.get(normalizeName(sheetFields.problemId)) ?? null)
@@ -275,13 +296,14 @@ export async function runRepairSync(): Promise<{
     const spareTexts = spares.map((item) => item.text);
 
     const quantity = Number.parseInt(sheetFields.quantity || "0", 10) || 0;
-    const price = priceOf(productId, date);
-    const matchKey = repairMatchKey(claimId, date, productId);
+    const productKey = productUnresolved ? null : productId;
+    const price = productKey === null || !date ? null : priceOf(productKey, date);
+    const matchKey = repairMatchKey(claimId, date, productKey);
     const queue = appByKey.get(matchKey);
     const local = queue && queue.length > 0 ? queue.shift() : undefined;
     if (local) consumed.add(local.id);
     const plan = planRepairRow({
-      sheet: sheetFields,
+      sheet: planSheetFields,
       app: local ? appFieldsFromRow(local, productNames, problemNames, spareNames) : null,
       baseline: local ? repairBaseline(local.sheetFields) : null,
     });
@@ -293,7 +315,7 @@ export async function runRepairSync(): Promise<{
           claimId,
           date,
           month: date.slice(0, 7),
-          productId,
+          productId: productKey,
           quantity,
           value: repairSavingValue(quantity, price?.price ?? 0),
           priceType: DEFAULT_PRICE_TYPE,
@@ -319,7 +341,8 @@ export async function runRepairSync(): Promise<{
           sparePart2Text: spareTexts[1],
           sparePart3Text: spareTexts[2],
           noteClosing: sheetFields.noteClosing ?? "",
-          sheetFields: JSON.stringify(baselineFromSheet(sheetFields, REPAIR_FIELDS)),
+          sheetFields: JSON.stringify(baselineFromSheet(planSheetFields, REPAIR_FIELDS)),
+          incompleteFields,
           sheetSyncedAt: now,
         },
       });
@@ -359,7 +382,7 @@ export async function runRepairSync(): Promise<{
           patch.month = value.slice(0, 7);
           return;
         case "productId":
-          patch.productId = productId;
+          patch.productId = productId ?? null;
           productChanged = true;
           return;
         case "quantity":
@@ -384,18 +407,20 @@ export async function runRepairSync(): Promise<{
           patch[field] = value;
       }
     };
-    for (const field of plan.apply) applyField(field, sheetFields[field] ?? "");
+    for (const field of plan.apply) applyField(field, planSheetFields[field] ?? "");
 
     const nextQuantity = patch.quantity ?? local.quantity;
     const nextDate = patch.date ?? local.date;
     if (productChanged || patch.quantity !== undefined || patch.date !== undefined) {
-      const nextPrice = priceOf(productId, nextDate);
+      const nextPrice =
+        productId === undefined ? null : priceOf(productId, nextDate);
       patch.value = repairSavingValue(nextQuantity, nextPrice?.price ?? 0);
       patch.productPriceId = nextPrice?.id ?? null;
     }
 
     updates.set(local.id, {
       ...patch,
+      incompleteFields,
       sheetFields: JSON.stringify(plan.baseline),
       sheetSyncedAt: now,
     });

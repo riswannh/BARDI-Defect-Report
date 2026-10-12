@@ -550,9 +550,12 @@ export const repairs = sqliteTable(
     date: text("date").notNull(),
     /** "YYYY-MM", diturunkan dari `date` — dipakai filter bulan/tahun. */
     month: text("month").notNull().default(""),
-    productId: integer("productId")
-      .notNull()
-      .references(() => products.id),
+    /**
+     * Produk dari master. NULL = nama produk di sheet belum ada di Data Master.
+     * Barisnya TETAP diimpor dan ditandai lewat `incompleteFields`, bukan dibuang
+     * (keputusan user 12 Okt 2026).
+     */
+    productId: integer("productId").references(() => products.id),
     quantity: integer("quantity").notNull().default(0),
     /** Saving Value (Rupiah), angka bulat seperti `defects.value`. */
     value: integer("value").notNull().default(0),
@@ -595,6 +598,12 @@ export const repairs = sqliteTable(
     sparePart3Text: text("sparePart3Text").notNull().default(""),
     /** Kolom W sheet — header di sheet juga "Note", jadi diberi nama sendiri. */
     noteClosing: text("noteClosing").notNull().default(""),
+    /**
+     * Daftar kolom yang kosong/tidak dikenal saat baris ini diimpor dari sheet,
+     * dipisah koma (mis. "claimId,product"). Kosong = baris lengkap. Baris tidak
+     * lengkap tetap masuk sistem dan cuma ditandai (keputusan user 12 Okt 2026).
+     */
+    incompleteFields: text("incompleteFields").notNull().default(""),
     /**
      * Pembukuan sync Google Sheet — pola sama dengan `defects`: hash nilai tiap
      * field saat sync terakhir, sehingga sync tahu baris mana yang sudah diubah

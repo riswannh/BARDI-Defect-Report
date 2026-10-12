@@ -282,7 +282,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `id` | integer PK auto | |
 | `claimId` | text | CLAIM ID dari sheet. **Tidak unik** — identitas baris = `claimId` + `date` + `productId` |
 | `date` / `month` | text | `date` = `YYYY-MM-DD`, `month` = `YYYY-MM` (diturunkan dari `date`) |
-| `productId` | FK → products | nama produk dicocokkan ke Data Master saat impor |
+| `productId` | FK → products, **boleh NULL** | nama produk dicocokkan ke Data Master saat impor; NULL = nama produk di sheet belum ada di Data Master (baris tetap masuk, ditandai lewat `incompleteFields`) |
 | `quantity` | integer (default 0) | Quantity |
 | `value` | integer (default 0) | Saving Value, Rupiah |
 | `priceType` / `productPriceId` | text / FK → product_prices | jenis harga dipakai (default `Regional Warehouse`) + baris harga yang terpilih |
@@ -294,6 +294,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `problemId` | FK → problems | "Teknis Device" |
 | `sparePart1Id` / `sparePart2Id` / `sparePart3Id` | FK → spare_parts | Sparepart/Komponen 1–3 |
 | `sparePart1Text` / `sparePart2Text` / `sparePart3Text` | text (default "") | nama sparepart apa adanya dari sheet — tetap diisi walau namanya belum ada di Data Master (jangan dikosongkan) |
+| `incompleteFields` | text (default "") | kolom yang kosong saat impor sheet, dipisah koma (`claimId`, `product`, `date`); "" = baris lengkap. Baris tetap masuk sistem dan hanya ditandai **Tidak lengkap** |
 | `sheetFields` / `sheetSyncedAt` | text / timestamp | salinan nilai sheet terakhir yang sudah sepakat + waktu sync (aturan baseline sama seperti Defect) |
 
 **`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
@@ -550,11 +551,18 @@ Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Sav
 - **Sinkron Sheet** (tombol di halaman, admin) membaca tab `Data Reparasi` dengan header di **baris 3**
   dan data mulai **baris 5**, kolom dicocokkan **per nama header** (`src/lib/gsheet/repair-mapping.ts`).
   Nama Produk / Teknis Device / Sparepart dicocokkan ke Data Master: nama yang tidak ketemu **tidak**
-  dibuatkan master baru — baris dilewati (produk), kolomnya dikosongkan (teknis device) atau **teksnya
-  disimpan apa adanya** (sparepart) dan dilaporkan. Field yang berubah di sheet **dan** di app sekaligus
+  dibuatkan master baru — kolom produknya dibiarkan kosong (barisnya tetap masuk), teknis device
+  dikosongkan atau **teksnya disimpan apa adanya** (sparepart) dan dilaporkan. Field yang berubah di sheet
+  **dan** di app sekaligus
   tidak ditimpa; nilai app dipertahankan
   dan dilaporkan sebagai "dilewati" (tanpa dialog keputusan seperti sync Defect). Hasilnya ditampilkan
   lewat `ImportResultDialog`.
+- **Baris tidak lengkap tetap diimpor** (keputusan user 12 Okt 2026): hanya baris yang **semua kolomnya
+  kosong** yang tidak dimasukkan, dan itu satu-satunya isi laporan "baris tidak masuk" di dialog sync.
+  Kekurangan lain (Claim ID kosong, produk belum ada di Data Master, tanggal kosong) disimpan di kolom
+  `incompleteFields` (mis. `"claimId,product"`) dan ditampilkan sebagai tanda **Tidak lengkap** di daftar
+  serta rinciannya di dialog detail. Setelah sheet/master dibetulkan, sync berikutnya mengisi kolom yang
+  kurang dan tanda itu hilang sendiri.
 - **Sparepart/Komponen 1–3 tanpa master**: nama dari sheet disimpan utuh di kolom `sparePart1Text` /
   `sparePart2Text` / `sparePart3Text` (bukan dikosongkan), `sparePartNId` dibiarkan kosong. Kalau nanti
   sparepart-nya ditambahkan ke Data Master, sync akan mengisi id-nya dan baris itu hilang dari daftar
@@ -564,14 +572,16 @@ Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Sav
 - Dropdown Asal / Status / PIC / Penyelesaian di-hardcode di `src/lib/api/validation.ts`; **Teknis Device**
   memakai master Problem, yang daftarnya bisa dilengkapi dari kolom `Dropdown!B` sheet lewat
   `cmd /c "npx tsx scripts/repair-problem-seed.ts"` (idempotent, butuh kredensial service account).
-- Excel: **Ekspor / Impor / Template** modul `repairs` (impor upsert berdasar CLAIM ID; `value` dihitung
-  dari harga RW kalau kolomnya kosong).
+- Excel: **Ekspor / Impor / Template** modul `repairs` (impor upsert berdasar Claim ID + tanggal + produk,
+  aturan tidak lengkap sama seperti sync sheet; `value` selalu dihitung `quantity × harga RW`, jadi kolom
+  Saving Value / Jenis Harga di berkas impor diabaikan).
 - Modul ini **admin saja** (`/api/repairs*` memakai `requireAdmin()`, menu `adminOnly`) karena Saving
   Value memuat Rupiah — role Pabrik tidak boleh menerimanya, sama seperti kartu Allowance Defect.
 - Verifikasi: `cmd /c "npx tsx scripts/repair-check.ts"` (pemetaan kolom + aturan sync) dan
   `verify-repair.cjs` (Playwright: CRUD, filter, hitung Saving Value, gerbang admin).
-- Baris yang tidak masuk (produk/tanggal/Claim ID bermasalah) bisa didaftar untuk dibetulkan di sheet:
+- Baris yang datanya kurang bisa didaftar untuk dibetulkan di sheet:
   `cmd /c "npx tsx scripts/repair-sync-report.ts <berkas.csv>"` — butuh kredensial service account.
+  Daftar itu hanya alat bantu: barisnya sendiri **sudah masuk** sistem dan ditandai "Tidak lengkap".
 
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan
 `Replacement` produk itu pada periode terpilih (periode sama dengan kartu Replacement, jadi jumlah
@@ -655,12 +665,12 @@ periode tujuan dilewati, jadi aman dijalankan berulang.
 | POST | `/api/defect-allowances` | admin | `{ year, limitValue }`; 409 bila tahun itu sudah punya limit |
 | PATCH / DELETE | `/api/defect-allowances/{id}` | admin | ubah / hapus satu limit tahunan |
 | GET | `/api/repairs` | admin | daftar reparasi; filter `search`, `productId`, `problemId`, `status`, `pic`, `origin`, `resolution`, `year`, `month` |
-| POST | `/api/repairs` | admin | tambah baris; 409 `Claim ID sudah ada.` bila CLAIM ID kembar |
+| POST | `/api/repairs` | admin | tambah baris; 409 `Baris ini sudah ada (Claim ID, tanggal, dan produk sama).` bila barisnya kembar persis |
 | PATCH / DELETE | `/api/repairs/{id}` | admin | ubah / hapus satu baris reparasi |
 | POST | `/api/repairs/bulk-delete` | admin | `{ ids: number[] }` — hapus baris terpilih |
 | DELETE | `/api/repairs` | admin | hapus semua baris (dengan backup otomatis) |
 | POST | `/api/repairs/gsheet/sync` | admin | tarik tab "Data Reparasi" → app (satu arah, read-only ke sheet) |
-| GET | `/api/excel/repairs/export` `/import` `/template` | admin | Excel modul repairs (impor upsert berdasar CLAIM ID) |
+| GET | `/api/excel/repairs/export` `/import` `/template` | admin | Excel modul repairs (impor upsert berdasar Claim ID + tanggal + produk) |
 
 **Sparepart adalah child produk, tetapi kaitannya many-to-many**: satu sparepart boleh dipakai
 beberapa produk sekaligus, jadi mengaitkan sparepart di produk B **tidak** melepasnya dari produk A.

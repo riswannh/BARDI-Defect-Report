@@ -1071,6 +1071,20 @@ const translations = {
     en: "Not in Data Master yet",
     zh: "数据主表中暂无",
   },
+  "repair.incomplete": { id: "Tidak lengkap", en: "Incomplete", zh: "不完整" },
+  "repair.incompleteHint": {
+    id: "Baris ini tetap diimpor tapi belum lengkap. Kolom kosong: {fields}.",
+    en: "This row was imported but is incomplete. Empty fields: {fields}.",
+    zh: "该行已导入但不完整。缺少字段：{fields}。",
+  },
+  "repair.incompleteShort": {
+    id: "Tidak lengkap: {fields}",
+    en: "Incomplete: {fields}",
+    zh: "不完整：{fields}",
+  },
+  "repair.missing.claimId": { id: "Claim ID", en: "Claim ID", zh: "索赔编号" },
+  "repair.missing.product": { id: "Produk", en: "Product", zh: "产品" },
+  "repair.missing.date": { id: "Tanggal", en: "Date", zh: "日期" },
   "repair.form.note": { id: "Note", en: "Note", zh: "备注" },
   "repair.form.noteClosing": { id: "Note Closing", en: "Closing Note", zh: "结案备注" },
   "repair.form.pickPlaceholder": { id: "Pilih…", en: "Select…", zh: "请选择…" },
@@ -1085,6 +1099,11 @@ const translations = {
     id: "Sinkron sheet selesai: {inserted} masuk, {updated} baris diperbarui, {skipped} baris tidak masuk.",
     en: "Sheet sync finished: {inserted} inserted, {updated} rows updated, {skipped} rows not imported.",
     zh: "工作表同步完成：新增 {inserted} 条，更新 {updated} 行，{skipped} 行未导入。",
+  },
+  "repair.syncIncomplete": {
+    id: "{count} baris masuk sebagai tidak lengkap (ada kolom kosong / produk belum ada di Data Master).",
+    en: "{count} rows were imported as incomplete (empty fields / product not in Data Master).",
+    zh: "{count} 行以不完整状态导入（有空字段 / 产品不在数据主表中）。",
   },
   "repair.syncTitle": {
     id: "Sinkron Google Sheet Repair",

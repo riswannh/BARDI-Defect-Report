@@ -117,7 +117,8 @@ export interface RepairRowValues {
   id: number;
   claimId: string;
   date: string;
-  productId: number;
+  /** NULL = nama produk di sheet belum ada di Data Master (baris tidak lengkap). */
+  productId: number | null;
   quantity: number;
   value: number;
   priceType?: string | null;

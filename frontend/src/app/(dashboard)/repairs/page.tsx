@@ -59,6 +59,7 @@ import type {
 } from "@/lib/types";
 import type { RepairSyncSummary } from "@/lib/api/repair-gsheet";
 import { RepairFormDialog, type RepairFormValues } from "./repair-form-dialog";
+import { incompleteFieldsLabel } from "./repair-incomplete";
 import { RepairDetailDialog } from "./repair-detail-dialog";
 
 /** Jenis harga acuan Saving Value — sama dengan `DEFAULT_PRICE_TYPE` di server. */
@@ -170,10 +171,14 @@ export default function RepairsPage() {
   const page = Math.min(Math.max(1, pageState.page), totalPages);
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const productName = (id: number) => {
+  const productName = (id: number | null) => {
+    if (id === null) return "";
     const row = rows.find((r) => r.id === id);
     return products.find((p) => p.id === id)?.name ?? row?.productName ?? "";
   };
+
+  /** Kolom kosong pada baris tidak lengkap → label bahasa aktif. */
+  const missingFields = (fields: string) => incompleteFieldsLabel(t, fields);
   const years = [...new Set(rows.map((row) => row.month.slice(0, 4)))]
     .filter(Boolean)
     .sort()
@@ -194,7 +199,8 @@ export default function RepairsPage() {
     if (!row) return null;
     const rwPrice = pickProductPrice(
       productPrices,
-      row.productId,
+      // 0 = produk belum dikenal (baris tidak lengkap) → tidak ada harga RW.
+      row.productId ?? 0,
       row.month,
       row.priceType || VALUE_PRICE_TYPE
     );
@@ -309,6 +315,7 @@ export default function RepairsPage() {
           // Angka ini yang muncul di lencana "baris dilewati" — samakan dengan daftar error.
           skipped: s.skippedRows,
           skippedRows: s.skippedRows,
+          incompleteRows: s.incompleteRows,
         },
         conflicts: [],
         // Baris yang tidak masuk (ditambah daftar detail) ditampilkan di dialog.
@@ -633,10 +640,20 @@ export default function RepairsPage() {
                         {row.date}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {row.claimId}
+                        {row.claimId || "-"}
+                        {row.incompleteFields ? (
+                          <span
+                            className="ml-2 rounded border border-amber-500/60 px-1.5 py-0.5 align-middle font-sans text-[10px] font-medium text-amber-600"
+                            title={t("repair.incompleteHint", {
+                              fields: missingFields(row.incompleteFields),
+                            })}
+                          >
+                            {t("repair.incomplete")}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="whitespace-normal">
-                        {row.productName ?? productName(row.productId) ?? "-"}
+                        {row.productName || productName(row.productId) || "-"}
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatNumber(row.quantity)}
