@@ -43,9 +43,7 @@ async function main() {
 
   const noClaim: string[][] = [];
   const noDate: string[][] = [];
-  const dupes = new Map<string, { rows: number; qty: number }>();
   const missing = new Map<string, { rows: number; qty: number }>();
-  const seen = new Set<string>();
 
   for (const row of rows) {
     const fields = repairFieldsFromRow(row.cells, resolved.index);
@@ -66,12 +64,8 @@ async function main() {
       ]);
       continue;
     }
-    if (seen.has(claimId)) {
-      const entry = dupes.get(claimId) ?? { rows: 0, qty: 0 };
-      dupes.set(claimId, { rows: entry.rows + 1, qty: entry.qty + qty });
-      continue;
-    }
-    seen.add(claimId);
+    // Claim ID ganda BUKAN masalah: satu Claim ID boleh dipakai beberapa baris
+    // selama tanggal/produknya beda (keputusan user 12 Okt 2026).
     if (!productNames.has(normalizeName(product))) {
       const key = product === "" ? "(sel produk kosong)" : product;
       const entry = missing.get(key) ?? { rows: 0, qty: 0 };
@@ -110,27 +104,9 @@ async function main() {
           .join(";")
       )
     );
-  [...dupes.entries()]
-    .sort((a, b) => b[1].qty - a[1].qty)
-    .forEach(([claimId, v]) =>
-      out.push(
-        [
-          "Claim ID ganda",
-          "",
-          claimId,
-          "",
-          String(v.qty),
-          "",
-          `${v.rows} baris tambahan dengan Claim ID sama — gabung jadi satu baris atau pakai Claim ID berbeda`,
-        ]
-          .map(csv)
-          .join(";")
-      )
-    );
-
   console.log(out.join("\n"));
   console.error(
-    `tanpa Claim ID: ${noClaim.length} | tanggal kosong: ${noDate.length} | produk asing: ${missing.size} | Claim ID ganda: ${dupes.size}`
+    `tanpa Claim ID: ${noClaim.length} | tanggal kosong: ${noDate.length} | produk asing: ${missing.size}`
   );
 }
 

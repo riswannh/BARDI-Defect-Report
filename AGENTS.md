@@ -464,8 +464,10 @@ Catatan perilaku Report yang harus dijaga:
   `cmd /c "npx tsx scripts/allowance-check.ts"` (dijalankan dari `frontend/`).
 
 - **Repair Data** (menu `/repairs`, **admin saja**, ditambahkan 11 Okt 2026) = cermin tab "Data Reparasi"
-  sheet Reparasi RFB (`REPAIR_GSHEET_ID`, default sudah ada di kode). Tabel `repairs`, satu baris = satu
-  `claimId` (UNIQUE — kunci dedupe impor & sync). Endpoint `/api/repairs` (GET/POST),
+  sheet Reparasi RFB (`REPAIR_GSHEET_ID`, default sudah ada di kode). Tabel `repairs`, identitas baris =
+  `claimId` + `date` + `productId` (`repairMatchKey()` di `src/lib/repair-match.ts`) — **`claimId` TIDAK
+  unik**: satu CLAIM ID boleh dipakai beberapa baris selama tanggal/produknya beda (keputusan user
+  12 Okt 2026, dulu UNIQUE dan baris ganda dilewati). Endpoint `/api/repairs` (GET/POST),
   `/api/repairs/[id]` (PATCH/DELETE), `/api/repairs/bulk-delete`, `DELETE /api/repairs`,
   `POST /api/repairs/gsheet/sync`, plus Excel `repairs` — **semuanya `requireAdmin()`** karena
   `value` (Saving Value) memuat Rupiah; role Pabrik tidak menerima data ini sama sekali.

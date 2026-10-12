@@ -20,7 +20,9 @@ import type { ProductPrice } from "@/lib/types";
  *
  * Semua endpoint admin saja — Saving Value memuat Rupiah, jadi role Pabrik tidak
  * boleh menerimanya sama sekali (aturan yang sama dengan kartu Allowance Defect).
- * Satu baris = satu CLAIM ID; itu kunci dedupe impor dan sync.
+ * Claim ID TIDAK unik: satu Claim ID boleh dipakai beberapa baris selama
+ * tanggal/produknya beda (keputusan user 12 Okt 2026). Identitas baris =
+ * Claim ID + tanggal + produk → lihat `repairMatchKey()` di `src/lib/repair-match.ts`.
  *
  * Catatan: nama Sparepart 1/2/3 tidak ikut di-join di sini — daftar sparepart
  * sudah tersedia di app (`/api/spare-parts`) dan barisnya cuma menyimpan id,
@@ -178,11 +180,22 @@ export async function repairsPOST(req: NextRequest) {
   const date = normalizeDateOnly(parsed.data.date);
   if (!date) return jsonError("Tanggal tidak valid.", 422);
 
-  const existing = await db
+  // Claim ID boleh dipakai beberapa baris; yang dicegah hanya baris kembar
+  // persis (Claim ID + tanggal + produk sama).
+  const duplicate = await db
     .select({ id: repairs.id })
     .from(repairs)
-    .where(eq(repairs.claimId, claimId));
-  if (existing.length > 0) return jsonError("Claim ID sudah ada.", 409);
+    .where(
+      and(
+        eq(repairs.claimId, claimId),
+        eq(repairs.date, date),
+        eq(repairs.productId, parsed.data.productId)
+      )
+    )
+    .limit(1);
+  if (duplicate.length > 0) {
+    return jsonError("Baris ini sudah ada (Claim ID, tanggal, dan produk sama).", 409);
+  }
 
   const priceType = parsed.data.priceType || DEFAULT_PRICE_TYPE;
   const quantity = parsed.data.quantity ?? 0;
@@ -240,15 +253,24 @@ export async function repairsPATCH(
       : before.date;
   if (!date) return jsonError("Tanggal tidak valid.", 422);
 
+  const productId = parsed.data.productId ?? before.productId;
+
+  // Claim ID boleh dipakai beberapa baris; yang dicegah hanya baris kembar
+  // persis (Claim ID + tanggal + produk sama).
   const duplicate = await db
     .select({ id: repairs.id })
     .from(repairs)
-    .where(eq(repairs.claimId, claimId));
+    .where(
+      and(
+        eq(repairs.claimId, claimId),
+        eq(repairs.date, date),
+        eq(repairs.productId, productId)
+      )
+    );
   if (duplicate.some((row) => row.id !== rowId)) {
-    return jsonError("Claim ID sudah ada.", 409);
+    return jsonError("Baris ini sudah ada (Claim ID, tanggal, dan produk sama).", 409);
   }
 
-  const productId = parsed.data.productId ?? before.productId;
   const priceType = parsed.data.priceType || before.priceType || DEFAULT_PRICE_TYPE;
   const quantity = parsed.data.quantity ?? before.quantity;
   const price = await resolveRepairPrice(productId, date, priceType);

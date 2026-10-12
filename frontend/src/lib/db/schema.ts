@@ -540,8 +540,12 @@ export const repairs = sqliteTable(
   "repairs",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    /** CLAIM ID dari sheet; dipakai sebagai kunci dedupe impor & sync. */
-    claimId: text("claimId").notNull().unique(),
+    /**
+     * CLAIM ID dari sheet. TIDAK unik: satu Claim ID boleh dipakai beberapa
+     * baris selama tanggal/produknya beda. Kunci pencocokan sync/impor =
+     * `repairMatchKey()` di `src/lib/repair-match.ts`.
+     */
+    claimId: text("claimId").notNull(),
     /** "YYYY-MM-DD" (sheet menyimpannya sebagai serial tanggal). */
     date: text("date").notNull(),
     /** "YYYY-MM", diturunkan dari `date` — dipakai filter bulan/tahun. */

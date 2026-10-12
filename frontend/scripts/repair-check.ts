@@ -9,6 +9,7 @@ import {
 } from "../src/lib/gsheet/repair-mapping";
 import { planRepairRow } from "../src/lib/gsheet/repair-sync";
 import { baselineFromSheet } from "../src/lib/gsheet/sync";
+import { repairMatchKey } from "../src/lib/repair-match";
 
 // Self-check modul Repair Data: pemetaan kolom sheet, konversi nilai, dan aturan
 // sync. Jalankan: npx tsx scripts/repair-check.ts
@@ -215,5 +216,29 @@ assert.deepEqual(
   "sparepart yang belum ada di master tetap disimpan teksnya"
 );
 assert.deepEqual(resolveSparePart("", masters), { id: null, text: "" }, "sel kosong -> tanpa id dan tanpa teks");
+
+/* ------------------- 5. Identitas baris: Claim ID tidak unik ------------------ */
+
+// Satu Claim ID boleh dipakai beberapa baris selama tanggal/produknya beda.
+assert.notEqual(
+  repairMatchKey("202606793", "2026-04-01", 12),
+  repairMatchKey("202606793", "2026-04-02", 12),
+  "tanggal beda -> baris dianggap beda"
+);
+assert.notEqual(
+  repairMatchKey("202606793", "2026-04-01", 12),
+  repairMatchKey("202606793", "2026-04-01", 13),
+  "produk beda -> baris dianggap beda"
+);
+assert.equal(
+  repairMatchKey(" 202606793 ", "2026-04-01", 12),
+  repairMatchKey("202606793", "2026-04-01", 12),
+  "spasi/huruf besar-kecil tidak mengubah identitas"
+);
+assert.equal(
+  repairMatchKey("202606793", "2026-04-01", null),
+  repairMatchKey("202606793", "2026-04-01", null),
+  "produk kosong tetap punya identitas"
+);
 
 console.log("repair-check: semua pemeriksaan lulus");

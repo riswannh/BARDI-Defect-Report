@@ -47,6 +47,7 @@ import {
 } from "@/lib/api/records";
 import { repairMonth } from "@/lib/api/repairs";
 import { pickProductPrice } from "@/lib/prices";
+import { repairMatchKey } from "@/lib/repair-match";
 import {
   resolveRepairHeaderIndex,
   resolveSparePart,
@@ -957,8 +958,9 @@ async function importSales(sheet: SheetRow[]) {
  * nilainya jadi sama. Batas ini ada di `readSheet` yang dipakai semua modul;
  * impor dari sheet asli tetap benar karena sync membaca sel sebagai array.
  *
- * Kunci dedupe adalah Claim ID: baris dengan Claim ID baru disisipkan, yang
- * sudah ada di-update. Nama produk/problem/sparepart diterjemahkan ke id lewat
+ * Kunci pencocokan = Claim ID + tanggal + produk (`repairMatchKey()`): baris
+ * yang cocok di-update, yang tidak ada disisipkan. Claim ID sendiri boleh ganda.
+ * Nama produk/problem/sparepart diterjemahkan ke id lewat
  * Data Master; produk yang tidak dikenal membuat baris DILEWATI, sedangkan
  * problem/sparepart yang tidak dikenal cuma dikosongkan dan dicatat sebagai
  * baris yang terlewat.
@@ -974,7 +976,12 @@ async function importRepairs(sheet: SheetRow[]) {
     db.select({ id: spareParts.id, name: spareParts.name }).from(spareParts),
     db.select().from(productPrices),
     db
-      .select({ id: repairs.id, claimId: repairs.claimId })
+      .select({
+        id: repairs.id,
+        claimId: repairs.claimId,
+        date: repairs.date,
+        productId: repairs.productId,
+      })
       .from(repairs),
   ]);
 
@@ -985,7 +992,15 @@ async function importRepairs(sheet: SheetRow[]) {
     problemRows.map((row) => [normalizeName(row.name), row.id])
   );
   const partMap = new Map(partRows.map((row) => [normalizeName(row.name), row.id]));
-  const repairMap = new Map(repairRows.map((row) => [row.claimId, row.id]));
+  // Claim ID tidak unik: identitas baris = Claim ID + tanggal + produk, dan
+  // tiap kunci punya antrean baris app yang belum dipakai (lihat repair-match.ts).
+  const repairMap = new Map<string, number[]>();
+  for (const row of repairRows) {
+    const key = repairMatchKey(row.claimId, row.date, row.productId);
+    const queue = repairMap.get(key);
+    if (queue) queue.push(row.id);
+    else repairMap.set(key, [row.id]);
+  }
 
   const result = newImportResult(REPAIR_MODULE, sheet.length);
   for (let i = 0; i < sheet.length; i++) {
@@ -1143,7 +1158,8 @@ async function importRepairs(sheet: SheetRow[]) {
     };
 
     try {
-      const rowId = repairMap.get(claimId);
+      const queue = repairMap.get(repairMatchKey(claimId, date, productId));
+      const rowId = queue && queue.length > 0 ? queue.shift() : undefined;
       if (rowId === undefined) {
         await db.insert(repairs).values(values);
         result.inserted++;

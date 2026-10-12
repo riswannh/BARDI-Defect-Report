@@ -996,9 +996,9 @@ const translations = {
   // Repair Data (admin saja; sumber data tab "Data Reparasi" sheet Reparasi RFB)
   "repair.title": { id: "Repair Data", en: "Repair Data", zh: "维修数据" },
   "repair.description": {
-    id: "Klaim reparasi dari sheet Reparasi RFB: satu baris = satu Claim ID.",
-    en: "Repair claims from the Reparasi RFB sheet: one row per Claim ID.",
-    zh: "来自 Reparasi RFB 工作表的维修索赔：每行一个 Claim ID。",
+    id: "Klaim reparasi dari sheet Reparasi RFB. Satu Claim ID boleh dipakai beberapa baris kalau tanggal atau produknya beda.",
+    en: "Repair claims from the Reparasi RFB sheet. One Claim ID may cover several rows when the date or product differs.",
+    zh: "来自 Reparasi RFB 工作表的维修索赔。同一 Claim ID 在日期或产品不同时可对应多行。",
   },
   "repair.addTitle": { id: "Tambah Repair", en: "Add Repair", zh: "添加维修" },
   "repair.editTitle": { id: "Ubah Repair", en: "Edit Repair", zh: "编辑维修" },

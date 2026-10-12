@@ -24,6 +24,7 @@ import {
 import { baselineFromSheet } from "@/lib/gsheet/sync";
 import { planRepairRow, repairBaseline } from "@/lib/gsheet/repair-sync";
 import { pickProductPrice } from "@/lib/prices";
+import { repairMatchKey } from "@/lib/repair-match";
 import type { ImportIssue, ImportResult, ProductPrice } from "@/lib/types";
 
 /**
@@ -179,8 +180,16 @@ export async function runRepairSync(): Promise<{
   const priceOf = (productId: number, date: string) =>
     pickProductPrice(prices, productId, date.slice(0, 7), DEFAULT_PRICE_TYPE);
 
-  const appByClaim = new Map<string, typeof repairs.$inferSelect>();
-  for (const row of appRows) appByClaim.set(row.claimId, row);
+  // Claim ID tidak unik: satu Claim ID boleh dipakai beberapa baris selama
+  // tanggal/produknya beda. Tiap kunci menyimpan antrean baris app yang belum
+  // dipakai, supaya sheet ganda 1:1 dengan app dan tidak ada yang hilang.
+  const appByKey = new Map<string, (typeof repairs.$inferSelect)[]>();
+  for (const row of appRows) {
+    const key = repairMatchKey(row.claimId, row.date, row.productId);
+    const queue = appByKey.get(key);
+    if (queue) queue.push(row);
+    else appByKey.set(key, [row]);
+  }
 
   const now = new Date();
   /** Baris yang tidak jadi masuk sama sekali. */
@@ -204,8 +213,8 @@ export async function runRepairSync(): Promise<{
     if (list.length < MAX_ISSUES) list.push({ row, key, reason });
   };
 
-  /** Claim ID pertama yang dipakai di sheet, untuk mendeteksi baris ganda. */
-  const claimedAt = new Map<string, number>();
+  /** ID baris app yang sudah dipasangkan dengan baris sheet. */
+  const consumed = new Set<number>();
 
   for (const { sheetRow, cells } of rows) {
     const sheetFields = repairFieldsFromRow(cells, resolved.index);
@@ -218,18 +227,6 @@ export async function runRepairSync(): Promise<{
       }
       continue;
     }
-    const firstRow = claimedAt.get(claimId);
-    if (firstRow !== undefined) {
-      note(
-        errors,
-        sheetRow,
-        claimId,
-        `Claim ID sudah dipakai baris ${firstRow} di sheet — baris ini dilewati (data baris pertama yang masuk).`
-      );
-      summary.skippedRows += 1;
-      continue;
-    }
-    claimedAt.set(claimId, sheetRow);
 
     const productId = productNames.toId.get(normalizeName(sheetFields.productId ?? ""));
     const date = normalizeDateOnly(sheetFields.date ?? "");
@@ -279,7 +276,10 @@ export async function runRepairSync(): Promise<{
 
     const quantity = Number.parseInt(sheetFields.quantity || "0", 10) || 0;
     const price = priceOf(productId, date);
-    const local = appByClaim.get(claimId);
+    const matchKey = repairMatchKey(claimId, date, productId);
+    const queue = appByKey.get(matchKey);
+    const local = queue && queue.length > 0 ? queue.shift() : undefined;
+    if (local) consumed.add(local.id);
     const plan = planRepairRow({
       sheet: sheetFields,
       app: local ? appFieldsFromRow(local, productNames, problemNames, spareNames) : null,
@@ -410,7 +410,6 @@ export async function runRepairSync(): Promise<{
           const done = tx
             .insert(repairs)
             .values(row)
-            .onConflictDoNothing()
             .returning({ id: repairs.id })
             .all();
           if (done.length === 0) {
@@ -419,7 +418,7 @@ export async function runRepairSync(): Promise<{
               errors,
               sheetRow,
               String(row.claimId ?? ""),
-              "Baris sudah ada di app (Claim ID sama) — tidak diimpor ulang."
+              "Baris tidak tersimpan ke app."
             );
           } else {
             summary.created += 1;
@@ -454,9 +453,9 @@ export async function runRepairSync(): Promise<{
     skippedDetails,
   };
 
-  // Baris yang masih ada di app tapi Claim ID-nya sudah tidak ada di sheet.
+  // Baris app yang tidak dipasangkan baris sheet mana pun.
   for (const row of appRows) {
-    if (!claimedAt.has(row.claimId)) summary.onlyInApp += 1;
+    if (!consumed.has(row.id)) summary.onlyInApp += 1;
   }
 
   return { result, summary, tab };

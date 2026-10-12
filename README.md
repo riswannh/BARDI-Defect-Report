@@ -280,7 +280,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | `id` | integer PK auto | |
-| `claimId` | text (unik) | CLAIM ID dari sheet — kunci dedupe impor/sync |
+| `claimId` | text | CLAIM ID dari sheet. **Tidak unik** — identitas baris = `claimId` + `date` + `productId` |
 | `date` / `month` | text | `date` = `YYYY-MM-DD`, `month` = `YYYY-MM` (diturunkan dari `date`) |
 | `productId` | FK → products | nama produk dicocokkan ke Data Master saat impor |
 | `quantity` | integer (default 0) | Quantity |
@@ -539,8 +539,10 @@ Menu **Repair Data** (`/repairs`) memuat isi tab **"Data Reparasi"** sheet
 [Reparasi RFB](https://docs.google.com/spreadsheets/d/1kmRdS3eREi-6-ZyDZboeWxJYNiCoeeRt8wVt81ZQHUg/edit).
 Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Saving Value | Aksi**.
 
-- Satu baris = satu **CLAIM ID**; itu kunci dedupe saat impor maupun sync (baris dengan CLAIM ID
-  yang sudah ada tidak dibuat dua kali).
+- Satu **CLAIM ID boleh dipakai beberapa baris** selama tanggal/produknya beda (keputusan user
+  12 Okt 2026). Identitas baris = `claimId` + `date` + `productId` (`repairMatchKey()`), jadi sync dan
+  impor Excel mencocokkan baris 1:1 dan tidak ada baris ganda yang dibuang. Baris kembar persis
+  (Claim ID + tanggal + produk sama) tetap ditolak 409 di form.
 - **Saving Value** = `Quantity × harga produk jenis Regional Warehouse` untuk bulan tanggal baris itu
   (master `product_prices`, dihitung dengan `pickProductPrice`). Angkanya terisi otomatis di form saat
   Produk/Quantity/Tanggal diisi, tetap bisa diubah manual, dan **tidak pernah ditimpa sync** — angka itu

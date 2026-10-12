@@ -47,7 +47,8 @@ export interface DefectAllowance {
 }
 
 /**
- * Repair Data — satu baris = satu klaim reparasi (tab "Data Reparasi").
+ * Repair Data — satu baris = satu baris tab "Data Reparasi". Claim ID boleh
+ * ganda selama tanggal/produknya beda.
  *
  * Modul ini admin saja; `value` adalah Saving Value (Rupiah) = `quantity` ×
  * harga master jenis "Regional Warehouse" produk itu, tapi tetap boleh diubah
