@@ -561,6 +561,8 @@ Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Sav
   Value memuat Rupiah — role Pabrik tidak boleh menerimanya, sama seperti kartu Allowance Defect.
 - Verifikasi: `cmd /c "npx tsx scripts/repair-check.ts"` (pemetaan kolom + aturan sync) dan
   `verify-repair.cjs` (Playwright: CRUD, filter, hitung Saving Value, gerbang admin).
+- Baris yang tidak masuk (produk/tanggal/Claim ID bermasalah) bisa didaftar untuk dibetulkan di sheet:
+  `cmd /c "npx tsx scripts/repair-sync-report.ts <berkas.csv>"` — butuh kredensial service account.
 
 `recap` memuat satu baris per produk dengan `replacementQty` = jumlah qty PO berketerangan
 `Replacement` produk itu pada periode terpilih (periode sama dengan kartu Replacement, jadi jumlah

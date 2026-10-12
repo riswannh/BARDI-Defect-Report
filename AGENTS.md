@@ -487,6 +487,10 @@ Catatan perilaku Report yang harus dijaga:
   - Dropdown Asal/Status/PIC/Penyelesaian di-hardcode di `src/lib/api/validation.ts` (pola
     `KETERANGAN_OPTIONS`), bukan tabel master. Self-check pemetaan + aturan sync:
     `cmd /c "npx tsx scripts/repair-check.ts"`.
+  - Baris yang gagal masuk (produk belum ada di Data Master, tanggal kosong, Claim ID kembar/kosong)
+    bisa didaftar per baris sheet untuk dibetulkan di Google Sheet:
+    `cmd /c "npx tsx scripts/repair-sync-report.ts <berkas.csv>"` (butuh kredensial service account,
+    jalan juga di dalam container produksi).
 
 ### Aturan alur input defect
 
