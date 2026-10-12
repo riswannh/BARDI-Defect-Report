@@ -1095,6 +1095,7 @@ const translations = {
   "repair.resolution.maintenance": { id: "Maintenance", en: "Maintenance", zh: "保养" },
   "repair.resolution.gantiKomponen": { id: "Ganti Komponen", en: "Replace Component", zh: "更换部件" },
   "repair.resolution.replacementProdukBaru": { id: "Replacement Produk Baru", en: "Replacement with New Product", zh: "更换新产品" },
+  "repair.actions": { id: "Aksi", en: "Actions", zh: "操作" },
 
   // Master
   // Allowance Defect (Data Master, admin saja)

@@ -584,7 +584,7 @@ export default function RepairsPage() {
                     <TableHead>{t("repair.table.resi")}</TableHead>
                     <TableHead>{t("repair.table.pic")}</TableHead>
                     <TableHead className="text-right">
-                      {t("ticket.table.actions")}
+                      {t("repair.actions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
