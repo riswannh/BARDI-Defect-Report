@@ -17,6 +17,7 @@ import {
   user,
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
+import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import {
   KETERANGAN_OPTIONS,
@@ -734,13 +735,14 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
 }
 
 async function importDefects(sheet: SheetRow[]) {
-  const [productRows, problemRows, statusRows, factoryRows, defectRows] =
+  const [productRows, problemRows, statusRows, factoryRows, defectRows, priceRows] =
     await Promise.all([
       db.select().from(products),
       db.select().from(problems),
       db.select().from(statuses),
       db.select().from(factories),
       db.select({ codeGaransi: defects.codeGaransi }).from(defects),
+      db.select().from(productPrices),
     ]);
 
   const productMap = new Map(
@@ -831,18 +833,30 @@ async function importDefects(sheet: SheetRow[]) {
     }
 
     try {
+      const timestamp = normalizeTimestamp(rawTimestamp);
+      const quantity = cellNumber(row.Quantity);
+      // Nilai defect selalu dihitung dari Price List (quantity × harga master
+      // bulan timestamp). Kolom "Value" di berkas hanya dipakai sebagai
+      // cadangan kalau produknya belum punya baris harga sama sekali.
+      const value =
+        defectValueFromMaster(priceRows, {
+          productId: productId as number,
+          quantity,
+          timeStamp: timestamp,
+          priceType: null,
+        }) ?? cellNumber(row.Value);
       await db.insert(defects).values({
         codeGaransi: code,
-        timeStamp: normalizeTimestamp(rawTimestamp),
+        timeStamp: timestamp,
         photosLink: cellString(row["Link Foto"]),
         videosLink: cellString(row["Link Video"]),
         problemId: problemId as number,
         problemDetail: cellString(row["Problem Detail"]),
         productId: productId as number,
-        quantity: cellNumber(row.Quantity),
+        quantity,
         statusId: statusId as number,
         factoryId: factoryId as number,
-        value: cellNumber(row.Value),
+        value,
       });
       existing.add(code);
       result.inserted++;

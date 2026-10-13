@@ -84,7 +84,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
 | + | **Allowance Defect** (limit tahunan, admin saja) — kartu Sisa Allowance di Report, limit diprorata mengikuti filter | ✅ Selesai + deploy |
 | + | **Repair Data** (`/repairs`, admin saja) — cermin tab "Data Reparasi" sheet Reparasi RFB: CRUD, filter, Saving Value = Quantity × harga RW, sync Google Sheet satu arah, Excel | ✅ Selesai |
-| + | **Kartu Repair Value** di Report (admin saja) — Σ Saving Value Repair Data berstatus `Done Kirim`/`Done Repair` pada periode filter | ✅ Selesai |
+| + | **Kartu Repair Value** di Report (admin saja) — Σ Saving Value Repair Data berstatus `Done Kirim`/`Done Repair` (Penyelesaian apa pun kecuali `Replacement Produk Baru`) pada periode filter | ✅ Selesai |
 
 ---
 
@@ -351,7 +351,7 @@ duplikat (keputusan pemilik produk).
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | |
 | `factoryId` | FK → factories | |
-| `value` | integer (default 0) | IDR. **Total baris** = **Harga** × Quantity yang dihitung di form; untuk impor Excel diambil apa adanya dari kolom Value. Server tidak menghitung ulang; **disembunyikan untuk role Pabrik** |
+| `value` | integer (default 0) | IDR. **Total baris** = **Harga Price List** × Quantity (harga master bulan `timeStamp`, jatuh ke harga terbaru kalau bulan itu kosong). Dihitung di form, dan **dihitung ulang di server** saat sync Google Sheet maupun impor Excel (`src/lib/defect-value.ts`); kolom `Value` di sheet sudah tidak dibaca. Produk tanpa baris harga → nilai lama/berkas dipertahankan. **Disembunyikan untuk role Pabrik** |
 | `priceType` | text, notNull, default `"Regional Warehouse"` | **Jenis harga** master yang dipakai baris ini (7 nilai tetap — lihat §7 · Harga Produk). Hanya jejak jenis yang dipakai form saat mengisi `value`; **disembunyikan untuk role Pabrik** |
 | `productPriceId` | FK → product_prices (nullable) | Kolom warisan. Tidak diisi lagi untuk defect (selalu NULL pada baris baru, dan ikut dikosongkan saat baris lama disunting). Harga master kini hanya jadi **isian awal** di form — lihat §8.9 |
 | `createdAt` / `updatedAt` | timestamp | |
@@ -467,17 +467,21 @@ sebagai `NULL`.
 
 **Sales**: sama polanya (`/api/sales`, `/api/sales/{id}`, `/api/sales/bulk-delete`), validasi unik `productId+factoryId+month`.
 
-**Harga Defect dipilih otomatis, angka tersimpannya tetap dihitung di form**: isian **Jenis Harga**
+**Harga Defect dipilih otomatis, angkanya selalu mengikuti Price List**: isian **Jenis Harga**
 (7 nilai tetap — §7 · Harga Produk) dipilih lebih dulu, lalu isian **Harga**
 (harga satuan per pcs) terisi sendiri dari harga master produk **untuk jenis itu** pada periode
 `timestamp` defect; kalau produk itu belum punya harga jenis tersebut di periode itu, dipakai **harga
 terbarunya** (bulan/tahun terbesar, jenis yang sama). Operator memilih baris harga lain lewat
 **dropdown Harga** yang sama (susunannya sengaja dibuat sama
 dengan form PO). **Total Value** (= Harga × Quantity) ditampilkan sebagai preview dan itulah yang dikirim
-ke `defects.value` — server menyimpannya apa adanya, tidak menghitung ulang, dan **tidak mengisi
-`productPriceId`**; jenis yang dipakai dicatat di `defects.priceType`. Karena itu menambah harga master
-baru tidak mengubah baris defect lama, sedangkan
-impor Excel tetap memakai kolom `Value` di berkas apa adanya (tanpa dikalikan quantity lagi). Role
+ke `defects.value`; server **tidak mengisi `productPriceId`**, dan jenis yang dipakai dicatat di
+`defects.priceType`. Sejak 12 Okt 2026 angka ini **ikut dihitung ulang di server** supaya sama dengan
+Price List: `src/lib/defect-value.ts` (`defectValueFromMaster()`) dipakai oleh sync Google Sheet
+(seluruh baris yang nilainya beda dari hitungan → diperbarui, jumlahnya dilaporkan sebagai catatan
+"… baris nilainya disesuaikan ke harga Price List") dan oleh impor Excel (kolom `Value` di berkas hanya
+dipakai sebagai cadangan kalau produknya belum punya harga sama sekali). Kolom **`Value` di sheet
+"Big Data" sudah tidak dibaca** (pindah ke kolom paling kanan, O) dan tidak pernah jadi konflik sync;
+produk tanpa baris harga → nilai lama dipertahankan. Role
 Pabrik tidak menerima `value`, `priceType`, **maupun** `productPrice*`. Modul **PO Product** memakai
 aturan pemilihan
 harga yang sama tetapi menyimpan **rujukan** harga (§8.10).
@@ -538,10 +542,12 @@ kartu Nilai Defect maupun Selisih Defect yang sudah ada — ia kartu tambahan. A
 ### Repair Value (kartu Report, admin saja)
 
 Kartu **Repair Value** = Σ kolom `value` (Saving Value) **Repair Data** yang statusnya sudah selesai:
-hanya `Done Kirim` dan `Done Repair` (keputusan user 12 Okt 2026), dicocokkan tanpa peduli huruf
-besar-kecil lewat `isRepairDone()` di `src/lib/repair-value.ts` — satu-satunya tempat daftar status
-selesai. Baris ikut dihitung kalau `repairs.date` (`YYYY-MM-DD`) cocok dengan filter periode yang sama
-seperti defect (`matchesDefectPeriod`), jadi angkanya ikut berubah saat filter diganti.
+hanya `Done Kirim` dan `Done Repair`, DAN kolom Penyelesaian (`resolution`) apa pun **kecuali**
+`Replacement Produk Baru` (keputusan user 13 Okt 2026). Kedua syarat dicocokkan tanpa peduli huruf
+besar-kecil/spasi lewat `countsForRepairValue()` di `src/lib/repair-value.ts` — satu-satunya tempat
+aturan ini (`isRepairDone()` dipakai untuk syarat status saja). Baris ikut dihitung kalau `repairs.date`
+(`YYYY-MM-DD`) cocok dengan filter periode yang sama seperti defect (`matchesDefectPeriod`), jadi
+angkanya ikut berubah saat filter diganti.
 Dikirim server sebagai `totals.repairValue` + `totals.repairQty` (jumlah baris) dan **tidak dikirim**
 ke role non-admin (kartunya juga tidak dirender). Aturannya diuji `cmd /c "npx tsx scripts/repair-check.ts"`.
 
@@ -748,8 +754,11 @@ Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
 `Problem` → `problemId`, `Translate` → `problemDetail`, `Offical Name` →
 `productId`, `Quantity` → `quantity`, `Status Defect` → `statusId`, `Pabrik` →
-`factoryId`, `Value` → `value`. Kolom `Keterangan Kendala`, `Produk`, `Status`,
-dan `Month` tidak dipakai.
+`factoryId`. Kolom `Keterangan Kendala`, `Produk`, `Status`, `Month`, dan kolom
+**`Value`** (sejak 12 Okt 2026 dipindah user ke kolom paling kanan, O) **tidak
+dipakai** — nilai defect tidak lagi diambil dari sheet, tapi dihitung server dari
+Price List (`defectValueFromMaster()`, §8.8). Header `Value` boleh ada, boleh
+tidak; ketiadaannya tidak membuat sync gagal.
 
 | Method | Path | Akses | Body |
 |---|---|---|---|
@@ -896,7 +905,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
   - Menutup dialog yang masih berisi isian **meminta konfirmasi** lebih dulu.
 - **Bulk**: checkbox baris → **Ubah massal** (dialog edit berurutan per data, judul `(1/N)`; Perbarui = simpan & lanjut ke data berikutnya) dan **Hapus massal**.
 - **Excel**: import (duplikat `codeGaransi` di-skip), export, template.
-- **Sync Google Sheet** (admin, tombol di samping Impor/Export): menarik perubahan dari tab **Big Data** spreadsheet `Data Garansi Produk`. **Satu arah sheet → aplikasi** — kolom A:H tab itu formula (`ARRAYFORMULA`/`IMPORTRANGE`) sehingga aplikasi tidak pernah menulis ke sheet. Perubahan di sheet langsung masuk; perubahan yang hanya ada di aplikasi cuma dihitung sebagai informasi; field yang berubah di dua sisi ditanyakan lewat popup (pilih **Sheet** atau **App**, ada tombol borong). Detail aturan + pemetaan kolom: §7 *Sync Google Sheet*.
+- **Sync Google Sheet** (admin, tombol di samping Impor/Export): menarik perubahan dari tab **Big Data** spreadsheet `Data Garansi Produk`. **Satu arah sheet → aplikasi** — kolom A:H tab itu formula (`ARRAYFORMULA`/`IMPORTRANGE`) sehingga aplikasi tidak pernah menulis ke sheet. Perubahan di sheet langsung masuk; perubahan yang hanya ada di aplikasi cuma dihitung sebagai informasi; field yang berubah di dua sisi ditanyakan lewat popup (pilih **Sheet** atau **App**, ada tombol borong). Setiap sync juga **menghitung ulang `value` seluruh baris** dari Price List (quantity × harga master bulan `timeStamp`) supaya angka di aplikasi sama dengan sheet; jumlah baris yang disesuaikan muncul sebagai catatan di daftar issue. Detail aturan + pemetaan kolom: §7 *Sync Google Sheet*.
 
 ### 8.4 Data Sales
 

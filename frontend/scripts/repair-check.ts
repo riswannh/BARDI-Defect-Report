@@ -10,7 +10,7 @@ import {
 import { planRepairRow } from "../src/lib/gsheet/repair-sync";
 import { baselineFromSheet } from "../src/lib/gsheet/sync";
 import { repairMatchKey } from "../src/lib/repair-match";
-import { isRepairDone } from "../src/lib/repair-value";
+import { countsForRepairValue, isRepairDone } from "../src/lib/repair-value";
 
 // Self-check modul Repair Data: pemetaan kolom sheet, konversi nilai, dan aturan
 // sync. Jalankan: npx tsx scripts/repair-check.ts
@@ -259,5 +259,16 @@ assert.equal(isRepairDone("  done kirim  "), true, "spasi & huruf besar-kecil ti
 assert.equal(isRepairDone("Proses"), false, "Proses tidak dihitung");
 assert.equal(isRepairDone("Tidak Ada Data"), false, "Tidak Ada Data tidak dihitung");
 assert.equal(isRepairDone(""), false, "status kosong tidak dihitung");
+
+// Kartu "Repair Value": Penyelesaian apa pun kecuali "Replacement Produk Baru".
+assert.equal(countsForRepairValue("Done Kirim", "Maintenance"), true, "Maintenance dihitung");
+assert.equal(countsForRepairValue("Done Repair", "Ganti Sparepart"), true, "Ganti Sparepart dihitung");
+assert.equal(countsForRepairValue("Done Kirim", ""), true, "Penyelesaian kosong tetap dihitung");
+assert.equal(
+  countsForRepairValue("Done Kirim", " replacement produk baru "),
+  false,
+  "Replacement Produk Baru dibuang (spasi & huruf besar-kecil diabaikan)"
+);
+assert.equal(countsForRepairValue("Proses", "Maintenance"), false, "status belum selesai tidak dihitung");
 
 console.log("repair-check: semua pemeriksaan lulus");

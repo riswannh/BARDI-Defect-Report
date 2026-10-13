@@ -28,7 +28,7 @@ import {
   sales,
   statuses,
 } from "@/lib/db/schema";
-import { isRepairDone } from "@/lib/repair-value";
+import { countsForRepairValue } from "@/lib/repair-value";
 import {
   requireUser,
   scopedFactoryId,
@@ -141,12 +141,13 @@ export async function reportGET(req: NextRequest) {
           limitValue: defectAllowances.limitValue,
         })
         .from(defectAllowances),
-      // Kartu "Repair Value": hanya butuh tanggal, status, dan Saving Value
-      // dari Repair Data (permintaan user 12 Okt 2026).
+      // Kartu "Repair Value": butuh tanggal, status, Penyelesaian, dan Saving
+      // Value dari Repair Data (permintaan user 12–13 Okt 2026).
       db
         .select({
           date: repairs.date,
           status: repairs.status,
+          resolution: repairs.resolution,
           value: repairs.value,
         })
         .from(repairs),
@@ -182,14 +183,15 @@ export async function reportGET(req: NextRequest) {
   const filteredSales = appSales.filter((s) => matchesSalePeriod(s.month, f));
 
   /**
-   * Baris Repair berstatus "Done Kirim" / "Done Repair" pada periode filter —
-   * dasar kartu "Repair Value" (Saving Value, Rupiah; admin saja).
+   * Baris Repair berstatus "Done Kirim" / "Done Repair" DAN Penyelesaian apa pun
+   * kecuali "Replacement Produk Baru", pada periode filter — dasar kartu
+   * "Repair Value" (Saving Value, Rupiah; admin saja).
    *
    * `repairs.date` berformat `YYYY-MM-DD`, sama seperti 10 huruf pertama
    * timestamp defect, jadi pencocokan periode memakai `matchesDefectPeriod`.
    */
   const filteredRepairs = repairRows.filter(
-    (row) => isRepairDone(row.status) && matchesDefectPeriod(row.date, f)
+    (row) => countsForRepairValue(row.status, row.resolution) && matchesDefectPeriod(row.date, f)
   );
 
   /**

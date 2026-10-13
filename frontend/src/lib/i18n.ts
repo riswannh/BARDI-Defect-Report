@@ -307,9 +307,9 @@ const translations = {
     zh: "维修价值",
   },
   "report.repairValueDesc": {
-    id: "Saving Value Repair Data berstatus Done Kirim / Done Repair pada periode ini ({rows} baris).",
-    en: "Saving Value of Repair Data rows with status Done Kirim / Done Repair in this period ({rows} rows).",
-    zh: "本期状态为 Done Kirim / Done Repair 的维修数据 Saving Value（{rows} 行）。",
+    id: "Saving Value Repair Data berstatus Done Kirim / Done Repair pada periode ini, tanpa Penyelesaian Replacement Produk Baru ({rows} baris).",
+    en: "Saving Value of Repair Data rows with status Done Kirim / Done Repair in this period, excluding resolution Replacement Produk Baru ({rows} rows).",
+    zh: "本期状态为 Done Kirim / Done Repair 的维修数据 Saving Value，不含处理方式 Replacement Produk Baru（{rows} 行）。",
   },
   "report.replacementValue": {
     id: "Nilai Replacement",

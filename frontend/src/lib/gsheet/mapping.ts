@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 /**
  * Field defect yang ikut sync dengan tab "Big Data" di Google Sheet.
  * Urutannya tidak penting; nama kolom ada di SHEET_COLUMN.
+ *
+ * `value` SENGAJA tidak ada di sini: nilai defect dihitung app dari Price List
+ * (lihat `defectValueFromMaster`), jadi kolom "Value" di sheet tidak dibaca dan
+ * tidak pernah lagi jadi konflik.
  */
 export const GSHEET_FIELDS = [
   "codeGaransi",
@@ -15,7 +19,6 @@ export const GSHEET_FIELDS = [
   "quantity",
   "statusId",
   "factoryId",
-  "value",
 ] as const;
 
 export type GsheetField = (typeof GSHEET_FIELDS)[number];
@@ -32,7 +35,6 @@ export const SHEET_COLUMN: Record<GsheetField, string> = {
   quantity: "Quantity",
   statusId: "Status Defect",
   factoryId: "Pabrik",
-  value: "Value",
 };
 
 /** Label bahasa Indonesia untuk popup konflik. */
@@ -47,7 +49,6 @@ export const FIELD_LABEL: Record<GsheetField, string> = {
   quantity: "Quantity",
   statusId: "Status Defect",
   factoryId: "Pabrik",
-  value: "Value",
 };
 
 /** Nilai canonical satu baris: semuanya string, nama master bukan id. */

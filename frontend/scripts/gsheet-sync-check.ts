@@ -15,6 +15,8 @@ import {
   parseSheetTimestamp,
   resolveHeaderIndex,
 } from "../src/lib/gsheet/mapping";
+import { defectValueFromMaster } from "../src/lib/defect-value";
+import type { ProductPrice } from "../src/lib/types";
 
 const base = {
   codeGaransi: "ABC123",
@@ -27,7 +29,6 @@ const base = {
   quantity: "1",
   statusId: "Open",
   factoryId: "Pabrik A",
-  value: "123120",
 };
 const baseline = baselineFromSheet(base);
 const names = (plan: RowPlan) => ({
@@ -52,12 +53,12 @@ plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, value: "200000" },
+  sheet: { ...base, problemDetail: "Mati total" },
   app: { ...base },
   baseline,
 });
-assert.deepEqual(names(plan), { apply: ["value"], conflicts: [], appOnly: [] });
-assert.equal(plan.apply[0].sheet, "200000");
+assert.deepEqual(names(plan), { apply: ["problemDetail"], conflicts: [], appOnly: [] });
+assert.equal(plan.apply[0].sheet, "Mati total");
 
 // 3. App berubah, sheet tidak -> tidak ada yang ditulis ke mana pun (informasi saja).
 plan = planRowSync({
@@ -88,33 +89,36 @@ plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, value: "200000" },
+  sheet: { ...base, problemDetail: "Mati total" },
   app: { ...base, quantity: "3" },
   baseline,
 });
-assert.deepEqual(names(plan), { apply: ["value"], conflicts: [], appOnly: ["quantity"] });
+assert.deepEqual(names(plan), { apply: ["problemDetail"], conflicts: [], appOnly: ["quantity"] });
 
 // 6. Belum pernah disinkron (tanpa baseline) -> selalu tanya, jangan menimpa.
 plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, value: "200000" },
+  sheet: { ...base, problemDetail: "Mati total" },
   app: { ...base },
   baseline: null,
 });
-assert.deepEqual(names(plan), { apply: [], conflicts: ["value"], appOnly: [] });
+assert.deepEqual(names(plan), { apply: [], conflicts: ["problemDetail"], appOnly: [] });
 
 // 7. Baseline selalu mengikuti nilai sheet terakhir (dipakai pembanding berikutnya).
 plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, value: "200000" },
+  sheet: { ...base, problemDetail: "Mati total" },
   app: { ...base, quantity: "3" },
   baseline,
 });
-assert.equal(plan.baseline.value, baselineFromSheet({ ...base, value: "200000" }).value);
+assert.equal(
+  plan.baseline.problemDetail,
+  baselineFromSheet({ ...base, problemDetail: "Mati total" }).problemDetail
+);
 assert.equal(plan.baseline.quantity, baseline.quantity);
 
 // 8. Beda huruf besar/kecil di Code Garansi bukan perubahan.
@@ -206,20 +210,21 @@ const header = [
   "Month",
   "Problem",
   "Pabrik",
-  "Value",
   "Offical Name",
   "Translate",
   "Status Defect",
+  // Kolom "Value" pindah ke paling kanan dan TIDAK lagi dibaca app (nilai defect
+  // dihitung dari Price List), tapi headernya tetap boleh ada di sheet.
+  "Value",
 ];
 const resolved = resolveHeaderIndex(header);
 assert.deepEqual(resolved.missing, []);
 assert.equal(resolved.index.codeGaransi, 0);
 assert.equal(resolved.index.problemId, 9);
-assert.equal(resolved.index.value, 11);
-assert.equal(resolved.index.productId, 12);
-assert.equal(resolved.index.problemDetail, 13);
-assert.equal(resolved.index.statusId, 14);
-assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 10);
+assert.equal(resolved.index.productId, 11);
+assert.equal(resolved.index.problemDetail, 12);
+assert.equal(resolved.index.statusId, 13);
+assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 9);
 
 // Timestamp: sel tanggal di "Big Data" format tampilannya campur, jadi semua
 // bentuk yang pernah muncul harus dikenali (dan yang aneh -> kosong, bukan jam ngawur).
@@ -240,6 +245,76 @@ assert.equal(parseSheetNumber("31,185,000"), 31185000);
 assert.equal(parseSheetNumber(123.6), 124);
 assert.equal(parseSheetNumber("1.234,5"), 1235);
 
+// 14. Nilai defect dihitung dari Price List, bukan dari kolom "Value" di sheet:
+//     bulan yang sama dipakai kalau ada, kalau tidak harga yang BERLAKU saat itu
+//     (periode terakhir <= bulan defect, bukan harga terbaru); produk tanpa baris
+//     harga -> null (nilai lama dipertahankan).
+const priceRows: ProductPrice[] = [
+  { id: 1, productId: 7, price: 100000, priceType: "Regional Warehouse", month: "03", year: "2026" },
+  { id: 2, productId: 7, price: 120000, priceType: "Regional Warehouse", month: "05", year: "2026" },
+  { id: 3, productId: 7, price: 150000, priceType: "Website", month: "05", year: "2026" },
+];
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 7,
+    quantity: 2,
+    timeStamp: "2026-03-14T10:00",
+    priceType: null,
+  }),
+  200000,
+  "bulan yang sama dipakai"
+);
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 7,
+    quantity: 2,
+    timeStamp: "2026-04-02T10:00",
+    priceType: null,
+  }),
+  200000,
+  "bulan itu kosong -> harga yang berlaku saat itu (Maret), bukan harga terbaru"
+);
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 7,
+    quantity: 2,
+    timeStamp: "2026-01-05T10:00",
+    priceType: null,
+  }),
+  200000,
+  "defect lebih tua dari semua harga -> harga tertua"
+);
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 7,
+    quantity: 1,
+    timeStamp: "2026-05-02T10:00",
+    priceType: "Website",
+  }),
+  150000,
+  "jenis harga baris dipakai"
+);
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 99,
+    quantity: 1,
+    timeStamp: "2026-05-02T10:00",
+    priceType: null,
+  }),
+  null,
+  "produk tanpa harga -> null"
+);
+assert.equal(
+  defectValueFromMaster(priceRows, {
+    productId: 7,
+    quantity: 1,
+    timeStamp: "",
+    priceType: null,
+  }),
+  null,
+  "timestamp kosong -> null"
+);
+
 console.log(
-  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping"
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect"
 );

@@ -1,8 +1,16 @@
 import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { defects, factories, problems, products, statuses } from "@/lib/db/schema";
+import {
+  defects,
+  factories,
+  problems,
+  productPrices,
+  products,
+  statuses,
+} from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
+import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { defectSchema } from "@/lib/api/validation";
 import { GsheetError } from "@/lib/gsheet/auth";
@@ -62,6 +70,14 @@ type LocalRow = {
   baseline: Record<string, string> | null;
   /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
   rawTimeStamp: string;
+  /** Nilai mentah lain: dipakai menghitung `value` dari Price List. */
+  raw: {
+    productId: number;
+    quantity: number;
+    timeStamp: string;
+    priceType: string | null;
+    value: number;
+  };
 };
 
 type NameField = "problemId" | "statusId" | "factoryId" | "productId";
@@ -144,7 +160,7 @@ function sheetFieldsFromRow(cells: SheetCell[], index: Record<GsheetField, numbe
   const out: RowFields = {};
   for (const field of GSHEET_FIELDS) {
     const raw = cells[index[field]];
-    if (field === "quantity" || field === "value") out[field] = String(parseSheetNumber(raw));
+    if (field === "quantity") out[field] = String(parseSheetNumber(raw));
     else if (field === "timeStamp") out[field] = parseSheetTimestamp(raw);
     else out[field] = raw === null || raw === undefined ? "" : text(raw);
   }
@@ -179,7 +195,6 @@ function localFieldsFromRow(
     quantity: String(row.quantity ?? 0),
     statusId: masters.toName.statusId.get(row.statusId) ?? "",
     factoryId: masters.toName.factoryId.get(row.factoryId) ?? "",
-    value: String(row.value ?? 0),
   };
 }
 
@@ -197,6 +212,7 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
       quantity: defects.quantity,
       statusId: defects.statusId,
       factoryId: defects.factoryId,
+      priceType: defects.priceType,
       value: defects.value,
       sheetFields: defects.sheetFields,
     })
@@ -208,6 +224,13 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
     baseline: parseBaseline(row.sheetFields),
     /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
     rawTimeStamp: row.timeStamp,
+    raw: {
+      productId: row.productId,
+      quantity: row.quantity,
+      timeStamp: row.timeStamp,
+      priceType: row.priceType,
+      value: row.value,
+    },
   }));
 }
 
@@ -243,7 +266,7 @@ const toConflict = (plan: RowPlan): ConflictRow => ({
  * Jalankan sync satu arah. `only` + `defaultChoice` dipakai route resolve untuk
  * menerapkan pilihan user pada konflik yang sudah terdeteksi.
  */
-async function runSync(options: {
+export async function runSync(options: {
   defaultChoice?: "sheet" | "app";
   only?: Map<string, Record<string, "sheet" | "app">>;
 }) {
@@ -251,6 +274,9 @@ async function runSync(options: {
   const masters = await loadMasters();
   const sheet = await readSheet(spreadsheetId, tab);
   const localRows = await loadLocalRows(masters);
+  // Price List dipakai menghitung `value` tiap defect (kolom "Value" di sheet
+  // tidak lagi dibaca) — lihat defectValueFromMaster.
+  const priceRows = await db.select().from(productPrices);
   const localByCode = new Map(localRows.map((row) => [row.code, row]));
 
   const summary = {
@@ -301,6 +327,18 @@ async function runSync(options: {
 
     if (!local) {
       // Baris hanya ada di sheet -> masuk ke app. Baris hanya di app dibiarkan.
+      const insertQuantity = Number.parseInt(sheetFields.quantity || "0", 10) || 0;
+      const insertProductId =
+        masters.toId.productId.get(normalizeName(sheetFields.productId ?? "")) ?? null;
+      // Nilai defect dihitung dari Price List (bulan timestamp), bukan kolom
+      // "Value" di sheet; produk tanpa harga -> 0 supaya barisnya tetap masuk.
+      const insertValue =
+        defectValueFromMaster(priceRows, {
+          productId: insertProductId,
+          quantity: insertQuantity,
+          timeStamp: sheetFields.timeStamp ?? "",
+          priceType: null,
+        }) ?? 0;
       const parsed = defectSchema.safeParse({
         codeGaransi: sheetFields.codeGaransi || row.code,
         timestamp: sheetFields.timeStamp,
@@ -308,11 +346,11 @@ async function runSync(options: {
         videosLink: sheetFields.videosLink,
         problemId: masters.toId.problemId.get(normalizeName(sheetFields.problemId ?? "")),
         problemDetail: sheetFields.problemDetail,
-        productId: masters.toId.productId.get(normalizeName(sheetFields.productId ?? "")),
-        quantity: Number.parseInt(sheetFields.quantity || "0", 10) || 0,
+        productId: insertProductId ?? undefined,
+        quantity: insertQuantity,
         statusId: masters.toId.statusId.get(normalizeName(sheetFields.statusId ?? "")),
         factoryId: masters.toId.factoryId.get(normalizeName(sheetFields.factoryId ?? "")),
-        value: Number.parseInt(sheetFields.value || "0", 10) || 0,
+        value: insertValue,
       });
       if (!parsed.success) {
         summary.skipped += 1;
@@ -346,7 +384,7 @@ async function runSync(options: {
         ...rest,
         timeStamp: timestamp,
         productPriceId: null,
-        value: parsed.data.value ?? 0,
+        value: insertValue,
         sheetFields: JSON.stringify(baselineFromSheet(sheetFields)),
         sheetSyncedAt: now,
       });
@@ -378,7 +416,7 @@ async function runSync(options: {
 
     const applyFromSheet = (diff: DiffField<GsheetField>) => {
       const field = diff.field;
-      if (field === "quantity" || field === "value") {
+      if (field === "quantity") {
         patch[field] = Number.parseInt(diff.sheet || "0", 10) || 0;
       } else if (field === "timeStamp") {
         patch.timeStamp = diff.sheet;
@@ -448,6 +486,23 @@ async function runSync(options: {
   }
 
   summary.onlyInApp = localRows.filter((row) => !seenCodes.has(row.code)).length;
+
+  // Nilai defect selalu diturunkan dari Price List (quantity × harga bulan
+  // timestamp), jadi baris yang masih memakai harga lama ikut disesuaikan setiap
+  // sync — termasuk barisnya sendiri tidak berubah di sheet. Baris yang produknya
+  // belum punya harga dibiarkan apa adanya supaya tidak ada angka yang hilang.
+  let valueAdjusted = 0;
+  for (const row of localRows) {
+    const next = defectValueFromMaster(priceRows, row.raw);
+    if (next === null || next === row.raw.value) continue;
+    localUpdates.set(row.id, { ...(localUpdates.get(row.id) ?? {}), value: next });
+    valueAdjusted += 1;
+  }
+  if (valueAdjusted > 0) {
+    issues.unshift({
+      reason: `${valueAdjusted} baris nilainya disesuaikan ke harga Price List (quantity × harga).`,
+    });
+  }
 
   if (inserts.length > 0) {
     // Driver better-sqlite3 transaksinya sinkron: callback async ditolak.
