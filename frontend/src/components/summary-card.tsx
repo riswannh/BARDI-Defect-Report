@@ -8,11 +8,12 @@ interface SummaryCardProps {
 }
 
 /**
- * Ukuran huruf nilai mengikuti LEBAR kartu lewat container query, bukan panjang
- * teks: di grid 2 kolom halaman Report kartunya lebar (± 640 px) sehingga angka
- * panjang pun tetap besar dan tidak menyisakan ruang kosong, sementara di grid
- * 3 kolom (Defect/Sales/PO) ukurannya seperti sebelumnya. `break-words` tetap
- * dipasang sebagai jaring terakhir supaya tidak ada angka yang hilang.
+ * Kartu ringkasan yang dipadatkan: padding 12 px (Card size="sm"), ikon 28 px,
+ * judul 13 px, dan ukuran huruf nilai mengikuti LEBAR kartu lewat container
+ * query (bukan panjang teks) supaya tetap proporsional: 18 px di kartu sempit
+ * (grid 3 kolom Defect/Sales/PO), 20 px di kartu Report (± 640 px), 24 px kalau
+ * kartunya lebar. `break-words` tetap dipasang sebagai jaring terakhir supaya
+ * tidak ada angka yang hilang.
  */
 export function SummaryCard({
   title,
@@ -21,25 +22,33 @@ export function SummaryCard({
   icon: Icon,
 }: SummaryCardProps) {
   return (
-    <Card size="sm" className="@container relative overflow-hidden">
+    <Card size="sm" className="@container relative overflow-hidden rounded-lg">
       <CardHeader>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {Icon && (
-            <span className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
-              <Icon className="size-4" />
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-primary/15">
+              <Icon className="size-3.5" />
             </span>
           )}
-          <CardTitle className="text-muted-foreground">{title}</CardTitle>
+          {/* Ukuran judul dipaksa 13 px lewat style: varian
+              `group-data-[size=sm]/card:text-sm` bawaan Card lebih kuat
+              spesifisitasnya daripada class utility biasa. */}
+          <CardTitle
+            className="leading-tight text-muted-foreground"
+            style={{ fontSize: "13px" }}
+          >
+            {title}
+          </CardTitle>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5">
-        <span
-          className="font-heading text-xl font-semibold tracking-tight break-words tabular-nums @[22rem]:text-2xl @[30rem]:text-3xl"
-        >
+        <span className="font-heading text-lg font-semibold tracking-tight break-words tabular-nums @[22rem]:text-xl @[30rem]:text-[22px]">
           {value}
         </span>
         {description && (
-          <span className="text-xs text-muted-foreground">{description}</span>
+          <span className="text-[11px] leading-tight text-muted-foreground">
+            {description}
+          </span>
         )}
       </CardContent>
     </Card>

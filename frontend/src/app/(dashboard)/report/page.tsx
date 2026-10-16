@@ -387,7 +387,7 @@ export default function ReportPage() {
 
       {/* Kartu disusun 2 kolom dan menurun ke bawah (bukan satu baris panjang),
           supaya angka rupiah yang panjang tidak berdesakan. */}
-      <div className="mb-6 grid grid-cols-2 gap-4">
+      <div className="mb-6 grid grid-cols-2 gap-3">
         {/* Kartu dikelompokkan per topik (section berjudul) supaya angka yang
             sejenis berdampingan; masing-masing section tetap grid 2 kolom. */}
         <SummarySection title={t("report.replacementSection")}>
@@ -519,7 +519,7 @@ export default function ReportPage() {
         )}
       </div>
 
-      <div className="mb-6 flex flex-col gap-4">
+      <div className="mb-6 flex flex-col gap-3">
         <ChartPairCard
           title={t("report.chartQtyTitle")}
           bar={
