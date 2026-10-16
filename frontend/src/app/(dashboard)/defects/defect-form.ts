@@ -29,7 +29,7 @@ export interface DefectForm {
    * Harga RW = harga satuan (Rupiah per pcs), bukan nilai barisnya.
    *
    * Isian awal datang dari harga master produk (periode `timestamp`; kalau tidak
-   * ada, harga terbaru produk itu — lihat `pickProductPrice`) dan masih bisa
+   * ada, harga bulan terdekat sebelumnya — lihat `pickProductPrice`) dan masih bisa
    * ditimpa operator atau dipilih dari daftar harga produk. Yang disimpan ke
    * `defects.value` adalah totalnya (`defectTotalValue` = harga ini × Quantity),
    * dihitung di klien — server tetap menyimpan apa adanya.

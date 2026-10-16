@@ -271,8 +271,8 @@ export function PoFormDialog({
                       const poDate = e.target.value;
                       // Tanggal PO berpindah bulan/tahun -> harga yang dipilih ikut
                       // menyesuaikan. Kalau produk belum punya harga di periode itu,
-                      // dipakai harga terbarunya (aturan sama dengan form Defect);
-                      // operator tetap bisa memilih harga lain dari daftar.
+                      // dipakai harga bulan terdekat sebelumnya (aturan sama dengan
+                      // form Defect); operator tetap bisa memilih harga lain dari daftar.
                       const match = pickProductPrice(
                         productPrices,
                         Number(f.productId),
@@ -301,7 +301,7 @@ export function PoFormDialog({
                       const nextProductId = String(v);
                       // Produk berganti -> pilih harga periode PO untuk produk baru
                       // itu dengan jenis harga yang sedang dipilih; kalau periodenya
-                      // belum ada, pakai harga terbarunya.
+                      // belum ada, pakai harga bulan terdekat sebelumnya.
                       const match = pickProductPrice(
                         productPrices,
                         Number(nextProductId),

@@ -5,7 +5,7 @@
 > `PRD.md` adalah dokumen kebutuhan awal; README ini adalah versi terupdate yang sudah disinkronkan dengan implementasi.
 
 - **Repo**: https://github.com/riswannh/BARDI-Defect-Report (private, branch `main`)
-- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun dan **7 jenis harga** (Website, Reseller, Key Account, Buyback, Collection Point, Experience Store, Regional Warehouse): **Harga** terisi otomatis dari periode tanggal/PO untuk jenis yang dipilih (jatuh ke harga terbaru kalau periode itu kosong) dan Defect menyimpan **Total Value = Harga × Quantity**, plus kartu **Replacement** di Report
+- **Status**: semua fase PRD selesai diimplementasikan + revisi lanjutan (i18n, bulk action, delete-all dengan backup, searchable dropdown, redesign brand, Docker) + revisi alur input defect & navigasi mobile + modul **PO Product** dengan **master Harga Produk** per bulan/tahun dan **7 jenis harga** (Website, Reseller, Key Account, Buyback, Collection Point, Experience Store, Regional Warehouse): **Harga** terisi otomatis dari periode tanggal/PO untuk jenis yang dipilih (jatuh ke harga bulan terdekat sebelumnya kalau periode itu kosong) dan Defect menyimpan **Total Value = Harga × Quantity**, plus kartu **Replacement** di Report
 
 ---
 
@@ -73,7 +73,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **7 jenis harga produk** (Website, Reseller, Key Account, Buyback, Collection Point, Experience Store, Regional Warehouse) — satu produk boleh punya banyak jenis di periode sama; kolom + filter **Jenis Harga** di tab Harga Produk, dropdown **Jenis Harga** di form PO & Defect, jenis tersimpan per baris (PO, Defect) dan ikut tersalin saat salin periode | ✅ Selesai |
 | + | **Sparepart** sebagai child produk (many-to-many: satu sparepart boleh dipakai beberapa produk), master **Sparepart** + tab **Harga Sparepart** per bulan/tahun + salin periode sebelumnya | ✅ Selesai |
 | + | **Value** di PO dihitung dari harga master | ✅ Selesai |
-| + | **Harga** Defect jadi Harga + Total Value (harga × qty), Harga otomatis ikut periode (fallback harga terbaru) di Defect & PO | ✅ Selesai |
+| + | **Harga** Defect jadi Harga + Total Value (harga × qty), Harga otomatis ikut periode (fallback bulan terdekat sebelumnya) di Defect & PO | ✅ Selesai |
 | + | Susunan field **Jenis Harga + Harga + Total Value** di form Defect disamakan dengan form PO (dropdown jenis harga, dropdown harga, kolom baca-saja), label lama "Harga RW"/"Value RW" diganti "Harga"/"Total Value" | ✅ Selesai |
 | + | Kartu **Replacement** + **Nilai Replacement** (Value) + **Selisih Defect Quantity** & **Selisih Defect Value** (hanya baris minus dihitung, minus merah / plus hijau), layout kartu 2 kolom, dan kolom **Replacement** & **Selisih Defect** di tabel rekap per produk | ✅ Selesai |
 | + | Perbaikan dialog Sales (X tidak menutup) + isi dialog meluber keluar kartu | ✅ Selesai |
@@ -85,6 +85,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | **Allowance Defect** (limit tahunan, admin saja) — kartu Sisa Allowance di Report, limit diprorata mengikuti filter | ✅ Selesai + deploy |
 | + | **Repair Data** (`/repairs`, admin saja) — cermin tab "Data Reparasi" sheet Reparasi RFB: CRUD, filter, Saving Value = Quantity × harga RW, sync Google Sheet satu arah, Excel | ✅ Selesai |
 | + | **Kartu Repair Value** di Report (admin saja) — Σ Saving Value Repair Data berstatus `Done Kirim`/`Done Repair` (Penyelesaian apa pun kecuali `Replacement Produk Baru`) pada periode filter | ✅ Selesai |
+| + | **Claim Garansi BARDI** (`/claim-garansi`, admin saja) — cermin tab "Raw Combine CG" sheet Data Garansi Produk: daftar baca-saja, filter, sync satu arah, Nilai (RW) = Jumlah unit × harga RW Price List app | ✅ Selesai |
 
 ---
 
@@ -298,6 +299,31 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `incompleteFields` | text (default "") | kolom yang kosong saat impor sheet, dipisah koma (`claimId`, `product`, `date`); "" = baris lengkap. Baris tetap masuk sistem dan hanya ditandai **Tidak lengkap** |
 | `sheetFields` / `sheetSyncedAt` | text / timestamp | salinan nilai sheet terakhir yang sudah sepakat + waktu sync (aturan baseline sama seperti Defect) |
 
+**`warranty_claims`** — cermin tab "Raw Combine CG" (sheet Data Garansi Produk); modul **baca-saja** + sync satu arah dari sheet, jadi tidak ada CRUD di app.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK | autoincrement |
+| `claimId` | text NOT NULL | kolom A sheet; **boleh ganda** (identitas baris = Claim ID + tanggal + produk) |
+| `date` | text | `YYYY-MM-DD`, diisi hanya bila sheet punya Timestamp |
+| `month` | text | `YYYY-MM`, dipakai filter periode |
+| `timeStamp` | text | `YYYY-MM-DDTHH:mm` |
+| `customerName` / `customerPhone` / `customerEmail` | text | data pelanggan dari sheet |
+| `city` | text | kolom P |
+| `courier` / `resiUnit` / `resi` | text | Ekspedisi, resi pengiriman unit, resi pengiriman |
+| `productForm` | text | "Produk yang ingin di Claim" (pilihan pelanggan, kolom N) |
+| `officialName` | text | kolom AC — nama produk resmi, patokan pencocokan produk |
+| `productId` | integer NULL | → `products.id`; NULL berarti nama resmi belum ada di Data Master |
+| `quantity` | integer | kolom R, minimal 1 |
+| `status` / `sla` / `pic` / `note` | text | kolom X, Z, AA, AB |
+| `value` | integer | Jumlah unit × harga **Regional Warehouse** dari Price List app |
+| `priceType` | text | selalu `Regional Warehouse` |
+| `productPriceId` | integer NULL | baris `product_prices` yang dipakai, NULL bila produk belum punya harga |
+| `incompleteFields` | text | kunci dipisah koma: `claimId`, `date`, `product`, `price` |
+| `sheetSyncedAt` / `createdAt` / `updatedAt` | integer timestamp | jejak sync |
+
+Indeks: `warranty_claims_claim_idx`, `warranty_claims_date_idx`, `warranty_claims_product_idx`, `warranty_claims_status_idx`.
+
 **`spare_part_prices`** — harga sparepart per bulan dan tahun (selalu Rupiah)
 
 | Kolom | Tipe | Keterangan |
@@ -351,7 +377,7 @@ duplikat (keputusan pemilik produk).
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | |
 | `factoryId` | FK → factories | |
-| `value` | integer (default 0) | IDR. **Total baris** = **Harga Price List** × Quantity (harga master bulan `timeStamp`, jatuh ke harga terbaru kalau bulan itu kosong). Dihitung di form, dan **dihitung ulang di server** saat sync Google Sheet maupun impor Excel (`src/lib/defect-value.ts`); kolom `Value` di sheet sudah tidak dibaca. Produk tanpa baris harga → nilai lama/berkas dipertahankan. **Disembunyikan untuk role Pabrik** |
+| `value` | integer (default 0) | IDR. **Total baris** = **Harga Price List** × Quantity (harga master bulan `timeStamp`, jatuh ke harga bulan terdekat sebelumnya kalau bulan itu kosong). Dihitung di form, dan **dihitung ulang di server** saat sync Google Sheet maupun impor Excel (`src/lib/defect-value.ts`); kolom `Value` di sheet sudah tidak dibaca. Produk tanpa baris harga → nilai lama/berkas dipertahankan. **Disembunyikan untuk role Pabrik** |
 | `priceType` | text, notNull, default `"Regional Warehouse"` | **Jenis harga** master yang dipakai baris ini (7 nilai tetap — lihat §7 · Harga Produk). Hanya jejak jenis yang dipakai form saat mengisi `value`; **disembunyikan untuk role Pabrik** |
 | `productPriceId` | FK → product_prices (nullable) | Kolom warisan. Tidak diisi lagi untuk defect (selalu NULL pada baris baru, dan ikut dikosongkan saat baris lama disunting). Harga master kini hanya jadi **isian awal** di form — lihat §8.9 |
 | `createdAt` / `updatedAt` | timestamp | |
@@ -609,6 +635,28 @@ sebelum kolom rasio; keduanya bisa dipakai untuk mengurutkan tabel.
 Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`/`currency`, dan
 `totals`-nya tanpa field nilai.
 
+### Claim Garansi BARDI (admin saja)
+
+Cermin tab **"Raw Combine CG"** spreadsheet **Data Garansi Produk** (`CG_GSHEET_ID`,
+default `1TzJAH7mgIp8OK4l_VsE1GSYAp-IldcyM7TQwmdC8S3U`). Menu `/claim-garansi`, tabel `warranty_claims`.
+Modul ini **baca-saja**: tidak ada tambah/ubah/hapus di app — satu-satunya jalan masuk data adalah sync.
+
+| Method | Endpoint | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/warranty-claims` | admin | daftar klaim; filter `product`/`status`/`year`/`month`/`incomplete`/`search` |
+| POST | `/api/warranty-claims/gsheet/sync` | admin | sync satu arah dari sheet (upsert per Claim ID + tanggal + produk) |
+
+- **Nama produk dipatok dari kolom AC "Official Name"**, bukan nama pilihan pelanggan atau kolom masalah.
+  Kalau urutan kolom sheet bergeser, sync **ditolak** dengan pesan `kolom 29 harus "Official Name"`.
+- **Nilai (RW)** = Jumlah unit × harga **Regional Warehouse** dari **Price List app**
+  (`pickProductPrice`: bulan klaim; kalau belum ada → bulan terdekat sebelumnya). Harga dari tab
+  "Data Produk" di sheet **tidak** dipakai.
+- Baris yang kurang data tetap masuk dan ditandai kolom `incompleteFields`
+  (`claimId`, `date`, `product`, `price`) → chip "Tidak lengkap" di daftar.
+- Baris yang **seluruh** kolom terpetakannya kosong dilewati dan dilaporkan di dialog hasil sync.
+- Perintah sync & self-check (butuh kredensial service account; bisa juga dari dalam container):
+  `cmd /c "npx tsx scripts/cg-gsheet-sync.ts"` dan `cmd /c "npx tsx scripts/cg-check.ts"`.
+
 ### Harga Produk (per bulan & tahun)
 
 | Method | Path | Akses | Keterangan |
@@ -649,7 +697,7 @@ disimpan. Jenis yang dipakai tersimpan di kolom `priceType` baris PO.
 **`value` pada Defect dihitung di form, bukan di server.** Harga (harga satuan jenis terpilih) × Quantity
 = **Total Value**, dan total itulah yang dikirim ke `defects.value`; server menyimpannya apa adanya dan
 tidak mengisi `productPriceId`. Harga sendiri terisi otomatis: harga master **jenis yang dipilih** pada
-periode `timestamp` defect, atau **harga terbaru jenis itu** bila periode tersebut belum punya harga —
+periode `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** bila periode tersebut belum punya harga —
 dan masih bisa diganti dengan memilih baris harga lain dari dropdown-nya. Jenis yang dipakai ikut
 tersimpan di kolom `defects.priceType`. Nilai `value` yang sudah tersimpan
 tidak dihitung ulang saat `quantity` diubah; mengubah quantity memang menghitung ulang total dari
@@ -896,7 +944,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
 - **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
-- **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga terbaru jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/status/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
+- **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/status/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
   - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
@@ -1035,7 +1083,7 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - **Value** = `Quantity × harga master` dan **selalu Rupiah** — kolom terpisah dari Total yang
   mata uangnya bisa USD/RMB. **Harga** terisi otomatis mengikuti bulan/tahun timestamp PO **untuk jenis
   yang dipilih**; kalau produk belum punya harga jenis itu di periode tersebut, dipakai **harga
-  terbarunya**, dan operator tetap bisa memilih baris harga lain dari daftar. Kalau produknya belum punya
+  bulan terdekat sebelumnya**, dan operator tetap bisa memilih baris harga lain dari daftar. Kalau produknya belum punya
   harga sama sekali, PO **tetap bisa disimpan** dan Value ditampilkan `-`. Saat mengubah PO, rujukan
   harganya dicari ulang bila produk/tanggal/jenis berubah dan operator tidak memilih sendiri.
 - **Timestamp** adalah tanggal PO yang diisi operator (bukan waktu input); wajib diisi.
@@ -1074,7 +1122,7 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
       `Regional Warehouse`, lihat §7 · Harga Produk) — bukan master, jadi tidak ada tabel/CRUD/tab
       untuknya; nilai yang tidak dikenal/kosong jatuh ke default lewat `normalizePriceType()`.
 12. **`value` Defect = Harga × Quantity** (dihitung di form, server menyimpan apa adanya);
-    Harga terisi otomatis dari periode timestamp atau harga terbaru produk **untuk jenis harga yang
+    Harga terisi otomatis dari periode timestamp, atau harga bulan terdekat sebelumnya **untuk jenis harga yang
     dipilih** — sama di PO Product (jenis harga ada di `defects.priceType` & `purchase_orders.priceType`).
 13. **PO tanpa `UNIQUE`** — satu PO Number boleh diinput berkali-kali, termasuk produk yang sama.
 14. **PPN hanya penanda** — tidak menambah Total, dan disembunyikan dari role Pabrik.
@@ -1094,6 +1142,8 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 | Data Defect | ✅ CRUD | ❌ (hanya Report) |
 | Data Sales | ✅ CRUD | ❌ |
 | Data Master + Harga Produk + Sparepart & Harga Sparepart | ✅ CRUD | ❌ |
+| Repair Data (`/repairs`) | ✅ CRUD + sync | ❌ |
+| Claim Garansi BARDI (`/claim-garansi`) | ✅ baca-saja + sync | ❌ (menu tidak tampil, API 403) |
 | PO Product (`/po`) | ✅ CRUD | ✅ baca-saja, hanya PO pabriknya, tanpa harga/PPN |
 | User Management | ✅ CRUD | ❌ |
 | Import/Export Excel | ✅ | ❌ |
@@ -1223,8 +1273,9 @@ Hal yang wajib diperhatikan saat deploy:
 Env opsional untuk sync: `GSHEET_ID` (default spreadsheet `Data Garansi Produk`),
 `GSHEET_TAB` (default `Big Data`, untuk defect), dan `GSHEET_SALES_TAB`
 (default `Data Penjualan`, untuk sales). Untuk modul Repair Data: `REPAIR_GSHEET_ID`
-(default spreadsheet `Reparasi RFB`) dan `REPAIR_GSHEET_TAB` (default `Data Reparasi`) —
-keduanya boleh dikosongkan karena default-nya sudah ada di kode.
+(default spreadsheet `Reparasi RFB`) dan `REPAIR_GSHEET_TAB` (default `Data Reparasi`) — untuk modul
+Claim Garansi: `CG_GSHEET_ID` (default spreadsheet `Data Garansi Produk`) dan `CG_GSHEET_TAB`
+(default `Raw Combine CG`). Semuanya boleh dikosongkan karena default-nya sudah ada di kode.
 
 Spreadsheet harus di-share ke email service account itu (minimal **Viewer**) —
 aplikasi tidak butuh izin tulis dan tidak pernah memakainya.
@@ -1366,7 +1417,7 @@ Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 3. Buka **Data Defect** → Tambah Data Defect. Pilih produk, lalu **Jenis Harga** (7 nilai tetap,
    default `Regional Warehouse`), lalu **Harga** (dropdown harga master jenis itu,
    susunannya sama dengan form PO) terisi otomatis sesuai bulan/tahun timestamp — kalau periode itu
-   kosong, dipakai harga terbaru produk **untuk jenis yang sama** — dan bisa diganti dengan memilih
+   kosong, dipakai harga bulan terdekat sebelumnya **untuk jenis yang sama** — dan bisa diganti dengan memilih
    baris harga lain.
    **Total Value** = Harga × Quantity tampil sebagai kolom baca-saja dan itulah nilai yang tersimpan.
 4. Data lama dari spreadsheet diimpor via Excel (kolom Value di berkas dipakai apa adanya).

@@ -624,3 +624,73 @@ export const repairs = sqliteTable(
     index("repairs_date_idx").on(t.date),
   ]
 );
+
+/**
+ * Claim Garansi BARDI — cermin tab "Raw Combine CG" (sheet "Data Garansi
+ * Produk"). Seluruh isinya datang dari sheet (satu arah, sheet = sumber);
+ * yang dihitung di app cuma `value` = jumlah unit × harga Regional Warehouse
+ * bulan klaim dari Price List app (keputusan user 17 Okt 2026: JANGAN pakai
+ * harga dari tab "Data Produk" sheet).
+ *
+ * Produk dicocokkan lewat kolom AC "Official Name" — bukan kolom N (pilihan
+ * customer), karena kolom N ditulis bebas oleh customer.
+ */
+export const warrantyClaims = sqliteTable(
+  "warranty_claims",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** CLAIM ID (kolom A). Tidak unik: kunci baris = claim + tanggal + produk. */
+    claimId: text("claimId").notNull(),
+    /** "YYYY-MM-DD", diturunkan dari kolom B. */
+    date: text("date").notNull().default(""),
+    /** "YYYY-MM", untuk filter bulan/tahun. */
+    month: text("month").notNull().default(""),
+    /** "YYYY-MM-DDTHH:mm" seperti `defects.timeStamp`. */
+    timeStamp: text("timeStamp").notNull().default(""),
+    customerName: text("customerName").notNull().default(""),
+    customerPhone: text("customerPhone").notNull().default(""),
+    customerEmail: text("customerEmail").notNull().default(""),
+    /** Kota asal pengiriman (kolom P). */
+    city: text("city").notNull().default(""),
+    /** Kurir (kolom G). */
+    courier: text("courier").notNull().default(""),
+    /** Resi pengiriman unit ke BARDI (kolom H). */
+    resiUnit: text("resiUnit").notNull().default(""),
+    /** Resi pengiriman balik ke customer (kolom V). */
+    resi: text("resi").notNull().default(""),
+    /** Produk yang dipilih customer di formulir garansi (kolom N). */
+    productForm: text("productForm").notNull().default(""),
+    /** Kolom AC "Official Name" — acuan pencocokan produk. */
+    officialName: text("officialName").notNull().default(""),
+    /** NULL = Official Name-nya belum ada di Data Master (baris tetap masuk). */
+    productId: integer("productId").references(() => products.id),
+    quantity: integer("quantity").notNull().default(1),
+    /** Status Kondisi Barang (kolom X). */
+    status: text("status").notNull().default(""),
+    /** SLA (kolom Z). */
+    sla: text("sla").notNull().default(""),
+    /** PIC (kolom AA). */
+    pic: text("pic").notNull().default(""),
+    /** Notes (kolom AB). */
+    note: text("note").notNull().default(""),
+    /** Rupiah bulat = jumlah unit × harga RW bulan klaim. */
+    value: integer("value").notNull().default(0),
+    priceType: text("priceType").notNull().default("Regional Warehouse"),
+    productPriceId: integer("productPriceId").references(() => productPrices.id),
+    /** Kolom kosong/tak dikenal saat sync, dipisah koma (mis. "product"). */
+    incompleteFields: text("incompleteFields").notNull().default(""),
+    sheetSyncedAt: integer("sheetSyncedAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    index("warranty_claims_claim_idx").on(t.claimId),
+    index("warranty_claims_date_idx").on(t.date),
+    index("warranty_claims_product_idx").on(t.productId),
+    index("warranty_claims_status_idx").on(t.status),
+  ]
+);

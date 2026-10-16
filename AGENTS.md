@@ -289,7 +289,9 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
   - **Aturan memilih harga master** (dipakai form Defect *dan* PO, satu implementasi di
     `src/lib/prices.ts` → `pickProductPrice`): harga **jenis yang sedang dipilih** pada periode
     `YYYY-MM` yang diminta; kalau produk itu belum punya harga jenis tersebut di periode tersebut,
-    pakai **harga terbaru jenis yang sama** (jangan jatuh ke jenis lain). Dipicu saat produk berganti,
+    pakai **harga bulan terdekat sebelumnya jenis yang sama** (jangan jatuh ke jenis lain, dan jangan
+    ambil bulan sesudahnya); kalau tanggalnya lebih tua dari semua baris harga, dipakai baris harga
+    paling awal. Dipicu saat produk berganti,
     saat **jenis harga berganti**, dan saat timestamp/`poDate` berpindah bulan — di kedua form
     penggantinya adalah **dropdown harga** (bukan isian angka bebas). Jangan kembalikan logika
     cocok-periode yang lama (yang membiarkan pilihan harga sebelumnya menempel saat periode barunya
@@ -525,6 +527,30 @@ Catatan perilaku Report yang harus dijaga:
     `cmd /c "npx tsx scripts/repair-sync-report.ts <berkas.csv>"` (butuh kredensial service account,
     jalan juga di dalam container produksi); `scripts/repair-sheet-fixlist.ts` mencetak daftar serupa
     (kolom "Semua kolom kosong" = satu-satunya yang tidak diimpor).
+
+### Claim Garansi BARDI (`/claim-garansi`, admin saja)
+
+- Cermin tab **"Raw Combine CG"** sheet **Data Garansi Produk** (`CG_GSHEET_ID`,
+  `DEFAULT_CG_SHEET_ID` di `src/lib/gsheet/cg-mapping.ts`), ditambahkan 17 Okt 2026. Tabel
+  `warranty_claims`; **baca-saja** — tidak ada POST/PATCH/DELETE, satu-satunya sumber data = sync.
+- **Nama produk dipatok dari kolom AC "Official Name"** (bukan nama pilihan pelanggan di kolom N atau
+  deskripsi masalah) — permintaan user. Kolom yang dibaca dipetakan 0-based di `CG_COLUMNS`
+  (`cg-mapping.ts`); kalau urutan kolom sheet bergeser, `cgHeaderProblems()` menolak sync dengan pesan
+  `kolom 29 harus "Official Name"`, jadi sync gagal terang-terangan, bukan diam-diam membaca kolom kosong.
+- **Nilai = Jumlah unit (kolom R) × harga Regional Warehouse dari Price List APP** (`pickProductPrice`,
+  aturan yang sama dengan Defect/Repair: bulan klaim, kalau tidak ada → bulan terdekat sebelumnya).
+  **JANGAN** memakai harga tab "Data Produk" di sheet itu (keputusan user: "pakai harga yg ada di app").
+  Produk yang belum ada di Data Master → `productId` NULL dan ditandai `incompleteFields: "product"`.
+- Jangan pakai `cgCell()` untuk kolom Timestamp/Jumlah: itu men-`String()` nilai lebih dulu sehingga
+  serial tanggal Google (`46023.402…`) tidak lagi dikenali `parseSheetTimestamp()`; pakai `cgRaw()`.
+  Gejalanya: semua `date`/`timeStamp` kosong dan `value` 0 di seluruh tabel.
+- Perbandingan "berubah/tidak" saat sync **wajib** melewati `sheetSyncedAt`/`updatedAt` (selalu beda
+  karena presisi detik vs milidetik) — tanpa itu tiap sync melaporkan "diperbarui: 7.996".
+- Identitas baris = `claimMatchKey(claimId, date, productId)` dari `src/lib/claim-match.ts` (dipakai
+  bersama modul Repair lewat `src/lib/repair-match.ts`): Claim ID boleh ganda, yang kembar persis
+  (claim + tanggal + produk) yang di-upsert.
+- Perintah: `cmd /c "npx tsx scripts/cg-gsheet-sync.ts"` (butuh kredensial service account, jalan juga
+  di dalam container produksi) dan self-check `cmd /c "npx tsx scripts/cg-check.ts"`.
 
 ### Aturan alur input defect
 

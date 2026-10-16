@@ -12,6 +12,7 @@ import {
   Users,
   ClipboardList,
   Headset,
+  ShieldCheck,
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -46,6 +47,12 @@ const navItems: NavItem[] = [
     href: "/repairs",
     labelKey: "nav.repairs",
     icon: Wrench,
+    adminOnly: true,
+  },
+  {
+    href: "/claim-garansi",
+    labelKey: "nav.warrantyClaims",
+    icon: ShieldCheck,
     adminOnly: true,
   },
   { href: "/master", labelKey: "nav.master", icon: Database, adminOnly: true },

@@ -252,7 +252,7 @@ export function DefectFormDialog({
                       const timestamp = e.target.value;
                       // Periode defect berpindah bulan/tahun -> harga master ikut
                       // menyesuaikan; kalau produk belum punya harga di periode itu
-                      // dipakai harga terbarunya.
+                      // dipakai harga bulan terdekat sebelumnya.
                       const match = pickProductPrice(
                         productPrices,
                         Number(f.productId),
@@ -341,7 +341,7 @@ export function DefectFormDialog({
                       const nextProductId = String(v);
                       // Produk berganti -> isian awal Harga RW diambil dari harga
                       // master produk itu untuk periode timestamp defect; kalau
-                      // periodenya belum ada, pakai harga terbaru produk tersebut.
+                      // periodenya belum ada, pakai harga bulan terdekat sebelumnya.
                       const match = pickProductPrice(
                         productPrices,
                         Number(nextProductId),

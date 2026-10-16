@@ -109,6 +109,55 @@ export interface Repair {
 }
 
 /**
+ * Claim Garansi BARDI — satu baris = satu baris tab "Raw Combine CG" (sheet
+ * "Data Garansi Produk"). Semua kolom datang dari sheet, jadi modul ini tidak
+ * punya formulir tambah/ubah.
+ *
+ * `value` dihitung di app: jumlah unit × harga Regional Warehouse bulan klaim
+ * dari Price List app (bukan dari tab "Data Produk" sheet).
+ */
+export interface WarrantyClaim {
+  id: number;
+  /** CLAIM ID (kolom A). Tidak unik: kunci baris = claim + tanggal + produk. */
+  claimId: string;
+  /** "YYYY-MM-DD". */
+  date: string;
+  /** "YYYY-MM". */
+  month: string;
+  /** "YYYY-MM-DDTHH:mm" atau "". */
+  timeStamp: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  city: string;
+  courier: string;
+  /** Resi pengiriman unit ke BARDI (kolom H). */
+  resiUnit: string;
+  /** Resi pengiriman balik ke customer (kolom V). */
+  resi: string;
+  /** Produk pilihan customer di formulir garansi (kolom N). */
+  productForm: string;
+  /** Kolom AC "Official Name" — acuan pencocokan produk. */
+  officialName: string;
+  /** NULL = Official Name belum ada di Data Master (baris tetap masuk). */
+  productId: number | null;
+  productName?: string | null;
+  quantity: number;
+  /** Status Kondisi Barang (kolom X). */
+  status: string;
+  sla: string;
+  pic: string;
+  note: string;
+  /** Rupiah bulat = jumlah unit × harga RW bulan klaim; 0 = harga belum ada. */
+  value: number;
+  priceType?: string;
+  productPriceId?: number | null;
+  /** Kolom kosong/tak dikenal saat sync, dipisah koma ("" = lengkap). */
+  incompleteFields?: string;
+  sheetSyncedAt?: string | null;
+}
+
+/**
  * Harga produk per bulan dan tahun (selalu Rupiah).
  *
  * Satu produk boleh punya banyak baris — satu per periode. Baris PO merujuk ke
