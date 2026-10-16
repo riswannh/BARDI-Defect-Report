@@ -432,7 +432,7 @@ export default function ReportPage() {
         {/* Diambil dari PO Product berketerangan "Replacement", mengikuti
             periode yang sedang dipilih. */}
         <SummaryCard
-          title={t("report.replacement")}
+          title={t("report.replacementCard")}
           value={formatNumber(replacementQty)}
           description={t("report.replacementDesc")}
           icon={Package}

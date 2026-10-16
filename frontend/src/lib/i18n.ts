@@ -170,17 +170,25 @@ const translations = {
   "report.from": { id: "Dari", en: "From", zh: "从" },
   "report.to": { id: "Sampai", en: "To", zh: "至" },
   "report.totalDefect": {
-    id: "Total Defect",
-    en: "Total Defect",
-    zh: "缺陷总数",
+    id: "Replacement Quantity by BARDI",
+    en: "Replacement Quantity by BARDI",
+    zh: "BARDI 换货数量",
   },
-  "report.totalSales": { id: "Total Sales", en: "Total Sales", zh: "销售总数" },
+  "report.totalSales": {
+    id: "Total Sales Quantity",
+    en: "Total Sales Quantity",
+    zh: "销售总数量",
+  },
   "report.defectValue": {
-    id: "Nilai Defect",
-    en: "Defect Value",
-    zh: "缺陷金额",
+    id: "Replacement Value by BARDI",
+    en: "Replacement Value by BARDI",
+    zh: "BARDI 换货价值",
   },
-  "report.salesValue": { id: "Nilai Sales", en: "Sales Value", zh: "销售金额" },
+  "report.salesValue": {
+    id: "Total Sales Value",
+    en: "Total Sales Value",
+    zh: "销售总金额",
+  },
   "report.chartQtyTitle": {
     id: "Total Defect — Quantity",
     en: "Total Defect — Quantity",
@@ -254,6 +262,12 @@ const translations = {
     en: "Replacement",
     zh: "更换",
   },
+  /** Judul kartu ringkasan (kolom tabel rekap tetap memakai report.replacement). */
+  "report.replacementCard": {
+    id: "Replacement Quantity by Factory",
+    en: "Replacement Quantity by Factory",
+    zh: "工厂换货数量",
+  },
   "report.replacementDesc": {
     id: "Qty PO Replacement",
     en: "Replacement PO Qty",
@@ -266,25 +280,25 @@ const translations = {
     zh: "缺陷差额",
   },
   "report.selisihQty": {
-    id: "Selisih Defect Quantity",
-    en: "Defect Quantity Difference",
-    zh: "缺陷数量差额",
+    id: "Selisih Replacement Quantity Factory",
+    en: "Selisih Replacement Quantity Factory",
+    zh: "工厂换货数量差额",
   },
   /** Keterangan kecil di bawah kartu: angka itu hasil pengurangan apa. */
   "report.selisihQtyDesc": {
-    id: "Hanya baris minus: Replacement − Qty Defect",
-    en: "Negative rows only: Replacement − Defect Qty",
-    zh: "仅负数行：更换数量 − 缺陷数量",
+    id: "Hanya baris minus: Qty Factory − Qty BARDI",
+    en: "Negative rows only: Factory Qty − BARDI Qty",
+    zh: "仅负数行：工厂数量 − BARDI 数量",
   },
   "report.selisihValue": {
-    id: "Selisih Defect Value",
-    en: "Defect Value Difference",
-    zh: "缺陷金额差额",
+    id: "Selisih Replacement Value Factory",
+    en: "Selisih Replacement Value Factory",
+    zh: "工厂换货价值差额",
   },
   "report.selisihValueDesc": {
-    id: "Hanya baris minus: Nilai Replacement − Nilai Defect",
-    en: "Negative rows only: Replacement Value − Defect Value",
-    zh: "仅负数行：更换金额 − 缺陷金额",
+    id: "Hanya baris minus: Value Factory − Value BARDI",
+    en: "Negative rows only: Factory Value − BARDI Value",
+    zh: "仅负数行：工厂金额 − BARDI 金额",
   },
   "report.allowance": {
     id: "Sisa Allowance Defect",
@@ -302,9 +316,9 @@ const translations = {
     zh: "{year} 年限额尚未在主数据中设置。",
   },
   "report.repairValue": {
-    id: "Repair Value",
-    en: "Repair Value",
-    zh: "维修价值",
+    id: "Repair Value by HUB",
+    en: "Repair Value by HUB",
+    zh: "HUB 维修价值",
   },
   "report.repairValueDesc": {
     id: "Saving Value Repair Data berstatus Done Kirim / Done Repair pada periode ini, tanpa Penyelesaian Replacement Produk Baru ({rows} baris).",
@@ -312,9 +326,9 @@ const translations = {
     zh: "本期状态为 Done Kirim / Done Repair 的维修数据 Saving Value，不含处理方式 Replacement Produk Baru（{rows} 行）。",
   },
   "report.replacementValue": {
-    id: "Nilai Replacement",
-    en: "Replacement Value",
-    zh: "更换金额",
+    id: "Replacement Value by Factory",
+    en: "Replacement Value by Factory",
+    zh: "工厂换货价值",
   },
   "report.replacementValueDesc": {
     id: "Value: qty × harga master",
