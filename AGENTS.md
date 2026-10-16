@@ -368,6 +368,25 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   Perbaikannya `grid-cols-1` + `min-w-0` di popup, ditambah `min-w-0` pada
   `SelectTrigger` dan `SelectValue` supaya teks panjang menyusut lalu terpotong
   elipsis. Jangan dihapus tanpa menggantinya dengan pengunci lebar lain.
+- **Lebar popup Select mengikuti isi, bukan lebar trigger** (permintaan user): className popup
+  di `src/components/ui/select.tsx` memakai
+  `w-max min-w-[max(9rem,var(--anchor-width))] max-w-(--available-width)` tanpa
+  `overflow-x-hidden`, dan `SelectPrimitive.ItemText` memakai `whitespace-normal` supaya
+  nama pabrik/produk panjang membungkus alih-alih terpotong. `--available-width` disediakan
+  Base UI (`@base-ui/react/utils/CommonPositionerCssVars`). Trigger TETAP `whitespace-nowrap`
+  + `min-w-0` (elipsis di trigger memang diinginkan).
+- **Urutan pilihan dropdown = abjad nama** (permintaan user: "sort berdasarkan abjad untuk
+  urutan semua drop down"). Sumbernya diurutkan sekali di API, bukan di tiap halaman:
+  `listMasterRows()` di `src/lib/api/master.ts` memakai `orderBy(asc(table.name))` (produk,
+  pabrik, problem, status, sparepart — sekaligus mengurutkan tab Data Master), dan
+  `src/app/api/products/route.ts` serta `src/app/api/spare-parts/route.ts` juga `asc(name)`.
+  Daftar nilai tetap di kode diurutkan di konstanta/halaman: `ORIGIN_LABELS`,
+  `STATUS_LABELS`, `RESOLUTION_LABELS`, `PIC_VALUES` di `src/app/(dashboard)/repairs/*`, dan
+  `[...KETERANGAN_OPTIONS].sort()` di halaman/form PO. **Yang SENGAJA tidak diabjadkan**:
+  bulan, tahun, jumlah baris per halaman, jenis/periodisasi harga, tahap tiket, peran pengguna,
+  dan pemilih tipe periode (Bulanan/Mingguan/Harian) — semuanya urutan kronologis/alur kerja.
+  Label item yang sama juga dipakai `SelectSearch` di popup, jadi jangan mengurutkan ulang di
+  render per halaman.
 - **`onOpenChange` pada `Dialog` bukan tempat untuk navigasi.** Di halaman Sales dulu
   `open === false` memanggil `advanceEdit()`, yang langsung `return` ketika antrean
   edit kosong — akibatnya dialog form TAMBAH **tidak bisa ditutup sama sekali** (klik X

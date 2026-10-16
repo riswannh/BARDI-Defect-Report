@@ -26,7 +26,7 @@ export async function GET() {
     })
     .from(products)
     .leftJoin(productFactories, eq(productFactories.productId, products.id))
-    .orderBy(asc(products.id));
+    .orderBy(asc(products.name));
 
   return jsonOk(rows);
 }

@@ -1,4 +1,4 @@
-import { eq, getTableName } from "drizzle-orm";
+import { asc, eq, getTableName } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -44,7 +44,7 @@ function skuOwner(table: MasterTable): string {
 }
 
 export async function listMasterRows(table: MasterTable) {
-  return db.select().from(table).orderBy(table.id);
+  return db.select().from(table).orderBy(asc(table.name));
 }
 
 export async function masterNameExists(

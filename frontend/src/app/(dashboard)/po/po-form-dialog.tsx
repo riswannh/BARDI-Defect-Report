@@ -146,7 +146,7 @@ export function PoFormDialog({
 
   // Pilihan keterangan datang dari konstanta di kode, bukan dari API master.
   const keteranganOptions = useMemo(
-    () => KETERANGAN_OPTIONS.map((option) => ({ value: option, label: option })),
+    () => [...KETERANGAN_OPTIONS].sort().map((option) => ({ value: option, label: option })),
     []
   );
 

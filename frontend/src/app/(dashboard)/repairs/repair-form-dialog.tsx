@@ -35,27 +35,27 @@ const VALUE_PRICE_TYPE = "Regional Warehouse";
  * di sini supaya berkas validasi server (yang memuat zod) tidak ikut ke bundel
  * halaman. Kalau daftar di server berubah, ubah juga di sini.
  */
-const PIC_VALUES = ["Aji", "Roland", "Danu", "Aziz", "Danang", "Almer", "Hendi"];
+const PIC_VALUES = ["Aji", "Almer", "Aziz", "Danang", "Danu", "Hendi", "Roland"];
 
 const ORIGIN_LABELS = [
+  { value: "Customer", key: "repair.origin.customer" },
   { value: "Distri", key: "repair.origin.distri" },
   { value: "OR", key: "repair.origin.or" },
-  { value: "Customer", key: "repair.origin.customer" },
 ] as const;
 
 const STATUS_LABELS = [
+  { value: "Belum Di Buka", key: "repair.status.belumDibuka" },
+  { value: "Done Kirim", key: "repair.status.doneKirim" },
   { value: "Done Repair", key: "repair.status.doneRepair" },
   { value: "Proses", key: "repair.status.proses" },
-  { value: "Belum Di Buka", key: "repair.status.belumDibuka" },
   { value: "Tidak Ada Data", key: "repair.status.tidakAdaData" },
-  { value: "Done Kirim", key: "repair.status.doneKirim" },
 ] as const;
 
 const RESOLUTION_LABELS = [
-  { value: "Replacement BJ", key: "repair.resolution.replacementBj" },
+  { value: "Ganti Komponen", key: "repair.resolution.gantiKomponen" },
   { value: "Ganti Sparepart", key: "repair.resolution.gantiSparepart" },
   { value: "Maintenance", key: "repair.resolution.maintenance" },
-  { value: "Ganti Komponen", key: "repair.resolution.gantiKomponen" },
+  { value: "Replacement BJ", key: "repair.resolution.replacementBj" },
   {
     value: "Replacement Produk Baru",
     key: "repair.resolution.replacementProdukBaru",

@@ -71,17 +71,17 @@ const VALUE_PRICE_TYPE = "Regional Warehouse";
  * validasi server (memuat zod) tidak ikut ke bundel halaman.
  */
 const ORIGIN_LABELS = [
+  { value: "Customer", key: "repair.origin.customer" },
   { value: "Distri", key: "repair.origin.distri" },
   { value: "OR", key: "repair.origin.or" },
-  { value: "Customer", key: "repair.origin.customer" },
 ] as const;
 
 const STATUS_LABELS = [
+  { value: "Belum Di Buka", key: "repair.status.belumDibuka" },
+  { value: "Done Kirim", key: "repair.status.doneKirim" },
   { value: "Done Repair", key: "repair.status.doneRepair" },
   { value: "Proses", key: "repair.status.proses" },
-  { value: "Belum Di Buka", key: "repair.status.belumDibuka" },
   { value: "Tidak Ada Data", key: "repair.status.tidakAdaData" },
-  { value: "Done Kirim", key: "repair.status.doneKirim" },
 ] as const;
 
 /** "2026-04" -> "04" (filter bulan; `Repair.month` disimpan sebagai "YYYY-MM"). */

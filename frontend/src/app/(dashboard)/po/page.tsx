@@ -234,7 +234,7 @@ export default function PoPage() {
 
   // Keterangan kini nilai tetap di kode — tidak ada endpoint master lagi.
   const keteranganOptions = useMemo(
-    () => KETERANGAN_OPTIONS.map((option) => ({ value: option, label: option })),
+    () => [...KETERANGAN_OPTIONS].sort().map((option) => ({ value: option, label: option })),
     []
   );
 
