@@ -388,9 +388,11 @@ export default function ReportPage() {
           supaya angka rupiah yang panjang tidak berdesakan. */}
       <div className="mb-6 grid grid-cols-2 gap-4">
         {/* Dua kartu BARDI dibungkus satu section supaya quantity + nilainya
-            terbaca sebagai satu kesatuan (card nesting). */}
-        <section className="col-span-2 rounded-2xl bg-muted/40 p-4 ring-1 ring-foreground/8">
-          <h3 className="mb-3 font-heading text-sm font-medium">
+            terbaca sebagai satu kesatuan (card nesting). Warna memakai primary
+            (teal BARDI) dengan tint + ring supaya sectionnya kelihatan kontras
+            dari kartu putih di sekelilingnya. */}
+        <section className="col-span-2 rounded-2xl bg-primary/15 p-4 ring-1 ring-primary/40">
+          <h3 className="mb-3 font-heading text-sm font-semibold text-primary">
             {t("report.replacementSection")}
           </h3>
           <div className="grid grid-cols-2 gap-4">
