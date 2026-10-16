@@ -286,7 +286,7 @@ export function MetricBarChart({
   data,
   metric,
   kind,
-  height = 210,
+  height = 240,
   rotateLabels = false,
 }: {
   data: ChartBucket[];
@@ -367,8 +367,8 @@ export function PieWithLegend({
   data,
   metric,
   kind,
-  height = 210,
-  outerRadius = 64,
+  height = 240,
+  outerRadius = 70,
   legendMaxLen = 22,
   title,
 }: {
@@ -438,7 +438,7 @@ export function ChartPairCard({
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>{bar}</div>
           <div>{pie}</div>
         </div>
