@@ -560,6 +560,9 @@ Catatan perilaku Report yang harus dijaga:
   aturan yang sama dengan Defect/Repair: bulan klaim, kalau tidak ada → bulan terdekat sebelumnya).
   **JANGAN** memakai harga tab "Data Produk" di sheet itu (keputusan user: "pakai harga yg ada di app").
   Produk yang belum ada di Data Master → `productId` NULL dan ditandai `incompleteFields: "product"`.
+- **Jumlah unit (kolom R) mengikuti sheet APA ADANYA, termasuk 0** (keputusan user 18 Okt 2026:
+  "ikutin sheet aja jadi 0 ya") — dulu sync memaksa `Math.max(1, …)` sehingga 5 baris ber-R `0`
+  membuat Total Unit app 9.670 sementara sheet 9.665.
 - **Baris tanpa Timestamp kolom B TIDAK diimpor** (permintaan user, 18 Okt 2026) dan baris app lama yang
   `timeStamp`-nya kosong ikut DIHAPUS saat sync; keduanya dihitung di `summary.skippedNoTimestamp` /
   `summary.removedNoTimestamp` dan tampil di dialog hasil sync. Karena itu `date` selalu terisi dan

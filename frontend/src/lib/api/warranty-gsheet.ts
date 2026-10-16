@@ -189,7 +189,9 @@ export async function runWarrantySync(): Promise<{
       }
     }
 
-    const quantity = Math.max(1, Math.round(parseSheetNumber(rawQuantity) || 1));
+    // Jumlah unit mengikuti sheet apa adanya, termasuk 0 (permintaan user:
+    // "ikutin sheet aja jadi 0 ya" — dulu dipaksa minimal 1).
+    const quantity = Math.max(0, Math.round(parseSheetNumber(rawQuantity)));
     const period = timeStamp.slice(0, 7);
     const price =
       productId && /^\d{4}-\d{2}$/.test(period)

@@ -314,7 +314,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `productForm` | text | "Produk yang ingin di Claim" (pilihan pelanggan, kolom N) |
 | `officialName` | text | kolom AC — nama produk resmi, patokan pencocokan produk |
 | `productId` | integer NULL | → `products.id`; NULL berarti nama resmi belum ada di Data Master |
-| `quantity` | integer | kolom R, minimal 1 |
+| `quantity` | integer | kolom R apa adanya (boleh 0 kalau sheet-nya 0) |
 | `status` / `sla` / `pic` / `note` | text | kolom X, Z, AA, AB |
 | `value` | integer | Jumlah unit × harga **Regional Warehouse** dari Price List app |
 | `priceType` | text | selalu `Regional Warehouse` |
