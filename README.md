@@ -310,6 +310,7 @@ mengaitkan di satu produk tidak melepasnya dari produk lain (beda dengan `produc
 | `timeStamp` | text | `YYYY-MM-DDTHH:mm` |
 | `customerName` / `customerPhone` / `customerEmail` | text | data pelanggan dari sheet |
 | `city` | text | kolom P |
+| `collectionPoint` | text | kolom O — titik serah/Collection Point, tampil sebagai kolom tabel |
 | `courier` / `resiUnit` / `resi` | text | Ekspedisi, resi pengiriman unit, resi pengiriman |
 | `productForm` | text | "Produk yang ingin di Claim" (pilihan pelanggan, kolom N) |
 | `officialName` | text | kolom AC — nama produk resmi, patokan pencocokan produk |

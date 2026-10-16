@@ -298,13 +298,10 @@ function WarrantyClaimsView() {
                     <TableRow>
                       <TableHead>{t("warranty.table.date")}</TableHead>
                       <TableHead>{t("warranty.table.claim")}</TableHead>
-                      <TableHead>{t("warranty.table.customer")}</TableHead>
                       <TableHead>{t("warranty.table.product")}</TableHead>
                       <TableHead className="text-right">{t("warranty.table.qty")}</TableHead>
                       <TableHead>{t("warranty.table.status")}</TableHead>
-                      <TableHead>{t("warranty.table.resi")}</TableHead>
-                      <TableHead>{t("warranty.table.city")}</TableHead>
-                      <TableHead className="text-right">{t("warranty.table.value")}</TableHead>
+                      <TableHead>{t("warranty.table.collectionPoint")}</TableHead>
                       <TableHead className="text-right">{t("warranty.table.action")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -326,13 +323,14 @@ function WarrantyClaimsView() {
                             ) : null}
                           </span>
                         </TableCell>
-                        <TableCell>{row.customerName || "—"}</TableCell>
-                        <TableCell>{row.officialName || row.productForm || "—"}</TableCell>
+                        <TableCell className="max-w-[320px] truncate" title={row.officialName || row.productForm}>
+                          {row.officialName || row.productForm || "—"}
+                        </TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(row.quantity)}</TableCell>
                         <TableCell>{row.status || "—"}</TableCell>
-                        <TableCell className="whitespace-nowrap">{row.resi || row.resiUnit || "—"}</TableCell>
-                        <TableCell>{row.city || "—"}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatIDR(row.value)}</TableCell>
+                        <TableCell className="max-w-[220px] truncate" title={row.collectionPoint}>
+                          {row.collectionPoint || "—"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" onClick={() => setDetail(row)}>
                             <Eye className="size-4" />
@@ -428,6 +426,7 @@ function WarrantyDetail({ row }: { row: WarrantyClaim }) {
     { label: t("warranty.field.phone"), value: row.customerPhone || "—" },
     { label: t("warranty.field.email"), value: row.customerEmail || "—" },
     { label: t("warranty.field.city"), value: row.city || "—" },
+    { label: t("warranty.field.collectionPoint"), value: row.collectionPoint || "—" },
     { label: t("warranty.field.officialName"), value: row.officialName || "—" },
     { label: t("warranty.field.productForm"), value: row.productForm || "—" },
     { label: t("warranty.field.quantity"), value: formatNumber(row.quantity) },

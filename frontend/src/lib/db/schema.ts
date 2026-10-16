@@ -652,6 +652,8 @@ export const warrantyClaims = sqliteTable(
     customerEmail: text("customerEmail").notNull().default(""),
     /** Kota asal pengiriman (kolom P). */
     city: text("city").notNull().default(""),
+    /** Collection Point (kolom O). */
+    collectionPoint: text("collectionPoint").notNull().default(""),
     /** Kurir (kolom G). */
     courier: text("courier").notNull().default(""),
     /** Resi pengiriman unit ke BARDI (kolom H). */

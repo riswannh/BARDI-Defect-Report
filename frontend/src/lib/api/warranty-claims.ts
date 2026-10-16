@@ -21,6 +21,7 @@ const warrantySelect = {
   customerPhone: warrantyClaims.customerPhone,
   customerEmail: warrantyClaims.customerEmail,
   city: warrantyClaims.city,
+  collectionPoint: warrantyClaims.collectionPoint,
   courier: warrantyClaims.courier,
   resiUnit: warrantyClaims.resiUnit,
   resi: warrantyClaims.resi,

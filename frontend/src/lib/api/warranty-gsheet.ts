@@ -208,6 +208,7 @@ export async function runWarrantySync(): Promise<{
       customerPhone: text(cgCell(cells, "phone")),
       customerEmail: text(cgCell(cells, "email")),
       city: text(cgCell(cells, "city")),
+      collectionPoint: text(cgCell(cells, "collectionPoint")),
       courier: text(cgCell(cells, "courier")),
       resiUnit: text(cgCell(cells, "resiUnit")),
       resi: text(cgCell(cells, "resi")),

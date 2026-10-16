@@ -130,6 +130,8 @@ export interface WarrantyClaim {
   customerPhone: string;
   customerEmail: string;
   city: string;
+  /** Collection Point (kolom O). */
+  collectionPoint: string;
   courier: string;
   /** Resi pengiriman unit ke BARDI (kolom H). */
   resiUnit: string;
