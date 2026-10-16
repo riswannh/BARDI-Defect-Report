@@ -1291,6 +1291,8 @@ const translations = {
   "warranty.sync.incomplete": { id: "Ditandai tidak lengkap", en: "Flagged incomplete", zh: "标记为不完整" },
   "warranty.sync.onlyInApp": { id: "Hanya ada di app", en: "Only in the app", zh: "仅存在于应用" },
   "warranty.sync.empty": { id: "Baris kosong dilewati", en: "Empty rows skipped", zh: "跳过的空行" },
+  "warranty.sync.noTimestamp": { id: "Tanpa Timestamp dilewati", en: "Rows without a Timestamp skipped", zh: "跳过无时间戳的行" },
+  "warranty.sync.removedNoTimestamp": { id: "Baris lama tanpa Timestamp dibuang", en: "Old rows without a Timestamp removed", zh: "已删除无时间戳的旧行" },
   "warranty.sync.unknownProducts": {
     id: "Produk belum ada di Data Master",
     en: "Products missing from master data",

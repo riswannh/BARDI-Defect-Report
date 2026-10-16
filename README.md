@@ -654,6 +654,8 @@ Modul ini **baca-saja**: tidak ada tambah/ubah/hapus di app — satu-satunya jal
 - Baris yang kurang data tetap masuk dan ditandai kolom `incompleteFields`
   (`claimId`, `date`, `product`, `price`) → chip "Tidak lengkap" di daftar.
 - Baris yang **seluruh** kolom terpetakannya kosong dilewati dan dilaporkan di dialog hasil sync.
+- Baris **tanpa Timestamp kolom B** tidak diimpor sama sekali (permintaan user); baris app lama yang
+  Timestamp-nya kosong ikut dibuang saat sync — keduanya muncul di dialog hasil sync.
 - Perintah sync & self-check (butuh kredensial service account; bisa juga dari dalam container):
   `cmd /c "npx tsx scripts/cg-gsheet-sync.ts"` dan `cmd /c "npx tsx scripts/cg-check.ts"`.
 

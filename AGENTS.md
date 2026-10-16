@@ -560,6 +560,10 @@ Catatan perilaku Report yang harus dijaga:
   aturan yang sama dengan Defect/Repair: bulan klaim, kalau tidak ada → bulan terdekat sebelumnya).
   **JANGAN** memakai harga tab "Data Produk" di sheet itu (keputusan user: "pakai harga yg ada di app").
   Produk yang belum ada di Data Master → `productId` NULL dan ditandai `incompleteFields: "product"`.
+- **Baris tanpa Timestamp kolom B TIDAK diimpor** (permintaan user, 18 Okt 2026) dan baris app lama yang
+  `timeStamp`-nya kosong ikut DIHAPUS saat sync; keduanya dihitung di `summary.skippedNoTimestamp` /
+  `summary.removedNoTimestamp` dan tampil di dialog hasil sync. Karena itu `date` selalu terisi dan
+  tanda `incompleteFields: "date"` tidak lagi muncul di baris baru.
 - Jangan pakai `cgCell()` untuk kolom Timestamp/Jumlah: itu men-`String()` nilai lebih dulu sehingga
   serial tanggal Google (`46023.402…`) tidak lagi dikenali `parseSheetTimestamp()`; pakai `cgRaw()`.
   Gejalanya: semua `date`/`timeStamp` kosong dan `value` 0 di seluruh tabel.

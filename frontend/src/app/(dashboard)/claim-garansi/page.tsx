@@ -396,6 +396,8 @@ function WarrantyClaimsView() {
                 <SyncStat label={t("warranty.sync.incomplete")} value={syncResult.incompleteRows} />
                 <SyncStat label={t("warranty.sync.onlyInApp")} value={syncResult.onlyInApp} />
                 <SyncStat label={t("warranty.sync.empty")} value={syncResult.skippedEmpty} />
+                <SyncStat label={t("warranty.sync.noTimestamp")} value={syncResult.skippedNoTimestamp} />
+                <SyncStat label={t("warranty.sync.removedNoTimestamp")} value={syncResult.removedNoTimestamp} />
               </dl>
               {syncResult.unknownProducts.length > 0 ? (
                 <div>

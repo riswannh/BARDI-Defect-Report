@@ -30,7 +30,9 @@ import type { ImportIssue, ImportResult, ProductPrice } from "@/lib/types";
  *
  * Baris yang datanya kurang (Claim ID / tanggal / produk tak dikenal / harga
  * belum ada) TETAP masuk dan ditandai `incompleteFields`. Baris yang tidak
- * diimpor hanya baris yang seluruh kolom terpentingnya kosong.
+ * diimpor: baris yang seluruh kolom terpentingnya kosong, dan baris tanpa
+ * Timestamp kolom B (permintaan user) — baris app lama yang Timestamp-nya
+ * kosong ikut dibuang saat sync.
  */
 export type WarrantySyncSummary = {
   sheetRows: number;
@@ -46,6 +48,10 @@ export type WarrantySyncSummary = {
   unknownProducts: string[];
   /** Baris sheet yang seluruh kolom terpentingnya kosong (tidak diimpor). */
   skippedEmpty: number;
+  /** Baris sheet tanpa Timestamp kolom B (tidak diimpor sama sekali). */
+  skippedNoTimestamp: number;
+  /** Baris app lama yang Timestamp-nya kosong dan ikut dibuang. */
+  removedNoTimestamp: number;
 };
 
 const MAX_ISSUES = 500;
@@ -142,6 +148,8 @@ export async function runWarrantySync(): Promise<{
     onlyInApp: 0,
     unknownProducts,
     skippedEmpty: 0,
+    skippedNoTimestamp: 0,
+    removedNoTimestamp: 0,
   };
 
   const note = (list: ImportIssue[], row: number, key: string, reason: string) => {
@@ -159,6 +167,13 @@ export async function runWarrantySync(): Promise<{
     // Baris benar-benar kosong (sisa baris kosong di ujung tab) dilewati.
     if (!claimId && !timeStamp && !officialName && !status && !rawQuantity) {
       summary.skippedEmpty += 1;
+      continue;
+    }
+
+    // Baris tanpa Timestamp (kolom B) tidak diimpor sama sekali.
+    if (!timeStamp) {
+      summary.skippedNoTimestamp += 1;
+      note(skippedDetails, sheetRow, claimId || officialName, "Timestamp (kolom B) kosong — baris tidak diimpor.");
       continue;
     }
 
@@ -277,15 +292,23 @@ export async function runWarrantySync(): Promise<{
     summary.updated = updates.size;
   }
 
+  // Baris app lama yang Timestamp-nya kosong (hasil sync versi lama) ikut dibuang.
+  summary.removedNoTimestamp = db
+    .delete(warrantyClaims)
+    .where(eq(warrantyClaims.timeStamp, ""))
+    .run().changes;
+
   for (const row of appRows) {
-    if (!consumed.has(row.id)) summary.onlyInApp += 1;
+    if (consumed.has(row.id)) continue;
+    if (!row.timeStamp) continue;
+    summary.onlyInApp += 1;
   }
 
   const result: ImportResult = {
     module: "cg-sync",
     totalRows: rows.length,
     inserted: summary.created + summary.updated,
-    skipped: summary.unchanged + summary.skippedEmpty,
+    skipped: summary.unchanged + summary.skippedEmpty + summary.skippedNoTimestamp,
     errors,
     skippedDetails,
   };

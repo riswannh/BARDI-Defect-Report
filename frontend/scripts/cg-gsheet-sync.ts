@@ -20,7 +20,7 @@ async function main() {
     `Baris sheet: ${result.totalRows} | masuk: ${result.inserted} | dilewati: ${result.skipped} | gagal: ${result.errors.length}`
   );
   console.log(
-    `Ringkasan — baru: ${summary.created} | diperbarui: ${summary.updated} | tetap: ${summary.unchanged} | baris kosong: ${summary.skippedEmpty}`
+    `Ringkasan — baru: ${summary.created} | diperbarui: ${summary.updated} | tetap: ${summary.unchanged} | baris kosong: ${summary.skippedEmpty} | tanpa timestamp: ${summary.skippedNoTimestamp} | dibuang: ${summary.removedNoTimestamp}`
   );
   console.log(
     `Tidak lengkap: ${summary.incompleteRows} | hanya di app: ${summary.onlyInApp}`
