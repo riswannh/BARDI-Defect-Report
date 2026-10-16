@@ -110,7 +110,6 @@ function WarrantyClaimsView() {
 
   const totals = useMemo(
     () => ({
-      claims: filtered.length,
       quantity: filtered.reduce((sum, row) => sum + (row.quantity || 0), 0),
       value: filtered.reduce((sum, row) => sum + (row.value || 0), 0),
       incomplete: filtered.filter((row) => Boolean(row.incompleteFields)).length,
@@ -155,13 +154,7 @@ function WarrantyClaimsView() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryCard
-          title={t("warranty.stat.claims")}
-          value={formatNumber(totals.claims)}
-          description={t("warranty.stat.claimsDesc")}
-          icon={PackageCheck}
-        />
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <SummaryCard
           title={t("warranty.stat.qty")}
           value={formatNumber(totals.quantity)}

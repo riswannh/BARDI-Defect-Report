@@ -1216,12 +1216,6 @@ const translations = {
     en: "The sheet is the source of every filled column; the Rupiah value is computed by the app from the Price List.",
     zh: "工作表是所有填写列的来源；金额由应用根据价格表计算。",
   },
-  "warranty.stat.claims": { id: "Total Claim", en: "Total Claims", zh: "申请总数" },
-  "warranty.stat.claimsDesc": {
-    id: "Jumlah baris claim garansi pada filter ini.",
-    en: "Number of warranty claim rows in this filter.",
-    zh: "当前筛选下的保修申请行数。",
-  },
   "warranty.stat.qty": { id: "Total Unit", en: "Total Units", zh: "总数量" },
   "warranty.stat.qtyDesc": {
     id: "Jumlah unit yang di-claim pada baris-baris ini.",
