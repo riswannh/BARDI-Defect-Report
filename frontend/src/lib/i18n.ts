@@ -268,6 +268,27 @@ const translations = {
     en: "Replacement By BARDI",
     zh: "BARDI 换货",
   },
+  /** Judul section lain di grid kartu ringkasan Report. */
+  "report.totalSalesSection": {
+    id: "Total Sales",
+    en: "Total Sales",
+    zh: "销售",
+  },
+  "report.replacementFactorySection": {
+    id: "Replacement By Factory",
+    en: "Replacement By Factory",
+    zh: "工厂换货",
+  },
+  "report.repairSection": {
+    id: "Repair by Hub",
+    en: "Repair by Hub",
+    zh: "HUB 维修",
+  },
+  "report.allowanceSection": {
+    id: "Allowance Defect",
+    en: "Allowance Defect",
+    zh: "缺陷额度",
+  },
   /** Judul kartu ringkasan (kolom tabel rekap tetap memakai report.replacement). */
   "report.replacementCard": {
     id: "Replacement Quantity by Factory",
@@ -320,6 +341,16 @@ const translations = {
     id: "Limit tahun {year} belum diisi di Data Master.",
     en: "The {year} limit is not set in Master Data.",
     zh: "{year} 年限额尚未在主数据中设置。",
+  },
+  "report.repairQty": {
+    id: "Repair Quantity by HUB",
+    en: "Repair Quantity by HUB",
+    zh: "HUB 维修数量",
+  },
+  "report.repairQtyDesc": {
+    id: "Jumlah baris Repair Data berstatus Done Kirim / Done Repair pada periode ini.",
+    en: "Repair Data rows with status Done Kirim / Done Repair in this period.",
+    zh: "本期状态为 Done Kirim / Done Repair 的维修数据行数。",
   },
   "report.repairValue": {
     id: "Repair Value by HUB",

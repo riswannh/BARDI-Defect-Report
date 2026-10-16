@@ -6,6 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -305,9 +306,18 @@ export function MetricBarChart({
         : "defectQty";
   // Grafik kecil (mis. di dalam dialog detail) memakai label yang lebih rapat.
   const compact = height <= 210;
+  // Angka ditulis di atas tiap batang (bukan cuma saat hover). Nilai uang
+  // dipadatkan (mis. "Rp 1,6 M") supaya labelnya pendek — angka lengkapnya
+  // tetap muncul di tooltip saat batangnya di-hover.
+  const barLabel = (value: unknown) =>
+    metric === "value" ? compactIDR.format(Number(value)) : formatNumber(Number(value));
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data}>
+      <BarChart
+        data={data}
+        margin={{ top: 22, right: 8, left: 0, bottom: 0 }}
+        barCategoryGap="18%"
+      >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="label"
@@ -336,7 +346,17 @@ export function MetricBarChart({
           name={kind === "sales" ? t("report.sales") : t("report.defect")}
           fill={kind === "sales" ? "var(--chart-2)" : "var(--chart-4)"}
           radius={[4, 4, 0, 0]}
-        />
+          maxBarSize={80}
+        >
+          <LabelList
+            dataKey={dataKey}
+            position="top"
+            offset={6}
+            formatter={barLabel}
+            fill="var(--muted-foreground)"
+            fontSize={compact ? 9 : 10}
+          />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

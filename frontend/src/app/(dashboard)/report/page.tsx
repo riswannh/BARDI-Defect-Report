@@ -61,6 +61,7 @@ import {
   type ReportResponse,
 } from "./report-data";
 import { ProductDetailDialog } from "./product-detail-dialog";
+import { SummarySection } from "./summary-section";
 
 export default function ReportPage() {
   const { isAdmin } = useAuth();
@@ -387,45 +388,40 @@ export default function ReportPage() {
       {/* Kartu disusun 2 kolom dan menurun ke bawah (bukan satu baris panjang),
           supaya angka rupiah yang panjang tidak berdesakan. */}
       <div className="mb-6 grid grid-cols-2 gap-4">
-        {/* Dua kartu BARDI dibungkus satu section supaya quantity + nilainya
-            terbaca sebagai satu kesatuan (card nesting). Warna memakai primary
-            (teal BARDI) dengan tint + ring supaya sectionnya kelihatan kontras
-            dari kartu putih di sekelilingnya. */}
-        <section className="col-span-2 rounded-2xl bg-primary/15 p-4 ring-1 ring-primary/40">
-          <h3 className="mb-3 font-heading text-sm font-semibold text-primary">
-            {t("report.replacementSection")}
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <SummaryCard
-              title={t("report.totalDefect")}
-              value={formatNumber(dQty)}
-              description={t("common.quantity")}
-              icon={AlertTriangle}
-            />
-            {isAdmin && (
-              <SummaryCard
-                title={t("report.defectValue")}
-                value={formatIDR(dVal)}
-                description={t("common.valueIdr")}
-                icon={Wallet}
-              />
-            )}
-          </div>
-        </section>
-        <SummaryCard
-          title={t("report.totalSales")}
-          value={formatNumber(sQty)}
-          description={t("common.quantity")}
-          icon={ShoppingCart}
-        />
-        {isAdmin && (
+        {/* Kartu dikelompokkan per topik (section berjudul) supaya angka yang
+            sejenis berdampingan; masing-masing section tetap grid 2 kolom. */}
+        <SummarySection title={t("report.replacementSection")}>
           <SummaryCard
-            title={t("report.salesValue")}
-            value={formatIDR(sVal)}
-            description={t("common.valueIdr")}
-            icon={Banknote}
+            title={t("report.totalDefect")}
+            value={formatNumber(dQty)}
+            description={t("common.quantity")}
+            icon={AlertTriangle}
           />
-        )}
+          {isAdmin && (
+            <SummaryCard
+              title={t("report.defectValue")}
+              value={formatIDR(dVal)}
+              description={t("common.valueIdr")}
+              icon={Wallet}
+            />
+          )}
+        </SummarySection>
+        <SummarySection title={t("report.totalSalesSection")}>
+          <SummaryCard
+            title={t("report.totalSales")}
+            value={formatNumber(sQty)}
+            description={t("common.quantity")}
+            icon={ShoppingCart}
+          />
+          {isAdmin && (
+            <SummaryCard
+              title={t("report.salesValue")}
+              value={formatIDR(sVal)}
+              description={t("common.valueIdr")}
+              icon={Banknote}
+            />
+          )}
+        </SummarySection>
         <SummaryCard
           title={t("report.ratio")}
           value={
@@ -441,73 +437,85 @@ export default function ReportPage() {
           icon={Percent}
         />
         {/* Diambil dari PO Product berketerangan "Replacement", mengikuti
-            periode yang sedang dipilih. */}
-        <SummaryCard
-          title={t("report.replacementCard")}
-          value={formatNumber(replacementQty)}
-          description={t("report.replacementDesc")}
-          icon={Package}
-        />
-        {isAdmin && (
+            periode yang sedang dipilih. Selisih Defect = jumlah baris minus
+            saja (Replacement − Qty Defect), arahnya sama dengan kolom rekap —
+            minus berarti defect belum tertutup Replacement, jadi warnanya
+            merah lewat selisihTextClass. */}
+        <SummarySection title={t("report.replacementFactorySection")}>
           <SummaryCard
-            title={t("report.replacementValue")}
-            value={formatIDR(report?.totals.replacementRwValue ?? 0)}
-            description={t("report.replacementValueDesc")}
-            icon={Receipt}
+            title={t("report.replacementCard")}
+            value={formatNumber(replacementQty)}
+            description={t("report.replacementDesc")}
+            icon={Package}
           />
-        )}
-        {/* Selisih Defect = jumlah baris minus saja (Replacement − Qty Defect),
-            arahnya sama dengan kolom rekap — minus berarti defect belum
-            tertutup Replacement, jadi warnanya merah lewat selisihTextClass. */}
-        <SummaryCard
-          title={t("report.selisihQty")}
-          value={
-            <span className={selisihTextClass(selisihQty)}>
-              {formatSelisih(selisihQty)}
-            </span>
-          }
-          description={t("report.selisihQtyDesc")}
-          icon={Scale}
-        />
-        {isAdmin && (
+          {isAdmin && (
+            <SummaryCard
+              title={t("report.replacementValue")}
+              value={formatIDR(report?.totals.replacementRwValue ?? 0)}
+              description={t("report.replacementValueDesc")}
+              icon={Receipt}
+            />
+          )}
           <SummaryCard
-            title={t("report.selisihValue")}
+            title={t("report.selisihQty")}
             value={
-              <span className={selisihTextClass(selisihValue)}>
-                {formatSelisih(selisihValue, formatIDR)}
+              <span className={selisihTextClass(selisihQty)}>
+                {formatSelisih(selisihQty)}
               </span>
             }
-            description={t("report.selisihValueDesc")}
-            icon={Coins}
+            description={t("report.selisihQtyDesc")}
+            icon={Scale}
           />
+          {isAdmin && (
+            <SummaryCard
+              title={t("report.selisihValue")}
+              value={
+                <span className={selisihTextClass(selisihValue)}>
+                  {formatSelisih(selisihValue, formatIDR)}
+                </span>
+              }
+              description={t("report.selisihValueDesc")}
+              icon={Coins}
+            />
+          )}
+        </SummarySection>
+        {isAdmin && (
+          <SummarySection title={t("report.repairSection")}>
+            <SummaryCard
+              title={t("report.repairQty")}
+              value={formatNumber(repairQty)}
+              description={t("report.repairQtyDesc")}
+              icon={Wrench}
+            />
+            <SummaryCard
+              title={t("report.repairValue")}
+              value={formatIDR(repairValue)}
+              description={t("report.repairValueDesc", { rows: repairQty })}
+              icon={Wrench}
+            />
+          </SummarySection>
         )}
         {isAdmin && (
-          <SummaryCard
-            title={t("report.allowance")}
-            value={
-              <span className={selisihTextClass(allowanceLeft)}>
-                {allowance ? formatIDR(allowanceLeft) : "-"}
-              </span>
-            }
-            description={
-              allowance
-                ? t("report.allowanceDesc", {
-                    year: allowance.year,
-                    limit: formatIDR(allowance.prorated),
-                    value: formatIDR(dVal),
-                  })
-                : t("report.allowanceMissing", { year: report?.allowanceYear ?? "" })
-            }
-            icon={PiggyBank}
-          />
-        )}
-        {isAdmin && (
-          <SummaryCard
-            title={t("report.repairValue")}
-            value={formatIDR(repairValue)}
-            description={t("report.repairValueDesc", { rows: repairQty })}
-            icon={Wrench}
-          />
+          <SummarySection title={t("report.allowanceSection")}>
+            <SummaryCard
+              title={t("report.allowance")}
+              value={
+                <span className={selisihTextClass(allowanceLeft)}>
+                  {allowance ? formatIDR(allowanceLeft) : "-"}
+                </span>
+              }
+              description={
+                allowance
+                  ? t("report.allowanceDesc", {
+                      year: allowance.year,
+                      limit: formatIDR(allowance.prorated),
+                      value: formatIDR(dVal),
+                    })
+                  : t("report.allowanceMissing", { year: report?.allowanceYear ?? "" })
+              }
+              icon={PiggyBank}
+            />
+          </SummarySection>
         )}
       </div>
 
