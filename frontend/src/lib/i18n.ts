@@ -262,6 +262,12 @@ const translations = {
     en: "Replacement",
     zh: "更换",
   },
+  /** Judul section yang membungkus dua kartu Replacement (BARDI). */
+  "report.replacementSection": {
+    id: "Replacement By BARDI",
+    en: "Replacement By BARDI",
+    zh: "BARDI 换货",
+  },
   /** Judul kartu ringkasan (kolom tabel rekap tetap memakai report.replacement). */
   "report.replacementCard": {
     id: "Replacement Quantity by Factory",

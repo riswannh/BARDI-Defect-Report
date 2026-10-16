@@ -387,20 +387,29 @@ export default function ReportPage() {
       {/* Kartu disusun 2 kolom dan menurun ke bawah (bukan satu baris panjang),
           supaya angka rupiah yang panjang tidak berdesakan. */}
       <div className="mb-6 grid grid-cols-2 gap-4">
-        <SummaryCard
-          title={t("report.totalDefect")}
-          value={formatNumber(dQty)}
-          description={t("common.quantity")}
-          icon={AlertTriangle}
-        />
-        {isAdmin && (
-          <SummaryCard
-            title={t("report.defectValue")}
-            value={formatIDR(dVal)}
-            description={t("common.valueIdr")}
-            icon={Wallet}
-          />
-        )}
+        {/* Dua kartu BARDI dibungkus satu section supaya quantity + nilainya
+            terbaca sebagai satu kesatuan (card nesting). */}
+        <section className="col-span-2 rounded-2xl bg-muted/40 p-4 ring-1 ring-foreground/8">
+          <h3 className="mb-3 font-heading text-sm font-medium">
+            {t("report.replacementSection")}
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <SummaryCard
+              title={t("report.totalDefect")}
+              value={formatNumber(dQty)}
+              description={t("common.quantity")}
+              icon={AlertTriangle}
+            />
+            {isAdmin && (
+              <SummaryCard
+                title={t("report.defectValue")}
+                value={formatIDR(dVal)}
+                description={t("common.valueIdr")}
+                icon={Wallet}
+              />
+            )}
+          </div>
+        </section>
         <SummaryCard
           title={t("report.totalSales")}
           value={formatNumber(sQty)}
