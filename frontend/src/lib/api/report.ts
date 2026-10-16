@@ -27,8 +27,10 @@ import {
   repairs,
   sales,
   statuses,
+  warrantyClaims,
 } from "@/lib/db/schema";
 import { countsForRepairValue } from "@/lib/repair-value";
+import { countsForClaimSummary, summarizeClaims } from "@/lib/claim-summary";
 import {
   requireUser,
   scopedFactoryId,
@@ -101,7 +103,7 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows] =
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows, claimRows] =
     await Promise.all([
       db.select().from(defects).where(defectWhere),
       db.select().from(sales).where(saleWhere),
@@ -151,6 +153,16 @@ export async function reportGET(req: NextRequest) {
           value: repairs.value,
         })
         .from(repairs),
+      // Kartu "Claim Garansi BARDI": quantity + value baris claim garansi
+      // (permintaan user 18 Okt 2026).
+      db
+        .select({
+          date: warrantyClaims.date,
+          status: warrantyClaims.status,
+          quantity: warrantyClaims.quantity,
+          value: warrantyClaims.value,
+        })
+        .from(warrantyClaims),
     ]);
 
   const appDefects = defectRows.map((row) => ({
@@ -192,6 +204,16 @@ export async function reportGET(req: NextRequest) {
    */
   const filteredRepairs = repairRows.filter(
     (row) => countsForRepairValue(row.status, row.resolution) && matchesDefectPeriod(row.date, f)
+  );
+
+  /**
+   * Kartu "Claim Garansi BARDI" — hanya baris yang statusnya bukan
+   * "Belum Ada Data" dan bukan "CLOSED" (permintaan user 18 Okt 2026).
+   * `warranty_claims.date` berformat `YYYY-MM-DD`, jadi memakai
+   * `matchesDefectPeriod` seperti baris repair.
+   */
+  const claimSummary = summarizeClaims(
+    claimRows.filter((row) => countsForClaimSummary(row.status) && matchesDefectPeriod(row.date, f))
   );
 
   /**
@@ -284,6 +306,10 @@ export async function reportGET(req: NextRequest) {
     // periode filter, plus jumlah barisnya untuk keterangan kartu.
     repairValue: filteredRepairs.reduce((sum, row) => sum + row.value, 0),
     repairQty: filteredRepairs.length,
+    // Kartu "Claim Garansi BARDI" (tanpa status Belum Ada Data / CLOSED).
+    claimQty: claimSummary.qty,
+    claimValue: claimSummary.value,
+    claimRows: claimSummary.rows,
   };
 
   // Limit allowance defect (Rupiah per tahun, master) diprorata ke periode

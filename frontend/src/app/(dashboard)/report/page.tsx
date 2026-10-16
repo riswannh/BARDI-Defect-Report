@@ -40,6 +40,7 @@ import {
   Wrench,
   Receipt,
   Scale,
+  ShieldCheck,
   ShoppingCart,
   Wallet,
 } from "lucide-react";
@@ -201,6 +202,11 @@ export default function ReportPage() {
   // selesai (Done Kirim / Done Repair) pada periode filter — dihitung di server.
   const repairValue = report?.totals.repairValue ?? 0;
   const repairQty = report?.totals.repairQty ?? 0;
+  // Kartu "Claim Garansi BARDI": Σ quantity + Σ nilai baris claim garansi pada
+  // periode filter, tanpa status "Belum Ada Data" dan "CLOSED" (dihitung server).
+  const claimQty = report?.totals.claimQty ?? 0;
+  const claimValue = report?.totals.claimValue ?? 0;
+  const claimRows = report?.totals.claimRows ?? 0;
 
   const buckets = report?.buckets ?? [];
   const salesYearly = report?.salesYearly ?? [];
@@ -492,6 +498,22 @@ export default function ReportPage() {
               value={formatIDR(repairValue)}
               description={t("report.repairValueDesc", { rows: repairQty })}
               icon={Wrench}
+            />
+          </SummarySection>
+        )}
+        {isAdmin && (
+          <SummarySection title={t("report.claimSection")}>
+            <SummaryCard
+              title={t("report.claimQty")}
+              value={formatNumber(claimQty)}
+              description={t("report.claimQtyDesc", { rows: claimRows })}
+              icon={ShieldCheck}
+            />
+            <SummaryCard
+              title={t("report.claimValue")}
+              value={formatIDR(claimValue)}
+              description={t("report.claimValueDesc", { rows: claimRows })}
+              icon={ShieldCheck}
             />
           </SummarySection>
         )}

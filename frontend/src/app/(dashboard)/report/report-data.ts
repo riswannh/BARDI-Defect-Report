@@ -66,6 +66,15 @@ export interface ReportResponse {
     repairValue?: number;
     /** Jumlah baris Repair yang ikut dihitung ke `repairValue`. */
     repairQty?: number;
+    /**
+     * Kartu "Claim Garansi BARDI": Σ quantity baris `warranty_claims` pada
+     * periode filter, tanpa status "Belum Ada Data" dan "CLOSED".
+     */
+    claimQty?: number;
+    /** Σ nilai baris claim yang sama (unit × harga RW, Rupiah). */
+    claimValue?: number;
+    /** Jumlah baris claim yang ikut dihitung (keterangan kartu). */
+    claimRows?: number;
   };
   years: number[];
   /**

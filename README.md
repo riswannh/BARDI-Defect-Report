@@ -659,6 +659,10 @@ Modul ini **baca-saja**: tidak ada tambah/ubah/hapus di app — satu-satunya jal
   Timestamp-nya kosong ikut dibuang saat sync — keduanya muncul di dialog hasil sync.
 - Perintah sync & self-check (butuh kredensial service account; bisa juga dari dalam container):
   `cmd /c "npx tsx scripts/cg-gsheet-sync.ts"` dan `cmd /c "npx tsx scripts/cg-check.ts"`.
+- Kartu **Claim Garansi BARDI** di halaman Report (admin saja): **Total Claim ID Quantity** = Σ `quantity`
+  dan **Total Claim ID Value** = Σ `value` baris claim pada periode filter, **tanpa** baris berstatus
+  "Belum Ada Data" dan "CLOSED" (`src/lib/claim-summary.ts`, self-check
+  `cmd /c "npx tsx scripts/claim-summary-check.ts"`). Angkanya tidak dikirim ke role Pabrik.
 
 ### Harga Produk (per bulan & tahun)
 
@@ -934,6 +938,9 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - **Kartu Replacement** = qty PO berketerangan `Replacement` pada periode terpilih.
 - Angka **mentah** tetap dipakai grafik, pie, dan tabel rekap.
 - Kartu **Nilai** (Nilai Defect, Nilai Sales) hanya tampil untuk admin; kartu lain tampil untuk semua role.
+- **Section "Claim Garansi BARDI"** (admin saja, kartu `report.claimQty` + `report.claimValue`):
+  Σ quantity dan Σ nilai baris `warranty_claims` pada periode filter, **tanpa** status "Belum Ada Data"
+  dan "CLOSED". Dihitung di server (`src/lib/claim-summary.ts`) dan ikut hilang dari respons role Pabrik.
 
 **Filter pabrik** (admin): dropdown searchable; role Pabrik terkunci pada pabriknya dan hanya melihat produk yang punya data di pabriknya.
 

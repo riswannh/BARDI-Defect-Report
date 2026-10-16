@@ -494,6 +494,15 @@ Catatan perilaku Report yang harus dijaga:
   (jumlah baris) **hanya ke admin** — cabang non-admin tidak memuat keduanya dan kartunya tidak dirender.
   Self-check aturan: `cmd /c "npx tsx scripts/repair-check.ts"` (dijalankan dari `frontend/`).
 
+- **Claim Garansi BARDI** (section `report.claimSection` di Report, **admin saja**, ditambahkan
+  18 Okt 2026) = dua kartu dari tabel `warranty_claims`: **Total Claim ID Quantity** (Σ `quantity`) dan
+  **Total Claim ID Value** (Σ `value`). Baris berstatus **"Belum Ada Data"** dan **"CLOSED"** TIDAK
+  dihitung (keputusan user); aturannya satu-satunya di `countsForClaimSummary()` +
+  `summarizeClaims()` (`src/lib/claim-summary.ts`), pencocokan periode lewat `matchesDefectPeriod`
+  atas `warranty_claims.date`. `/api/report` mengirim `totals.claimQty`/`claimValue`/`claimRows`
+  **hanya ke admin** (cabang non-admin tidak memuatnya dan sectionnya tidak dirender).
+  Self-check: `cmd /c "npx tsx scripts/claim-summary-check.ts"` (dijalankan dari `frontend/`).
+
 - **Repair Data** (menu `/repairs`, **admin saja**, ditambahkan 11 Okt 2026) = cermin tab "Data Reparasi"
   sheet Reparasi RFB (`REPAIR_GSHEET_ID`, default sudah ada di kode). Tabel `repairs`, identitas baris =
   `claimId` + `date` + `productId` (`repairMatchKey()` di `src/lib/repair-match.ts`) — **`claimId` TIDAK

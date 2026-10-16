@@ -285,6 +285,31 @@ const translations = {
     en: "Repair by Hub",
     zh: "HUB 维修",
   },
+  "report.claimSection": {
+    id: "Claim Garansi BARDI",
+    en: "BARDI Warranty Claim",
+    zh: "BARDI 保修申请",
+  },
+  "report.claimQty": {
+    id: "Total Claim ID Quantity",
+    en: "Total Claim ID Quantity",
+    zh: "保修申请总数量",
+  },
+  "report.claimQtyDesc": {
+    id: "Jumlah unit claim garansi pada periode ini, tanpa status Belum Ada Data dan CLOSED ({rows} baris).",
+    en: "Warranty claim units in this period, excluding Belum Ada Data and CLOSED statuses ({rows} rows).",
+    zh: "本期保修申请数量，不含 Belum Ada Data 和 CLOSED 状态（{rows} 行）。",
+  },
+  "report.claimValue": {
+    id: "Total Claim ID Value",
+    en: "Total Claim ID Value",
+    zh: "保修申请总价值",
+  },
+  "report.claimValueDesc": {
+    id: "Nilai unit × harga Regional Warehouse, tanpa status Belum Ada Data dan CLOSED ({rows} baris).",
+    en: "Units × Regional Warehouse price, excluding Belum Ada Data and CLOSED statuses ({rows} rows).",
+    zh: "数量 × 区域仓库价格，不含 Belum Ada Data 和 CLOSED 状态（{rows} 行）。",
+  },
   "report.allowanceSection": {
     id: "Allowance Defect",
     en: "Allowance Defect",
