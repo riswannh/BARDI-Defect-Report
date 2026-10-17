@@ -180,6 +180,12 @@ export default function ReportPage() {
   const sQty = report?.totals.salesQty ?? 0;
   const sVal = report?.totals.salesValue ?? 0;
   const ratioQty = defectSalesRatio(dQty, sQty);
+  // Rasio nilai Replacement pabrik terhadap nilai sales (admin saja — angka
+  // Rupiah tidak pernah dikirim ke role Pabrik).
+  const factoryValueRatio = defectSalesRatio(
+    report?.totals.replacementRwValue ?? 0,
+    sVal
+  );
   // PO berketerangan "Replacement" pada periode terpilih (dihitung di server).
   const replacementQty = report?.totals.replacementQty ?? 0;
   // Kartu Selisih Defect = TOTAL baris yang minus saja (Replacement kurang dari
@@ -205,6 +211,7 @@ export default function ReportPage() {
   // Kartu "Claim Garansi BARDI": Σ quantity + Σ nilai baris claim garansi pada
   // periode filter, tanpa status "Belum Ada Data" dan "CLOSED" (dihitung server).
   const claimQty = report?.totals.claimQty ?? 0;
+  const claimQtyRatio = defectSalesRatio(claimQty, sQty);
   const claimValue = report?.totals.claimValue ?? 0;
   const claimRows = report?.totals.claimRows ?? 0;
 
@@ -411,6 +418,22 @@ export default function ReportPage() {
               icon={Wallet}
             />
           )}
+          {/* Rasio defect terhadap sales ditaruh di section BARDI supaya angka
+              BARDI (qty, value) dan rasionya terbaca sebagai satu kelompok. */}
+          <SummaryCard
+            title={t("report.ratio")}
+            value={
+              ratioQty === null ? (
+                "-"
+              ) : (
+                <span className={ratioTextClass(ratioQty)}>
+                  {(ratioQty * 100).toFixed(2)}%
+                </span>
+              )
+            }
+            description={t("report.ratioDesc")}
+            icon={Percent}
+          />
         </SummarySection>
         <SummarySection title={t("report.totalSalesSection")}>
           <SummaryCard
@@ -428,20 +451,6 @@ export default function ReportPage() {
             />
           )}
         </SummarySection>
-        <SummaryCard
-          title={t("report.ratio")}
-          value={
-            ratioQty === null ? (
-              "-"
-            ) : (
-              <span className={ratioTextClass(ratioQty)}>
-                {(ratioQty * 100).toFixed(2)}%
-              </span>
-            )
-          }
-          description={t("report.ratioDesc")}
-          icon={Percent}
-        />
         {/* Diambil dari PO Product berketerangan "Replacement", mengikuti
             periode yang sedang dipilih. Selisih Defect = jumlah baris minus
             saja (Replacement − Qty Defect), arahnya sama dengan kolom rekap —
@@ -484,6 +493,22 @@ export default function ReportPage() {
               icon={Coins}
             />
           )}
+          {isAdmin && (
+            <SummaryCard
+              title={t("report.factoryValueRatio")}
+              value={
+                factoryValueRatio === null ? (
+                  "-"
+                ) : (
+                  <span className={ratioTextClass(factoryValueRatio)}>
+                    {(factoryValueRatio * 100).toFixed(2)}%
+                  </span>
+                )
+              }
+              description={t("report.factoryValueRatioDesc")}
+              icon={Percent}
+            />
+          )}
         </SummarySection>
         {isAdmin && (
           <SummarySection title={t("report.repairSection")}>
@@ -514,6 +539,20 @@ export default function ReportPage() {
               value={formatIDR(claimValue)}
               description={t("report.claimValueDesc", { rows: claimRows })}
               icon={ShieldCheck}
+            />
+            <SummaryCard
+              title={t("report.claimRatio")}
+              value={
+                claimQtyRatio === null ? (
+                  "-"
+                ) : (
+                  <span className={ratioTextClass(claimQtyRatio)}>
+                    {(claimQtyRatio * 100).toFixed(2)}%
+                  </span>
+                )
+              }
+              description={t("report.claimRatioDesc")}
+              icon={Percent}
             />
           </SummarySection>
         )}

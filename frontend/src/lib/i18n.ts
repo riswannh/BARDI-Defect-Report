@@ -310,6 +310,16 @@ const translations = {
     en: "Units × Regional Warehouse price, excluding Belum Ada Data and CLOSED statuses ({rows} rows).",
     zh: "数量 × 区域仓库价格，不含 Belum Ada Data 和 CLOSED 状态（{rows} 行）。",
   },
+  "report.claimRatio": {
+    id: "Rasio Claim Quantity/Sales Quantity",
+    en: "Claim Qty/Sales Qty Ratio",
+    zh: "保修数量/销售数量比率",
+  },
+  "report.claimRatioDesc": {
+    id: "Qty Claim ÷ Qty Sales",
+    en: "Claim Qty ÷ Sales Qty",
+    zh: "保修数量 ÷ 销售数量",
+  },
   "report.allowanceSection": {
     id: "Allowance Defect",
     en: "Allowance Defect",
@@ -352,6 +362,16 @@ const translations = {
     id: "Hanya baris minus: Value Factory − Value BARDI",
     en: "Negative rows only: Factory Value − BARDI Value",
     zh: "仅负数行：工厂金额 − BARDI 金额",
+  },
+  "report.factoryValueRatio": {
+    id: "Ratio Replacement Value Factory/Sales Value",
+    en: "Replacement Value Factory/Sales Value Ratio",
+    zh: "工厂换货金额/销售金额比率",
+  },
+  "report.factoryValueRatioDesc": {
+    id: "Value Replacement Factory ÷ Value Sales",
+    en: "Replacement Factory Value ÷ Sales Value",
+    zh: "工厂换货金额 ÷ 销售金额",
   },
   "report.allowance": {
     id: "Sisa Allowance Defect",
