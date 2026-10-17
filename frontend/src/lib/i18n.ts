@@ -320,6 +320,12 @@ const translations = {
     en: "Claim Qty ÷ Sales Qty",
     zh: "保修数量 ÷ 销售数量",
   },
+  /** Label pendek di panel stat (section kartu yang memakai bentuk panel). */
+  "report.statRatio": {
+    id: "% Ratio",
+    en: "% Ratio",
+    zh: "% 比率",
+  },
   "report.allowanceSection": {
     id: "Allowance Defect",
     en: "Allowance Defect",

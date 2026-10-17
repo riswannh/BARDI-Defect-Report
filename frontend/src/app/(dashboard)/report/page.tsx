@@ -62,7 +62,7 @@ import {
   type ReportResponse,
 } from "./report-data";
 import { ProductDetailDialog } from "./product-detail-dialog";
-import { SummarySection } from "./summary-section";
+import { StatItem, SummarySection } from "./summary-section";
 
 export default function ReportPage() {
   const { isAdmin } = useAuth();
@@ -403,34 +403,32 @@ export default function ReportPage() {
       <div className="mb-6 grid grid-cols-2 gap-3">
         {/* Kartu dikelompokkan per topik (section berjudul) supaya angka yang
             sejenis berdampingan; masing-masing section tetap grid 2 kolom. */}
-        <SummarySection title={t("report.replacementSection")}>
-          <SummaryCard
-            title={t("report.totalDefect")}
+        {/* Bentuk "single stacked column": satu panel putih berisi 3 angka
+            sebaris, labelnya cukup singkat karena topiknya sudah dibawa judul
+            section. */}
+        <SummarySection title={t("report.replacementSection")} panel>
+          <StatItem
+            label={t("common.quantity")}
             value={formatNumber(dQty)}
-            description={t("common.quantity")}
+            description={t("report.totalDefect")}
             icon={AlertTriangle}
           />
           {isAdmin && (
-            <SummaryCard
-              title={t("report.defectValue")}
+            <StatItem
+              label={t("common.value")}
               value={formatIDR(dVal)}
-              description={t("common.valueIdr")}
+              description={t("report.defectValue")}
               icon={Wallet}
             />
           )}
           {/* Rasio defect terhadap sales ditaruh di section BARDI supaya angka
               BARDI (qty, value) dan rasionya terbaca sebagai satu kelompok. */}
-          <SummaryCard
-            title={t("report.ratio")}
+          <StatItem
+            label={t("report.statRatio")}
             value={
-              ratioQty === null ? (
-                "-"
-              ) : (
-                <span className={ratioTextClass(ratioQty)}>
-                  {(ratioQty * 100).toFixed(2)}%
-                </span>
-              )
+              ratioQty === null ? "-" : `${(ratioQty * 100).toFixed(2)}%`
             }
+            valueClassName={ratioTextClass(ratioQty)}
             description={t("report.ratioDesc")}
             icon={Percent}
           />
@@ -527,30 +525,27 @@ export default function ReportPage() {
           </SummarySection>
         )}
         {isAdmin && (
-          <SummarySection title={t("report.claimSection")}>
-            <SummaryCard
-              title={t("report.claimQty")}
+          <SummarySection title={t("report.claimSection")} panel>
+            <StatItem
+              label={t("common.quantity")}
               value={formatNumber(claimQty)}
               description={t("report.claimQtyDesc", { rows: claimRows })}
               icon={ShieldCheck}
             />
-            <SummaryCard
-              title={t("report.claimValue")}
+            <StatItem
+              label={t("common.value")}
               value={formatIDR(claimValue)}
               description={t("report.claimValueDesc", { rows: claimRows })}
-              icon={ShieldCheck}
+              icon={Wallet}
             />
-            <SummaryCard
-              title={t("report.claimRatio")}
+            <StatItem
+              label={t("report.statRatio")}
               value={
-                claimQtyRatio === null ? (
-                  "-"
-                ) : (
-                  <span className={ratioTextClass(claimQtyRatio)}>
-                    {(claimQtyRatio * 100).toFixed(2)}%
-                  </span>
-                )
+                claimQtyRatio === null
+                  ? "-"
+                  : `${(claimQtyRatio * 100).toFixed(2)}%`
               }
+              valueClassName={ratioTextClass(claimQtyRatio)}
               description={t("report.claimRatioDesc")}
               icon={Percent}
             />
