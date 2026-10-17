@@ -3,12 +3,16 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
-import { formatIDR, formatNumber, MONTHS } from "@/lib/format";
+import {
+  formatCompactIDR,
+  formatIDR,
+  formatNumber,
+  MONTHS,
+} from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 import type { Factory, PeriodType } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { SummaryCard } from "@/components/summary-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,21 +32,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Banknote,
-  Coins,
-  Package,
-  Percent,
-  PiggyBank,
-  Wrench,
-  Receipt,
-  Scale,
-  ShieldCheck,
-  ShoppingCart,
-  Wallet,
 } from "lucide-react";
 import {
   ChartPairCard,
@@ -62,7 +54,7 @@ import {
   type ReportResponse,
 } from "./report-data";
 import { ProductDetailDialog } from "./product-detail-dialog";
-import { StatItem, SummarySection } from "./summary-section";
+import { KpiGroup, KpiItem } from "./kpi-rows";
 
 export default function ReportPage() {
   const { isAdmin } = useAuth();
@@ -398,180 +390,158 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      {/* Kartu disusun 2 kolom dan menurun ke bawah (bukan satu baris panjang),
-          supaya angka rupiah yang panjang tidak berdesakan. */}
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        {/* Kartu dikelompokkan per topik (section berjudul) supaya angka yang
-            sejenis berdampingan; masing-masing section tetap grid 2 kolom. */}
-        {/* Bentuk "single stacked column": satu panel putih berisi 3 angka
-            sebaris, labelnya cukup singkat karena topiknya sudah dibawa judul
-            section. */}
-        <SummarySection title={t("report.replacementSection")} panel>
-          <StatItem
-            label={t("common.quantity")}
+      {/* KPI tanpa kartu: satu topik = satu baris, angka sebaris dipisah garis
+          tipis. Angka Rupiah diringkas ("Rp 127,49 M") dan angka penuhnya ada
+          di atribut title (hover). */}
+      <div className="mb-6 flex flex-col divide-y divide-slate-200 rounded-lg bg-slate-50/50 dark:divide-slate-700 dark:bg-slate-900/40">
+        <KpiGroup title={t("report.replacementSection")}>
+          <KpiItem
+            label={t("report.kpiQty")}
             value={formatNumber(dQty)}
-            description={t("report.totalDefect")}
-            icon={AlertTriangle}
+            title={`${t("report.totalDefect")} — ${formatNumber(dQty)}`}
           />
           {isAdmin && (
-            <StatItem
-              label={t("common.value")}
-              value={formatIDR(dVal)}
-              description={t("report.defectValue")}
-              icon={Wallet}
+            <KpiItem
+              label={t("report.kpiValue")}
+              value={formatCompactIDR(dVal)}
+              title={`${t("report.defectValue")} — ${formatIDR(dVal)}`}
             />
           )}
-          {/* Rasio defect terhadap sales ditaruh di section BARDI supaya angka
+          {/* Rasio defect terhadap sales ditaruh di baris BARDI supaya angka
               BARDI (qty, value) dan rasionya terbaca sebagai satu kelompok. */}
-          <StatItem
-            label={t("report.statRatio")}
-            value={
-              ratioQty === null ? "-" : `${(ratioQty * 100).toFixed(2)}%`
-            }
+          <KpiItem
+            label={t("report.kpiRatioSales")}
+            value={ratioQty === null ? "-" : `${(ratioQty * 100).toFixed(2)}%`}
             valueClassName={ratioTextClass(ratioQty)}
-            description={t("report.ratioDesc")}
-            icon={Percent}
+            title={t("report.ratioDesc")}
           />
-        </SummarySection>
-        <SummarySection title={t("report.totalSalesSection")}>
-          <SummaryCard
-            title={t("report.totalSales")}
+        </KpiGroup>
+        <KpiGroup title={t("report.totalSalesSection")}>
+          <KpiItem
+            label={t("report.kpiQty")}
             value={formatNumber(sQty)}
-            description={t("common.quantity")}
-            icon={ShoppingCart}
+            title={`${t("report.totalSales")} — ${formatNumber(sQty)}`}
           />
           {isAdmin && (
-            <SummaryCard
-              title={t("report.salesValue")}
-              value={formatIDR(sVal)}
-              description={t("common.valueIdr")}
-              icon={Banknote}
+            <KpiItem
+              label={t("report.kpiValue")}
+              value={formatCompactIDR(sVal)}
+              title={`${t("report.salesValue")} — ${formatIDR(sVal)}`}
             />
           )}
-        </SummarySection>
-        {/* Diambil dari PO Product berketerangan "Replacement", mengikuti
-            periode yang sedang dipilih. Selisih Defect = jumlah baris minus
+        </KpiGroup>
+        {/* Baris ini diambil dari PO Product berketerangan "Replacement",
+            mengikuti periode yang sedang dipilih. Selisih = jumlah baris minus
             saja (Replacement − Qty Defect), arahnya sama dengan kolom rekap —
-            minus berarti defect belum tertutup Replacement, jadi warnanya
-            merah lewat selisihTextClass. */}
-        <SummarySection title={t("report.replacementFactorySection")}>
-          <SummaryCard
-            title={t("report.replacementCard")}
+            minus berarti defect belum tertutup Replacement. */}
+        <KpiGroup title={t("report.replacementFactorySection")}>
+          <KpiItem
+            label={t("report.kpiQty")}
             value={formatNumber(replacementQty)}
-            description={t("report.replacementDesc")}
-            icon={Package}
+            title={`${t("report.replacementCard")} — ${formatNumber(replacementQty)}`}
           />
           {isAdmin && (
-            <SummaryCard
-              title={t("report.replacementValue")}
-              value={formatIDR(report?.totals.replacementRwValue ?? 0)}
-              description={t("report.replacementValueDesc")}
-              icon={Receipt}
+            <KpiItem
+              label={t("report.kpiValue")}
+              value={formatCompactIDR(report?.totals.replacementRwValue ?? 0)}
+              title={`${t("report.replacementValue")} — ${formatIDR(
+                report?.totals.replacementRwValue ?? 0
+              )}`}
             />
           )}
-          <SummaryCard
-            title={t("report.selisihQty")}
-            value={
-              <span className={selisihTextClass(selisihQty)}>
-                {formatSelisih(selisihQty)}
-              </span>
-            }
-            description={t("report.selisihQtyDesc")}
-            icon={Scale}
+          <KpiItem
+            label={t("report.kpiSelisihQty")}
+            value={formatSelisih(selisihQty)}
+            valueClassName={selisihTextClass(selisihQty)}
+            title={t("report.selisihQtyDesc")}
           />
           {isAdmin && (
-            <SummaryCard
-              title={t("report.selisihValue")}
-              value={
-                <span className={selisihTextClass(selisihValue)}>
-                  {formatSelisih(selisihValue, formatIDR)}
-                </span>
-              }
-              description={t("report.selisihValueDesc")}
-              icon={Coins}
+            <KpiItem
+              label={t("report.kpiSelisihValue")}
+              value={formatSelisih(selisihValue, formatCompactIDR)}
+              valueClassName={selisihTextClass(selisihValue)}
+              title={`${t("report.selisihValueDesc")} ${formatSelisih(
+                selisihValue,
+                formatIDR
+              )}`}
             />
           )}
           {isAdmin && (
-            <SummaryCard
-              title={t("report.factoryValueRatio")}
+            <KpiItem
+              label={t("report.kpiRatioSales")}
               value={
-                factoryValueRatio === null ? (
-                  "-"
-                ) : (
-                  <span className={ratioTextClass(factoryValueRatio)}>
-                    {(factoryValueRatio * 100).toFixed(2)}%
-                  </span>
-                )
+                factoryValueRatio === null
+                  ? "-"
+                  : `${(factoryValueRatio * 100).toFixed(2)}%`
               }
-              description={t("report.factoryValueRatioDesc")}
-              icon={Percent}
+              valueClassName={ratioTextClass(factoryValueRatio)}
+              title={t("report.factoryValueRatioDesc")}
             />
           )}
-        </SummarySection>
+        </KpiGroup>
         {isAdmin && (
-          <SummarySection title={t("report.repairSection")}>
-            <SummaryCard
-              title={t("report.repairQty")}
+          <KpiGroup title={t("report.repairSection")}>
+            <KpiItem
+              label={t("report.kpiQty")}
               value={formatNumber(repairQty)}
-              description={t("report.repairQtyDesc")}
-              icon={Wrench}
+              title={t("report.repairQtyDesc")}
             />
-            <SummaryCard
-              title={t("report.repairValue")}
-              value={formatIDR(repairValue)}
-              description={t("report.repairValueDesc", { rows: repairQty })}
-              icon={Wrench}
+            <KpiItem
+              label={t("report.kpiValue")}
+              value={formatCompactIDR(repairValue)}
+              title={`${t("report.repairValueDesc", {
+                rows: repairQty,
+              })} ${formatIDR(repairValue)}`}
             />
-          </SummarySection>
+          </KpiGroup>
         )}
         {isAdmin && (
-          <SummarySection title={t("report.claimSection")} panel>
-            <StatItem
-              label={t("common.quantity")}
+          <KpiGroup title={t("report.claimSection")}>
+            <KpiItem
+              label={t("report.kpiQty")}
               value={formatNumber(claimQty)}
-              description={t("report.claimQtyDesc", { rows: claimRows })}
-              icon={ShieldCheck}
+              title={t("report.claimQtyDesc", { rows: claimRows })}
             />
-            <StatItem
-              label={t("common.value")}
-              value={formatIDR(claimValue)}
-              description={t("report.claimValueDesc", { rows: claimRows })}
-              icon={Wallet}
+            <KpiItem
+              label={t("report.kpiValue")}
+              value={formatCompactIDR(claimValue)}
+              title={`${t("report.claimValueDesc", {
+                rows: claimRows,
+              })} ${formatIDR(claimValue)}`}
             />
-            <StatItem
-              label={t("report.statRatio")}
+            <KpiItem
+              label={t("report.kpiRatioSales")}
               value={
                 claimQtyRatio === null
                   ? "-"
                   : `${(claimQtyRatio * 100).toFixed(2)}%`
               }
               valueClassName={ratioTextClass(claimQtyRatio)}
-              description={t("report.claimRatioDesc")}
-              icon={Percent}
+              title={t("report.claimRatioDesc")}
             />
-          </SummarySection>
+          </KpiGroup>
         )}
         {isAdmin && (
-          <SummarySection title={t("report.allowanceSection")}>
-            <SummaryCard
-              title={t("report.allowance")}
-              value={
-                <span className={selisihTextClass(allowanceLeft)}>
-                  {allowance ? formatIDR(allowanceLeft) : "-"}
-                </span>
+          <KpiGroup title={t("report.allowanceSection")}>
+            <KpiItem
+              label={t("report.kpiAllowanceLeft")}
+              value={allowance ? formatCompactIDR(allowanceLeft) : "-"}
+              valueClassName={
+                allowance ? selisihTextClass(allowanceLeft) : undefined
               }
-              description={
+              title={
                 allowance
-                  ? t("report.allowanceDesc", {
+                  ? `${t("report.allowanceDesc", {
                       year: allowance.year,
                       limit: formatIDR(allowance.prorated),
                       value: formatIDR(dVal),
+                    })} ${formatIDR(allowanceLeft)}`
+                  : t("report.allowanceMissing", {
+                      year: report?.allowanceYear ?? "",
                     })
-                  : t("report.allowanceMissing", { year: report?.allowanceYear ?? "" })
               }
-              icon={PiggyBank}
             />
-          </SummarySection>
+          </KpiGroup>
         )}
       </div>
 

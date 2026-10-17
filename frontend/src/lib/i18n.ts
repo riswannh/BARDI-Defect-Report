@@ -320,11 +320,36 @@ const translations = {
     en: "Claim Qty ÷ Sales Qty",
     zh: "保修数量 ÷ 销售数量",
   },
-  /** Label pendek di panel stat (section kartu yang memakai bentuk panel). */
-  "report.statRatio": {
-    id: "% Ratio",
-    en: "% Ratio",
-    zh: "% 比率",
+  /** Label pendek baris KPI (satu topik = satu baris, angka sebaris). */
+  "report.kpiQty": {
+    id: "Qty",
+    en: "Qty",
+    zh: "数量",
+  },
+  "report.kpiValue": {
+    id: "Value",
+    en: "Value",
+    zh: "金额",
+  },
+  "report.kpiRatioSales": {
+    id: "Rasio thd Sales",
+    en: "Ratio with Sales",
+    zh: "占销售比率",
+  },
+  "report.kpiSelisihQty": {
+    id: "Selisih Qty",
+    en: "Selisih Qty",
+    zh: "数量差额",
+  },
+  "report.kpiSelisihValue": {
+    id: "Selisih Value",
+    en: "Selisih Value",
+    zh: "金额差额",
+  },
+  "report.kpiAllowanceLeft": {
+    id: "Sisa Allowance",
+    en: "Allowance Left",
+    zh: "剩余额度",
   },
   "report.allowanceSection": {
     id: "Allowance Defect",

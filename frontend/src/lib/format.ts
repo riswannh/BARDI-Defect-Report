@@ -14,6 +14,24 @@ export function formatNumber(value: number): string {
   return numberFormatter.format(value);
 }
 
+/**
+ * Rupiah ringkas untuk angka besar di kartu KPI ("Rp 127,49 M").
+ *
+ * Angka penuhnya tetap disimpan di atribut `title` supaya bisa dibaca tanpa
+ * menyesaki layar. `maximumFractionDigits: 2` = presisi dua desimal saat
+ * ringkas (mis. "Rp 1,35 M"), bukan pembulatan ke juta terdekat.
+ */
+const compactIdrFormatter = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+
+export function formatCompactIDR(value: number): string {
+  return compactIdrFormatter.format(value);
+}
+
 /* ============================ PO: mata uang ============================ */
 
 /** Mata uang yang didukung modul PO Product. */

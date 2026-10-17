@@ -448,8 +448,12 @@ Catatan perilaku Report yang harus dijaga:
   (`RecapSortKey` `selisihDefect` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
   (`report-charts.tsx`) — plus (Replacement lebih banyak) hijau, minus (defect belum tertutup
   Replacement) merah, nol abu-abu.
-- Kartu ringkasan halaman Report disusun **2 kolom** (`grid-cols-2`, menurun ke bawah) sejak
-  25 Sep 2026 — sebelumnya satu baris lebar (`2xl:grid-cols-6`). Kartu **Nilai Replacement**
+- Ringkasan KPI halaman Report **bukan kartu lagi** sejak 18 Okt 2026: satu topik = satu baris
+  (`kpi-rows.tsx`: `KpiGroup` + `KpiItem`), judul kecil kapital, angka sebaris dipisah garis tipis
+  1 px di latar `bg-slate-50/50`. Komponen `summary-section.tsx` (kartu di dalam section berbingkai)
+  sudah DIHAPUS; `components/summary-card.tsx` tetap dipakai halaman lain. Angka Rupiah diringkas
+  `formatCompactIDR()` ("Rp 1,56 M") dan angka penuh selalu ada di atribut `title` item
+  (`formatIDR()`) supaya bisa dibaca lewat hover tanpa menyesaki layar. Kartu **Nilai Replacement**
   (`report.replacementValue`, admin saja) = `totals.replacementRwValue`, yaitu Value PO Replacement
   = Σ (quantity × harga master) dalam Rupiah. Kartu **Selisih Defect Quantity** (`report.selisihQty`)
   dan **Selisih Defect Value** (`report.selisihValue`, admin saja) memakai `totalSelisih()`
