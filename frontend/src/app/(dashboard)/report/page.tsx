@@ -54,7 +54,7 @@ import {
   type ReportResponse,
 } from "./report-data";
 import { ProductDetailDialog } from "./product-detail-dialog";
-import { KpiGrid, KpiGroup, KpiItem } from "./kpi-rows";
+import { KpiGrid, KpiGroup, KpiItem, selisihTone } from "./kpi-rows";
 
 export default function ReportPage() {
   const { isAdmin } = useAuth();
@@ -452,14 +452,14 @@ export default function ReportPage() {
           <KpiItem
             label={t("report.kpiSelisihQty")}
             value={formatSelisih(selisihQty)}
-            valueClassName={selisihTextClass(selisihQty)}
+            valueClassName={selisihTone(selisihQty)}
             title={t("report.selisihQtyDesc")}
           />
           {isAdmin && (
             <KpiItem
               label={t("report.kpiSelisihValue")}
               value={formatSelisih(selisihValue, formatCompactIDR)}
-              valueClassName={selisihTextClass(selisihValue)}
+              valueClassName={selisihTone(selisihValue)}
               title={`${t("report.selisihValueDesc")} ${formatSelisih(
                 selisihValue,
                 formatIDR
@@ -527,7 +527,7 @@ export default function ReportPage() {
               label={t("report.kpiAllowanceLeft")}
               value={allowance ? formatCompactIDR(allowanceLeft) : "-"}
               valueClassName={
-                allowance ? selisihTextClass(allowanceLeft) : undefined
+                allowance ? selisihTone(allowanceLeft) : undefined
               }
               title={
                 allowance

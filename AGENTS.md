@@ -448,11 +448,15 @@ Catatan perilaku Report yang harus dijaga:
   (`RecapSortKey` `selisihDefect` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
   (`report-charts.tsx`) — plus (Replacement lebih banyak) hijau, minus (defect belum tertutup
   Replacement) merah, nol abu-abu.
-- Ringkasan KPI halaman Report **bukan kartu lagi** sejak 18 Okt 2026: `kpi-rows.tsx` menyusun
-  6 topik sebagai **grid 3 kolom** (`KpiGrid`: `grid-cols-1 md:grid-cols-3 gap-6`), tiap topik satu
-  sel tipis (`KpiGroup`: `rounded-lg border border-slate-100 bg-slate-50/60 p-5`, judul `text-xs`
-  kapital). Di dalam sel, tiap angka satu baris `KpiItem` dengan **label kiri – angka kanan**
-  (`flex items-center justify-between`) supaya angka besar tidak memaksa kolom melebar.
+- Ringkasan KPI halaman Report **bukan kartu bersarang lagi** sejak 18 Okt 2026: `kpi-rows.tsx`
+  menyusun 6 topik sebagai **grid 3 kolom** (`KpiGrid`: `grid-cols-1 md:grid-cols-3 gap-6`), tiap
+  topik satu kartu putih berelevasi tipis (`KpiGroup`: `rounded-2xl border border-slate-100 bg-white
+  p-5` + `shadow-[0_2px_8px_-3px_rgba(0,0,0,0.05),0_1px_3px_-1px_rgba(0,0,0,0.03)]`, judul `text-xs`
+  kapital `mb-4`). Di dalam kartu, tiap angka satu baris `KpiItem` dengan **label kiri – angka kanan**
+  (`flex items-center justify-between`), dipisah garis 1 px `border-slate-50 py-2.5
+  last:border-none` supaya angka besar tidak memaksa kolom melebar. Warna angka selisih/sisa dari
+  `selisihTone()` (`kpi-rows.tsx`): minus `text-rose-600`, plus `text-emerald-600`, nol abu netral;
+  angka rasio tetap `ratioTextClass()` (aman hijau, warning amber). Nilai selalu `font-extrabold`.
   Komponen `summary-section.tsx` (kartu di dalam section berbingkai) sudah DIHAPUS;
   `components/summary-card.tsx` tetap dipakai halaman lain. Angka Rupiah diringkas
   `formatCompactIDR()` ("Rp 1,56 M") dan angka penuh selalu ada di atribut `title` item
