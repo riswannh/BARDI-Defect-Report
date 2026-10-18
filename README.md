@@ -550,7 +550,10 @@ menghitungnya dari `recap` + `totals` di atas, jadi tidak ada lagi field angka b
 
 ### Allowance Defect (limit tahunan, admin saja)
 
-Kartu **Sisa Allowance Defect** = Limit tahunan (Rupiah) − Nilai Defect pada filter yang sedang aktif.
+Kartu **Sisa Allowance Defect** = Limit tahunan (Rupiah) − Nilai Defect pada filter yang sedang aktif,
+dengan satu pengecualian: **filter pabrik tidak memengaruhi kartu ini**. Kartu selalu memakai nilai defect
+seluruh pabrik (field admin-only `totals.allowanceDefectValue`), jadi memilih pabrik hanya mengubah kartu
+Nilai Defect, bukan Sisa Allowance.
 Limitnya master tersendiri: tabel `defect_allowances` (**satu limit per tahun**, `year` 4 angka unik +
 `limitValue`), endpoint `/api/defect-allowances` (GET/POST) dan `/api/defect-allowances/[id]`
 (PATCH/DELETE), semuanya admin saja — role non-admin tidak menerima `allowance`/`allowanceYear` di

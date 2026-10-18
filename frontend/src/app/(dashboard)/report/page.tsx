@@ -193,9 +193,11 @@ export default function ReportPage() {
   );
   // Allowance Defect: limit Rupiah SETAHUN dari Data Master, sudah diprorata
   // server mengikuti periode filter, lalu dikurangi nilai defect periode ini.
-  // Minus = nilai defect periode sudah melewati limit.
+  // Minus = nilai defect periode sudah melewati limit. Nilai defect di sini
+  // SELALU seluruh pabrik — filter pabrik tidak memengaruhi kartu ini.
   const allowance = report?.allowance ?? null;
-  const allowanceLeft = (allowance?.prorated ?? 0) - dVal;
+  const allowanceValue = report?.totals.allowanceDefectValue ?? 0;
+  const allowanceLeft = (allowance?.prorated ?? 0) - allowanceValue;
   // Kartu "Repair Value": Σ Saving Value Repair Data yang statusnya sudah
   // selesai (Done Kirim / Done Repair) pada periode filter — dihitung di server.
   const repairValue = report?.totals.repairValue ?? 0;
@@ -534,7 +536,7 @@ export default function ReportPage() {
                   ? `${t("report.allowanceDesc", {
                       year: allowance.year,
                       limit: formatIDR(allowance.prorated),
-                      value: formatIDR(dVal),
+                      value: formatIDR(allowanceValue),
                     })} ${formatIDR(allowanceLeft)}`
                   : t("report.allowanceMissing", {
                       year: report?.allowanceYear ?? "",

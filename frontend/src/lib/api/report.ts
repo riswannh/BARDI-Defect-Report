@@ -99,14 +99,15 @@ export async function reportGET(req: NextRequest) {
     to: params.get("to") ?? "",
   };
 
-  const defectWhere: SQL | undefined =
-    factory !== null ? eq(defects.factoryId, factory) : undefined;
+  // Defect sengaja TIDAK difilter pabrik di SQL: kartu Allowance Defect harus
+  // memakai nilai defect seluruh pabrik (permintaan user 18 Okt 2026), jadi
+  // penyaringan pabrik dilakukan setelah periode dihitung.
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
   const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows, claimRows, productFactoryRows] =
     await Promise.all([
-      db.select().from(defects).where(defectWhere),
+      db.select().from(defects),
       db.select().from(sales).where(saleWhere),
       db.select().from(products),
       db.select().from(problems),
@@ -201,9 +202,15 @@ export async function reportGET(req: NextRequest) {
     value: row.value,
   }));
 
-  const filteredDefects = appDefects.filter((d) =>
+  // Semua defect pada periode filter (semua pabrik) — dasar kartu Allowance.
+  const periodDefects = appDefects.filter((d) =>
     matchesDefectPeriod(d.timestamp, f)
   );
+  // Filter pabrik hanya untuk kartu/tabel defect, bukan Allowance Defect.
+  const filteredDefects =
+    factory === null
+      ? periodDefects
+      : periodDefects.filter((d) => d.factoryId === factory);
   const filteredSales = appSales.filter((s) => matchesSalePeriod(s.month, f));
 
   /**
@@ -329,6 +336,9 @@ export async function reportGET(req: NextRequest) {
     // Angka mentah: dipakai kartu ringkasan, grafik, dan tabel rekap.
     defectQty,
     defectValue,
+    // Nilai defect seluruh pabrik pada periode yang sama — dasar kartu
+    // Allowance Defect, yang TIDAK ikut filter pabrik.
+    allowanceDefectValue: totalDefectValue(periodDefects),
     salesQty: totalSalesQty(filteredSales),
     salesValue: totalSalesValue(filteredSales),
     replacementQty,

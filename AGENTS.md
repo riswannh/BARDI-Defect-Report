@@ -478,7 +478,11 @@ Catatan perilaku Report yang harus dijaga:
   yang dibaca pengguna yang berubah.
 
 - **Allowance Defect** (kartu `report.allowance`, admin saja, ditambahkan 2 Okt 2026) = Limit tahunan
-  dalam Rupiah dikurangi **Nilai Defect** hasil filter yang sedang aktif. Limitnya master tersendiri:
+  dalam Rupiah dikurangi **Nilai Defect** hasil filter yang sedang aktif — **kecuali filter pabrik**:
+  kartu ini SELALU memakai nilai defect seluruh pabrik (field admin-only `totals.allowanceDefectValue`,
+  dihitung dari `periodDefects` = defect periode filter tanpa saringan pabrik), jadi memilih pabrik tidak
+  mengubah angka Sisa Allowance (permintaan user 18 Okt 2026). Query defect di `/api/report` karena itu
+  TIDAK menyaring pabrik di SQL; filter pabrik diterapkan setelah periode (`filteredDefects`). Limitnya master tersendiri:
   tabel `defect_allowances` (`year` TEXT unik 4 angka + `limitValue` real, **satu limit per tahun**,
   tahun yang sama = 409 `Limit allowance {year} sudah ada. Ubah baris itu.`), endpoint
   `/api/defect-allowances` (GET/POST) + `/api/defect-allowances/[id]` (PATCH/DELETE), **semua

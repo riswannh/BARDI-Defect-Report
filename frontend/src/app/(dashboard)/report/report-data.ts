@@ -52,6 +52,8 @@ export interface ReportResponse {
     /** Angka mentah; dipakai kartu ringkasan, grafik, dan tabel rekap. */
     defectQty: number;
     defectValue?: number;
+    /** Nilai defect seluruh pabrik (tanpa filter pabrik) — dasar Allowance Defect. */
+    allowanceDefectValue?: number;
     salesQty: number;
     salesValue?: number;
     replacementQty: number;
