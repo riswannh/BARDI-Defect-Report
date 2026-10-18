@@ -6,6 +6,12 @@ import { db, schema } from "@/lib/db";
 export const auth = betterAuth({
   appName: "Defect & Sales Analysis",
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  // Origin tambahan (mis. alamat LAN saat uji dari HP) — dipisah koma.
+  // better-auth menolak POST login dengan 403 bila Origin tidak terdaftar.
+  trustedOrigins: (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: "sqlite",

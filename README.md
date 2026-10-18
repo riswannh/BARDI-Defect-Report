@@ -1287,6 +1287,7 @@ Hal yang wajib diperhatikan saat deploy:
 |---|---|---|
 | `BETTER_AUTH_SECRET` | — | wajib diisi |
 | `BETTER_AUTH_URL` | `http://localhost:3000` | ganti jika diakses via domain/IP |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | — | opsional, daftar origin tambahan dipisah koma (mis. `http://192.168.100.16:3100`). Origin di luar daftar ini + `BETTER_AUTH_URL` ditolak better-auth dengan 403 saat login |
 
 **Env container** (diatur di `deploy/docker-compose.yml`, bukan `.env`):
 
