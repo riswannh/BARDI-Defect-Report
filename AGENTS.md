@@ -448,10 +448,13 @@ Catatan perilaku Report yang harus dijaga:
   (`RecapSortKey` `selisihDefect` ditangani khusus di `sortRecap`), warnanya dari `selisihTextClass()`
   (`report-charts.tsx`) — plus (Replacement lebih banyak) hijau, minus (defect belum tertutup
   Replacement) merah, nol abu-abu.
-- Ringkasan KPI halaman Report **bukan kartu lagi** sejak 18 Okt 2026: satu topik = satu baris
-  (`kpi-rows.tsx`: `KpiGroup` + `KpiItem`), judul kecil kapital, angka sebaris dipisah garis tipis
-  1 px di latar `bg-slate-50/50`. Komponen `summary-section.tsx` (kartu di dalam section berbingkai)
-  sudah DIHAPUS; `components/summary-card.tsx` tetap dipakai halaman lain. Angka Rupiah diringkas
+- Ringkasan KPI halaman Report **bukan kartu lagi** sejak 18 Okt 2026: `kpi-rows.tsx` menyusun
+  6 topik sebagai **grid 3 kolom** (`KpiGrid`: `grid-cols-1 md:grid-cols-3 gap-6`), tiap topik satu
+  sel tipis (`KpiGroup`: `rounded-lg border border-slate-100 bg-slate-50/60 p-5`, judul `text-xs`
+  kapital). Di dalam sel, tiap angka satu baris `KpiItem` dengan **label kiri – angka kanan**
+  (`flex items-center justify-between`) supaya angka besar tidak memaksa kolom melebar.
+  Komponen `summary-section.tsx` (kartu di dalam section berbingkai) sudah DIHAPUS;
+  `components/summary-card.tsx` tetap dipakai halaman lain. Angka Rupiah diringkas
   `formatCompactIDR()` ("Rp 1,56 M") dan angka penuh selalu ada di atribut `title` item
   (`formatIDR()`) supaya bisa dibaca lewat hover tanpa menyesaki layar. Kartu **Nilai Replacement**
   (`report.replacementValue`, admin saja) = `totals.replacementRwValue`, yaitu Value PO Replacement

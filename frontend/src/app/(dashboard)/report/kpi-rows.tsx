@@ -4,14 +4,21 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Deretan KPI tanpa kartu untuk halaman Report.
+ * KPI halaman Report: grid 3 kolom tanpa kartu (bukan kartu berbingkai tebal).
  *
- * Bentuk lama (kartu di dalam section berbingkai) terlalu ramai: judul kartu
- * mengulang nama section, label dan angka sama-sama kecil, dan angka rupiah
- * panjang memaksa kartu melebar. Di sini tiap topik jadi SATU baris: judul
- * kecil kapital di atas, lalu angka-angka sebaris dipisah garis tipis.
- * Angka penuh disimpan di atribut `title` (hover) — lihat `formatCompactIDR`.
+ * Tiap topik satu sel: latar tipis + garis 1 px, label kiri dan angka kanan
+ * sebaris (`justify-between`) supaya angka besar tidak memaksa kolom melebar.
+ * Angka Rupiah diringkas `formatCompactIDR()` dan angka penuh disimpan di
+ * atribut `title` (hover).
  */
+
+export function KpiGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
+      {children}
+    </div>
+  );
+}
 
 export function KpiGroup({
   title,
@@ -21,11 +28,11 @@ export function KpiGroup({
   children: ReactNode;
 }) {
   return (
-    <section className="px-4 py-3">
-      <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+    <section className="rounded-lg border border-slate-100 bg-slate-50/60 p-5 dark:border-slate-800 dark:bg-slate-900/40">
+      <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {title}
       </h3>
-      <div className="flex flex-wrap items-stretch gap-y-2">{children}</div>
+      <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
 }
@@ -45,14 +52,14 @@ export function KpiItem({
   return (
     <div
       title={title}
-      className="flex min-w-0 flex-col gap-0.5 border-r border-slate-200 px-4 first:pl-0 last:border-r-0 last:pr-0 dark:border-slate-700"
+      className="flex items-center justify-between gap-3"
     >
-      <span className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
+      <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
         {label}
       </span>
       <span
         className={cn(
-          "font-heading text-xl font-bold tabular-nums text-slate-900 dark:text-slate-100",
+          "shrink-0 text-base font-bold tabular-nums text-slate-900 dark:text-slate-100",
           valueClassName
         )}
       >

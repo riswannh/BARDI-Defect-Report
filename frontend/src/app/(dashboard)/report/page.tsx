@@ -54,7 +54,7 @@ import {
   type ReportResponse,
 } from "./report-data";
 import { ProductDetailDialog } from "./product-detail-dialog";
-import { KpiGroup, KpiItem } from "./kpi-rows";
+import { KpiGrid, KpiGroup, KpiItem } from "./kpi-rows";
 
 export default function ReportPage() {
   const { isAdmin } = useAuth();
@@ -390,10 +390,10 @@ export default function ReportPage() {
         </CardContent>
       </Card>
 
-      {/* KPI tanpa kartu: satu topik = satu baris, angka sebaris dipisah garis
-          tipis. Angka Rupiah diringkas ("Rp 127,49 M") dan angka penuhnya ada
-          di atribut title (hover). */}
-      <div className="mb-6 flex flex-col divide-y divide-slate-200 rounded-lg bg-slate-50/50 dark:divide-slate-700 dark:bg-slate-900/40">
+      {/* KPI: grid 3 kolom, tiap topik satu sel tipis berisi baris label–angka.
+          Angka Rupiah diringkas ("Rp 127,49 M") dan angka penuhnya ada di
+          atribut title (hover). */}
+      <KpiGrid>
         <KpiGroup title={t("report.replacementSection")}>
           <KpiItem
             label={t("report.kpiQty")}
@@ -543,7 +543,7 @@ export default function ReportPage() {
             />
           </KpiGroup>
         )}
-      </div>
+      </KpiGrid>
 
       <div className="mb-6 flex flex-col gap-3">
         <ChartPairCard
