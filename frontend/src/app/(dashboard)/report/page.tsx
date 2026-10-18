@@ -206,6 +206,8 @@ export default function ReportPage() {
   // periode filter, tanpa status "Belum Ada Data" dan "CLOSED" (dihitung server).
   const claimQty = report?.totals.claimQty ?? 0;
   const claimQtyRatio = defectSalesRatio(claimQty, sQty);
+  // Rasio Repair by Hub terhadap Claim Garansi BARDI (unit repair ÷ unit claim).
+  const repairClaimRatio = defectSalesRatio(repairQty, claimQty);
   const claimValue = report?.totals.claimValue ?? 0;
   const claimRows = report?.totals.claimRows ?? 0;
 
@@ -494,6 +496,18 @@ export default function ReportPage() {
               title={`${t("report.repairValueDesc", {
                 rows: repairQty,
               })} ${formatIDR(repairValue)}`}
+            />
+          )}
+          {isAdmin && (
+            <KpiItem
+              label={t("report.kpiRatioClaim")}
+              value={
+                repairClaimRatio === null
+                  ? "-"
+                  : `${(repairClaimRatio * 100).toFixed(2)}%`
+              }
+              valueClassName={ratioTextClass(repairClaimRatio)}
+              title={t("report.repairClaimRatioDesc")}
             />
           )}
         </KpiGroup>
