@@ -506,7 +506,6 @@ export default function ReportPage() {
                   ? "-"
                   : `${(repairClaimRatio * 100).toFixed(2)}%`
               }
-              valueClassName={ratioTextClass(repairClaimRatio)}
               title={t("report.repairClaimRatioDesc")}
             />
           )}
