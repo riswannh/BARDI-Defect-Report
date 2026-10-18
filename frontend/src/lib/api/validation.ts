@@ -480,6 +480,15 @@ export const defectAllowanceUpdateSchema = z.object({
   limitValue: z.coerce.number().min(0).optional(),
 });
 
+/**
+ * Kurs mata uang asing PO ke Rupiah. `usd`/`rmb` = berapa Rupiah untuk 1 unit;
+ * 0 diizinkan (artinya kurs belum diisi) supaya admin bisa menyimpan sebagian.
+ */
+export const currencyRatesSchema = z.object({
+  usd: z.coerce.number().min(0),
+  rmb: z.coerce.number().min(0),
+});
+
 export const userCreateSchema = z.object({
   username: z.string().trim().min(3),
   password: z.string().min(6),

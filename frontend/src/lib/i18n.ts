@@ -745,6 +745,51 @@ const translations = {
     en: "Total PO Quantity",
     zh: "采购总数量",
   },
+  "po.valueCard": {
+    id: "Total Value PO",
+    en: "Total PO Value",
+    zh: "采购总价值",
+  },
+  "po.totalValueDesc": {
+    id: "Semua baris PO pada filter ini dalam Rupiah: baris Rp apa adanya, baris USD dan RMB dikonversi memakai kurs di menu Atur kurs.",
+    en: "Every PO row in this filter, in Rupiah: Rp rows as-is, USD and RMB rows converted with the rates from Edit rates.",
+    zh: "当前筛选下的全部采购行，换算为印尼盾：印尼盾原值，美元与人民币按“设置汇率”换算。",
+  },
+  "po.rate.action": {
+    id: "Atur kurs",
+    en: "Edit rates",
+    zh: "设置汇率",
+  },
+  "po.rate.title": {
+    id: "Kurs ke Rupiah",
+    en: "Rates to Rupiah",
+    zh: "汇率（换算为印尼盾）",
+  },
+  "po.rate.description": {
+    id: "Isi berapa Rupiah untuk 1 USD dan 1 RMB. Angka ini dipakai kartu Total Value PO untuk mengubah nilai PO mata uang asing menjadi Rupiah.",
+    en: "Enter how many Rupiah 1 USD and 1 RMB are worth. The Total PO Value card uses these to convert foreign-currency PO values into Rupiah.",
+    zh: "填写 1 美元和 1 人民币分别折合多少印尼盾。采购总价值卡用它把外币采购金额换算为印尼盾。",
+  },
+  "po.rate.usd": {
+    id: "1 USD (Rp)",
+    en: "1 USD (Rp)",
+    zh: "1 美元（印尼盾）",
+  },
+  "po.rate.rmb": {
+    id: "1 RMB (Rp)",
+    en: "1 RMB (Rp)",
+    zh: "1 人民币（印尼盾）",
+  },
+  "po.rate.saved": {
+    id: "Kurs tersimpan.",
+    en: "Rates saved.",
+    zh: "汇率已保存。",
+  },
+  "po.rate.invalid": {
+    id: "Kurs harus angka 0 atau lebih.",
+    en: "Rates must be 0 or more.",
+    zh: "汇率必须为 0 或更大。",
+  },
   "po.saveAndAddAnother": {
     id: "Simpan & tambah lagi",
     en: "Save & add another",

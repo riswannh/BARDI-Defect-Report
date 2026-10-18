@@ -8,6 +8,8 @@ interface SummaryCardProps {
   /** Keterangan kartu — tampil sebagai popup dari ikon (i) di kanan judul. */
   description?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  /** Tombol/menu kecil di kanan atas kartu (mis. "Atur kurs" pada Total Value PO). */
+  action?: React.ReactNode;
 }
 
 /**
@@ -27,6 +29,7 @@ export function SummaryCard({
   value,
   description,
   icon: Icon,
+  action,
 }: SummaryCardProps) {
   return (
     <Card size="sm" className="@container relative rounded-lg">
@@ -61,6 +64,7 @@ export function SummaryCard({
               </span>
             )}
           </CardTitle>
+          {action && <div className="ml-auto shrink-0">{action}</div>}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-0.5">

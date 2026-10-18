@@ -14,6 +14,7 @@ import {
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type {
+  CurrencyRates,
   Factory,
   ImportResult,
   Product,
@@ -60,6 +61,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  Wallet,
 } from "lucide-react";
 import {
   PoFormDialog,
@@ -68,6 +70,7 @@ import {
   type PoForm,
 } from "./po-form-dialog";
 import { poDemoEnabled } from "./po-demo";
+import { PoRateDialog } from "./po-rate-dialog";
 import {
   demoFactories,
   demoProducts,
@@ -95,6 +98,11 @@ export default function PoPage() {
   // Value RW (Quantity × Harga).
   const { data: priceData } = useApi<ProductPrice[]>(
     poDemoEnabled ? null : "/api/product-prices"
+  );
+  // Kurs USD/RMB → Rupiah untuk kartu Total Value PO. `null` untuk role Pabrik:
+  // endpoint-nya admin-only dan nilai Rupiah tidak boleh sampai ke mereka.
+  const { data: rateData, reload: reloadRates } = useApi<CurrencyRates>(
+    poDemoEnabled || !isAdmin ? null : "/api/currency-rates"
   );
 
   // `?? []` membuat array baru tiap render dan itu membuat useMemo di bawah
@@ -139,6 +147,7 @@ export default function PoPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [rateOpen, setRateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Entri terakhir yang tersimpan — sumber nilai yang dibawa ke entri berikutnya.
   const lastEntryRef = useRef<PoForm | null>(null);
@@ -199,6 +208,16 @@ export default function PoPage() {
   );
 
   const totalQuantity = visibleRows.reduce((sum, row) => sum + row.quantity, 0);
+
+  // Total Value PO dalam Rupiah: baris Rp apa adanya, USD/RMB dikonversi
+  // memakai kurs yang diatur lewat menu "Atur kurs" di kartu ini.
+  const currencyRates: CurrencyRates = rateData ?? { usd: 0, rmb: 0 };
+  const totalValueIdr = visibleRows.reduce((sum, row) => {
+    const value = row.value ?? 0;
+    if (row.currency === "USD") return sum + value * currencyRates.usd;
+    if (row.currency === "RMB") return sum + value * currencyRates.rmb;
+    return sum + value;
+  }, 0);
 
   // Role Pabrik: pilihan produk dibatasi ke produk yang ada di PO pabriknya.
   const scopedProductOptions = useMemo(() => {
@@ -510,12 +529,34 @@ export default function PoPage() {
           }
         />
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">          <SummaryCard
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SummaryCard
             title={t("po.totalQuantity")}
             value={formatNumber(totalQuantity)}
             description={t("common.quantity")}
             icon={Boxes}
           />
+          {isAdmin && (
+            // Sebelum kurs termuat jangan tampilkan "Rp 0" — itu angka palsu.
+            <SummaryCard
+              title={t("po.valueCard")}
+              value={rateData ? formatIDR(totalValueIdr) : "…"}
+              description={`${t("po.totalValueDesc")} 1 USD = ${formatIDR(currencyRates.usd)}; 1 RMB = ${formatIDR(currencyRates.rmb)}.`}
+              icon={Wallet}
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6"
+                  title={t("po.rate.action")}
+                  aria-label={t("po.rate.action")}
+                  onClick={() => setRateOpen(true)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+              }
+            />
+          )}
         </div>
 
         <Card size="sm">
@@ -930,6 +971,14 @@ export default function PoPage() {
           confirmLabel={t("bulk.delete")}
           onConfirm={handleBulkDelete}
         />
+
+        {isAdmin && rateOpen && (
+          <PoRateDialog
+            rates={currencyRates}
+            onClose={() => setRateOpen(false)}
+            onSaved={reloadRates}
+          />
+        )}
       </div>
     </AuthGuard>
   );

@@ -47,6 +47,15 @@ export interface DefectAllowance {
 }
 
 /**
+ * Kurs mata uang asing PO ke Rupiah (disimpan di tabel `currency_rates`).
+ * `usd`/`rmb` = berapa Rupiah untuk 1 USD / 1 RMB. Rupiah selalu 1.
+ */
+export interface CurrencyRates {
+  usd: number;
+  rmb: number;
+}
+
+/**
  * Repair Data — satu baris = satu baris tab "Data Reparasi". Claim ID boleh
  * ganda selama tanggal/produknya beda.
  *

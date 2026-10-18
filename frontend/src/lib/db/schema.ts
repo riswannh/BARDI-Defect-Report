@@ -522,6 +522,24 @@ export const purchaseOrders = sqliteTable(
 );
 
 /**
+ * Kurs mata uang asing PO ke Rupiah — satu baris per mata uang ("USD", "RMB").
+ *
+ * Dipakai kartu "Total Value PO" di halaman PO Product untuk mengubah
+ * `purchase_orders.value` (yang mengikuti `currency` barisnya) menjadi Rupiah.
+ * Disimpan di server, bukan di browser, supaya angkanya sama untuk semua admin
+ * dan bisa diubah lewat menu edit kurs di kartu tersebut.
+ */
+export const currencyRates = sqliteTable("currency_rates", {
+  /** "USD" | "RMB" — hanya dua itu yang punya kurs; Rupiah selalu 1. */
+  currency: text("currency").primaryKey(),
+  /** Berapa Rupiah untuk 1 unit mata uang ini. */
+  rate: real("rate").notNull().default(0),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+/**
  * Repair Data — satu baris = satu klaim reparasi, inputannya mengikuti tab
  * "Data Reparasi" pada spreadsheet "Reparasi RFB".
  *
