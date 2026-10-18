@@ -502,7 +502,12 @@ Catatan perilaku Report yang harus dijaga:
   (tanpa peduli huruf besar-kecil/spasi, satu-satunya tempat aturan ini; `isRepairDone()` untuk syarat
   status saja). Baris ikut dihitung kalau `repairs.date` (`YYYY-MM-DD`) cocok filter periode yang sama
   seperti defect (`matchesDefectPeriod`). `/api/report` mengirim `totals.repairValue` + `totals.repairQty`
-  (jumlah baris) **hanya ke admin** — cabang non-admin tidak memuat keduanya dan kartunya tidak dirender.
+  (jumlah baris) — Rupiah (`repairValue`) **hanya ke admin**, `repairQty` juga dikirim ke role Pabrik
+  (keputusan user 18 Okt 2026). Kartu ikut filter pabrik: baris Repair tidak menyimpan pabrik, jadi
+  `/api/report` memakai kaitan `product_factories` (produk → pabrik) — `factory !== null` berarti hanya
+  baris yang `productId`-nya milik pabrik itu (admin memilih pabrik di filter, akun Pabrik dipaksa
+  `scopedFactoryId()`), sedangkan "Semua Pabrik" menghitung semua baris. Akun Pabrik melihat kartu
+  **Qty saja**; item Value tidak dirender (jangan kirim Rupiah ke Pabrik).
   Self-check aturan: `cmd /c "npx tsx scripts/repair-check.ts"` (dijalankan dari `frontend/`).
 
 - **Claim Garansi BARDI** (section `report.claimSection` di Report, **admin saja**, ditambahkan

@@ -575,8 +575,12 @@ besar-kecil/spasi lewat `countsForRepairValue()` di `src/lib/repair-value.ts` �
 aturan ini (`isRepairDone()` dipakai untuk syarat status saja). Baris ikut dihitung kalau `repairs.date`
 (`YYYY-MM-DD`) cocok dengan filter periode yang sama seperti defect (`matchesDefectPeriod`), jadi
 angkanya ikut berubah saat filter diganti.
-Dikirim server sebagai `totals.repairValue` + `totals.repairQty` (jumlah baris) dan **tidak dikirim**
-ke role non-admin (kartunya juga tidak dirender). Aturannya diuji `cmd /c "npx tsx scripts/repair-check.ts"`.
+Dikirim server sebagai `totals.repairValue` + `totals.repairQty` (jumlah baris). Kartu **Repair by Hub**
+mengikuti filter pabrik walau baris Repair tidak menyimpan pabrik: `/api/report` memakai kaitan
+`product_factories` (produk → pabrik), jadi pilih pabrik di filter → hanya baris produk pabrik itu yang
+dihitung (akun Pabrik otomatis terkunci ke pabriknya sendiri). Role Pabrik menerima `repairQty` saja dan
+melihat kartu **Qty** tanpa item Value; `repairValue` (Rupiah) tetap admin saja. Aturannya diuji
+`cmd /c "npx tsx scripts/repair-check.ts"`.
 
 ### Repair Data (admin saja)
 

@@ -21,6 +21,7 @@ import {
   defects,
   factories,
   problems,
+  productFactories,
   productPrices,
   products,
   purchaseOrders,
@@ -103,7 +104,7 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows, claimRows] =
+  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows, claimRows, productFactoryRows] =
     await Promise.all([
       db.select().from(defects).where(defectWhere),
       db.select().from(sales).where(saleWhere),
@@ -151,6 +152,7 @@ export async function reportGET(req: NextRequest) {
           status: repairs.status,
           resolution: repairs.resolution,
           value: repairs.value,
+          productId: repairs.productId,
         })
         .from(repairs),
       // Kartu "Claim Garansi BARDI": quantity + value baris claim garansi
@@ -163,6 +165,15 @@ export async function reportGET(req: NextRequest) {
           value: warrantyClaims.value,
         })
         .from(warrantyClaims),
+      // Pemetaan produk → pabrik. Baris Repair tidak menyimpan pabrik, jadi
+      // filter pabrik di kartu "Repair by Hub" memakai daftar produk pabrik itu
+      // (kaitan yang diisi lewat Data Master produk / Factory List).
+      db
+        .select({ productId: productFactories.productId })
+        .from(productFactories)
+        .where(
+          factory !== null ? eq(productFactories.factoryId, factory) : undefined
+        ),
     ]);
 
   const appDefects = defectRows.map((row) => ({
@@ -202,8 +213,22 @@ export async function reportGET(req: NextRequest) {
    * `repairs.date` berformat `YYYY-MM-DD`, sama seperti 10 huruf pertama
    * timestamp defect, jadi pencocokan periode memakai `matchesDefectPeriod`.
    */
+  /**
+   * Produk milik pabrik terpilih — `null` kalau tidak ada filter pabrik (admin
+   * dengan "Semua Pabrik"). Baris Repair tidak punya kolom pabrik, jadi kartu
+   * "Repair by Hub" ikut filter lewat kaitan produk → pabrik ini.
+   */
+  const factoryProductIds =
+    factory !== null
+      ? new Set(productFactoryRows.map((row) => row.productId))
+      : null;
+
   const filteredRepairs = repairRows.filter(
-    (row) => countsForRepairValue(row.status, row.resolution) && matchesDefectPeriod(row.date, f)
+    (row) =>
+      countsForRepairValue(row.status, row.resolution) &&
+      matchesDefectPeriod(row.date, f) &&
+      (factoryProductIds === null ||
+        (row.productId !== null && factoryProductIds.has(row.productId)))
   );
 
   /**
@@ -354,6 +379,8 @@ export async function reportGET(req: NextRequest) {
           defectQty: totals.defectQty,
           salesQty: totals.salesQty,
           replacementQty: totals.replacementQty,
+          // Kartu "Repair by Hub" ikut tampil untuk Pabrik, quantity saja.
+          repairQty: totals.repairQty,
         },
     // Role Pabrik tidak boleh menerima angka Rupiah, jadi allowance = null.
     allowance: user.isAdmin ? allowance : null,

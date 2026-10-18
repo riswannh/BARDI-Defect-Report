@@ -415,7 +415,7 @@ export default function ReportPage() {
             valueClassName={ratioTextClass(ratioQty)}
             title={t("report.ratioDesc")}
           />
-        </KpiGroup>
+    </KpiGroup>
         <KpiGroup title={t("report.totalSalesSection")}>
           <KpiItem
             label={t("report.kpiQty")}
@@ -479,13 +479,13 @@ export default function ReportPage() {
             />
           )}
         </KpiGroup>
-        {isAdmin && (
-          <KpiGroup title={t("report.repairSection")}>
-            <KpiItem
-              label={t("report.kpiQty")}
-              value={formatNumber(repairQty)}
-              title={t("report.repairQtyDesc")}
-            />
+        <KpiGroup title={t("report.repairSection")}>
+          <KpiItem
+            label={t("report.kpiQty")}
+            value={formatNumber(repairQty)}
+            title={t("report.repairQtyDesc")}
+          />
+          {isAdmin && (
             <KpiItem
               label={t("report.kpiValue")}
               value={formatCompactIDR(repairValue)}
@@ -493,8 +493,8 @@ export default function ReportPage() {
                 rows: repairQty,
               })} ${formatIDR(repairValue)}`}
             />
-          </KpiGroup>
-        )}
+          )}
+        </KpiGroup>
         {isAdmin && (
           <KpiGroup title={t("report.claimSection")}>
             <KpiItem
