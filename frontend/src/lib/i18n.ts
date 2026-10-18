@@ -346,6 +346,11 @@ const translations = {
     en: "Repair Qty ÷ BARDI Warranty Claim Qty",
     zh: "维修数量 ÷ BARDI 保修申请数量",
   },
+  "report.repairSalesRatioDesc": {
+    id: "Qty Repair ÷ Qty Sales",
+    en: "Repair Qty ÷ Sales Qty",
+    zh: "维修数量 ÷ 销售数量",
+  },
   "report.kpiSelisihQty": {
     id: "Selisih Qty",
     en: "Selisih Qty",

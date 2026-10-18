@@ -208,6 +208,8 @@ export default function ReportPage() {
   const claimQtyRatio = defectSalesRatio(claimQty, sQty);
   // Rasio Repair by Hub terhadap Claim Garansi BARDI (unit repair ÷ unit claim).
   const repairClaimRatio = defectSalesRatio(repairQty, claimQty);
+  // Rasio Repair by Hub terhadap Sales (unit repair ÷ unit sales).
+  const repairSalesRatio = defectSalesRatio(repairQty, sQty);
   const claimValue = report?.totals.claimValue ?? 0;
   const claimRows = report?.totals.claimRows ?? 0;
 
@@ -506,7 +508,19 @@ export default function ReportPage() {
                   ? "-"
                   : `${(repairClaimRatio * 100).toFixed(2)}%`
               }
+              valueClassName="text-emerald-600 dark:text-emerald-400"
               title={t("report.repairClaimRatioDesc")}
+            />
+          )}
+          {isAdmin && (
+            <KpiItem
+              label={t("report.kpiRatioSales")}
+              value={
+                repairSalesRatio === null
+                  ? "-"
+                  : `${(repairSalesRatio * 100).toFixed(2)}%`
+              }
+              title={t("report.repairSalesRatioDesc")}
             />
           )}
         </KpiGroup>
