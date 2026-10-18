@@ -103,6 +103,7 @@ export default function RepairsPage() {
 
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState("all");
+  const [factoryFilter, setFactoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
@@ -126,15 +127,21 @@ export default function RepairsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const query = search.trim().toLowerCase();
+  const factoryOptions = [
+    ...new Set(rows.map((row) => row.factoryName).filter(Boolean) as string[]),
+  ].sort((a, b) => a.localeCompare(b));
   const filtered = rows.filter((row) => {
     const matchSearch =
       query === "" ||
       row.claimId.toLowerCase().includes(query) ||
       row.resi.toLowerCase().includes(query) ||
       row.customerName.toLowerCase().includes(query) ||
-      (row.productName ?? "").toLowerCase().includes(query);
+      (row.productName ?? "").toLowerCase().includes(query) ||
+      (row.factoryName ?? "").toLowerCase().includes(query);
     const matchProduct =
       productFilter === "all" || String(row.productId) === productFilter;
+    const matchFactory =
+      factoryFilter === "all" || row.factoryName === factoryFilter;
     const matchStatus = statusFilter === "all" || row.status === statusFilter;
     const matchOrigin = originFilter === "all" || row.origin === originFilter;
     const matchMonth =
@@ -144,6 +151,7 @@ export default function RepairsPage() {
     return (
       matchSearch &&
       matchProduct &&
+      matchFactory &&
       matchStatus &&
       matchOrigin &&
       matchMonth &&
@@ -157,6 +165,7 @@ export default function RepairsPage() {
   const signature = [
     query,
     productFilter,
+    factoryFilter,
     statusFilter,
     originFilter,
     monthFilter,
@@ -463,6 +472,29 @@ export default function RepairsPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-2">
+              <Label>{t("common.factory")}</Label>
+              <Select
+                value={factoryFilter}
+                onValueChange={(v) => setFactoryFilter(String(v))}
+                items={[
+                  { value: "all", label: t("header.allFactories") },
+                  ...factoryOptions.map((name) => ({ value: name, label: name })),
+                ]}
+              >
+                <SelectTrigger id="repair-filter-factory" className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("header.allFactories")}</SelectItem>
+                  {factoryOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
               <Label>{t("common.status")}</Label>
               <Select
                 value={statusFilter}
@@ -607,6 +639,7 @@ export default function RepairsPage() {
                     <TableHead>{t("repair.table.date")}</TableHead>
                     <TableHead>{t("repair.table.claim")}</TableHead>
                     <TableHead>{t("common.product")}</TableHead>
+                    <TableHead>{t("common.factory")}</TableHead>
                     <TableHead>{t("common.qty")}</TableHead>
                     <TableHead>{t("common.valueIdr")}</TableHead>
                     <TableHead>{t("common.status")}</TableHead>
@@ -654,6 +687,9 @@ export default function RepairsPage() {
                       </TableCell>
                       <TableCell className="whitespace-normal">
                         {row.productName || productName(row.productId) || "-"}
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
+                        {row.factoryName || "-"}
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {formatNumber(row.quantity)}

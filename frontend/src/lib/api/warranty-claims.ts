@@ -1,7 +1,7 @@
 import { and, desc, eq, like, ne, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { products, warrantyClaims } from "@/lib/db/schema";
+import { factories, productFactories, products, warrantyClaims } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonOk } from "@/lib/api/response";
 
@@ -29,6 +29,9 @@ const warrantySelect = {
   officialName: warrantyClaims.officialName,
   productId: warrantyClaims.productId,
   productName: products.name,
+  // Pabrik tidak disimpan di baris claim; diambil dari kaitan produk → pabrik.
+  factoryId: factories.id,
+  factoryName: factories.name,
   quantity: warrantyClaims.quantity,
   status: warrantyClaims.status,
   sla: warrantyClaims.sla,
@@ -53,6 +56,9 @@ function warrantyConditions(params: URLSearchParams): SQL[] {
 
   const productId = num(params, "productId");
   if (productId !== null) conditions.push(eq(warrantyClaims.productId, productId));
+  // Filter pabrik lewat kaitan produk → pabrik (baris claim tidak menyimpan pabrik).
+  const factoryId = num(params, "factoryId");
+  if (factoryId !== null) conditions.push(eq(productFactories.factoryId, factoryId));
 
   const status = params.get("status")?.trim();
   if (status) conditions.push(eq(warrantyClaims.status, status));
@@ -80,7 +86,8 @@ function warrantyConditions(params: URLSearchParams): SQL[] {
       like(warrantyClaims.resi, `%${q}%`),
       like(warrantyClaims.resiUnit, `%${q}%`),
       like(warrantyClaims.customerName, `%${q}%`),
-      like(warrantyClaims.officialName, `%${q}%`)
+      like(warrantyClaims.officialName, `%${q}%`),
+      like(factories.name, `%${q}%`)
     );
     if (clause) conditions.push(clause);
   }
@@ -93,6 +100,8 @@ export async function listWarrantyRows(params: URLSearchParams) {
     .select(warrantySelect)
     .from(warrantyClaims)
     .leftJoin(products, eq(warrantyClaims.productId, products.id))
+    .leftJoin(productFactories, eq(productFactories.productId, warrantyClaims.productId))
+    .leftJoin(factories, eq(factories.id, productFactories.factoryId))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(warrantyClaims.date), desc(warrantyClaims.id));
 }

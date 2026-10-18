@@ -70,6 +70,7 @@ function WarrantyClaimsView() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [product, setProduct] = useState("all");
+  const [factory, setFactory] = useState("all");
   const [month, setMonth] = useState("all");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [page, setPage] = useState(1);
@@ -88,6 +89,10 @@ function WarrantyClaimsView() {
     () => [...new Set(rows.map((row) => row.officialName).filter(Boolean))].sort(),
     [rows]
   );
+  const factoryOptions = useMemo(
+    () => [...new Set(rows.map((row) => row.factoryName).filter(Boolean) as string[])].sort(),
+    [rows]
+  );
   const monthOptions = useMemo(
     () => [...new Set(rows.map((row) => row.month).filter(Boolean))].sort().reverse(),
     [rows]
@@ -98,15 +103,24 @@ function WarrantyClaimsView() {
     return rows.filter((row) => {
       if (status !== "all" && row.status !== status) return false;
       if (product !== "all" && row.officialName !== product) return false;
+      if (factory !== "all" && row.factoryName !== factory) return false;
       if (month !== "all" && row.month !== month) return false;
       if (onlyIncomplete && !row.incompleteFields) return false;
       if (!needle) return true;
-      return [row.claimId, row.customerName, row.resi, row.resiUnit, row.officialName, row.productForm]
+      return [
+        row.claimId,
+        row.customerName,
+        row.resi,
+        row.resiUnit,
+        row.officialName,
+        row.productForm,
+        row.factoryName,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(needle);
     });
-  }, [rows, search, status, product, month, onlyIncomplete]);
+  }, [rows, search, status, product, factory, month, onlyIncomplete]);
 
   const totals = useMemo(
     () => ({
@@ -242,6 +256,32 @@ function WarrantyClaimsView() {
             </Select>
           </div>
           <div className="space-y-1.5">
+            <Label>{t("common.factory")}</Label>
+            <Select
+              value={factory}
+              items={[
+                { value: "all", label: t("header.allFactories") },
+                ...factoryOptions.map((item) => ({ value: item, label: item })),
+              ]}
+              onValueChange={(value) => {
+                setFactory(String(value));
+                setPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("header.allFactories")}</SelectItem>
+                {factoryOptions.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label>{t("warranty.table.date")}</Label>
             <Select
               value={month}
@@ -299,6 +339,7 @@ function WarrantyClaimsView() {
                       <TableHead>{t("warranty.table.date")}</TableHead>
                       <TableHead>{t("warranty.table.claim")}</TableHead>
                       <TableHead>{t("warranty.table.product")}</TableHead>
+                      <TableHead>{t("common.factory")}</TableHead>
                       <TableHead className="text-right">{t("warranty.table.qty")}</TableHead>
                       <TableHead>{t("warranty.table.status")}</TableHead>
                       <TableHead>{t("warranty.table.collectionPoint")}</TableHead>
@@ -325,6 +366,9 @@ function WarrantyClaimsView() {
                         </TableCell>
                         <TableCell className="max-w-[320px] truncate" title={row.officialName || row.productForm}>
                           {row.officialName || row.productForm || "—"}
+                        </TableCell>
+                        <TableCell className="max-w-[220px] truncate" title={row.factoryName ?? ""}>
+                          {row.factoryName || "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatNumber(row.quantity)}</TableCell>
                         <TableCell>{row.status || "—"}</TableCell>
@@ -428,6 +472,7 @@ function WarrantyDetail({ row }: { row: WarrantyClaim }) {
     { label: t("warranty.field.city"), value: row.city || "—" },
     { label: t("warranty.field.collectionPoint"), value: row.collectionPoint || "—" },
     { label: t("warranty.field.officialName"), value: row.officialName || "—" },
+    { label: t("common.factory"), value: row.factoryName || "—" },
     { label: t("warranty.field.productForm"), value: row.productForm || "—" },
     { label: t("warranty.field.quantity"), value: formatNumber(row.quantity) },
     { label: t("warranty.field.status"), value: row.status || "—" },

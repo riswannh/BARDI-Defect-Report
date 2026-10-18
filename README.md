@@ -625,6 +625,9 @@ Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Sav
   Saving Value / Jenis Harga di berkas impor diabaikan).
 - Modul ini **admin saja** (`/api/repairs*` memakai `requireAdmin()`, menu `adminOnly`) karena Saving
   Value memuat Rupiah — role Pabrik tidak boleh menerimanya, sama seperti kartu Allowance Defect.
+- Baris repair tidak menyimpan pabrik: kolom **Pabrik** diambil dari kaitan produk → pabrik
+  (`product_factories`), ditampilkan di tabel, bisa difilter, dan ikut dicari lewat kotak pencarian.
+  `GET /api/repairs?factoryId=` tersedia untuk pemakaian lain.
 - Verifikasi: `cmd /c "npx tsx scripts/repair-check.ts"` (pemetaan kolom + aturan sync) dan
   `verify-repair.cjs` (Playwright: CRUD, filter, hitung Saving Value, gerbang admin).
 - Baris yang datanya kurang bisa didaftar untuk dibetulkan di sheet:
@@ -648,8 +651,12 @@ Modul ini **baca-saja**: tidak ada tambah/ubah/hapus di app — satu-satunya jal
 
 | Method | Endpoint | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/warranty-claims` | admin | daftar klaim; filter `product`/`status`/`year`/`month`/`incomplete`/`search` |
+| GET | `/api/warranty-claims` | admin | daftar klaim; filter `product`/`status`/`year`/`month`/`incomplete`/`search`/`factoryId` |
 | POST | `/api/warranty-claims/gsheet/sync` | admin | sync satu arah dari sheet (upsert per Claim ID + tanggal + produk) |
+
+- **Kolom Pabrik** diambil dari kaitan produk → pabrik (bukan dari sheet): tabel menampilkan kolom Pabrik,
+  toolbar punya filter pabrik, dan kotak pencarian ikut mencocokkan nama pabrik. Kartu Claim Garansi BARDI
+  di halaman Report juga mengikuti filter pabrik.
 
 - **Nama produk dipatok dari kolom AC "Official Name"**, bukan nama pilihan pelanggan atau kolom masalah.
   Kalau urutan kolom sheet bergeser, sync **ditolak** dengan pesan `kolom 29 harus "Official Name"`.
@@ -740,7 +747,7 @@ periode tujuan dilewati, jadi aman dijalankan berulang.
 | GET | `/api/defect-allowances` | admin | daftar limit allowance, tahun terbaru dulu |
 | POST | `/api/defect-allowances` | admin | `{ year, limitValue }`; 409 bila tahun itu sudah punya limit |
 | PATCH / DELETE | `/api/defect-allowances/{id}` | admin | ubah / hapus satu limit tahunan |
-| GET | `/api/repairs` | admin | daftar reparasi; filter `search`, `productId`, `problemId`, `status`, `pic`, `origin`, `resolution`, `year`, `month` |
+| GET | `/api/repairs` | admin | daftar reparasi; filter `search`, `productId`, `factoryId`, `problemId`, `status`, `pic`, `origin`, `resolution`, `year`, `month` |
 | POST | `/api/repairs` | admin | tambah baris; 409 `Baris ini sudah ada (Claim ID, tanggal, dan produk sama).` bila barisnya kembar persis |
 | PATCH / DELETE | `/api/repairs/{id}` | admin | ubah / hapus satu baris reparasi |
 | POST | `/api/repairs/bulk-delete` | admin | `{ ids: number[] }` — hapus baris terpilih |

@@ -527,6 +527,11 @@ Catatan perilaku Report yang harus dijaga:
   `/api/repairs/[id]` (PATCH/DELETE), `/api/repairs/bulk-delete`, `DELETE /api/repairs`,
   `POST /api/repairs/gsheet/sync`, plus Excel `repairs` — **semuanya `requireAdmin()`** karena
   `value` (Saving Value) memuat Rupiah; role Pabrik tidak menerima data ini sama sekali.
+  - **Kolom Pabrik** (permintaan user 18 Okt 2026): baris repair tidak menyimpan pabrik, jadi
+    `listRepairRows()` men-join `product_factories` → `factories` dan mengirim `factoryId`/`factoryName`
+    (NULL kalau produk belum dikaitkan). Halaman `/repairs` menampilkan kolom Pabrik, punya dropdown
+    filter pabrik, dan kotak pencarian ikut mencocokkan nama pabrik; `/api/repairs?factoryId=` didukung
+    untuk pemakaian lain.
   - Saving Value = `quantity × harga RW` bulan tanggal baris (`resolveRepairPrice` +
     `pickProductPrice`, `DEFAULT_PRICE_TYPE`); dihitung server saat create dan hanya dipakai kalau
     klien mengirim 0/kosong. `month` selalu diturunkan dari `date` (`repairMonth()`) — kolom Bulan di
@@ -595,6 +600,12 @@ Catatan perilaku Report yang harus dijaga:
 - Jangan pakai `cgCell()` untuk kolom Timestamp/Jumlah: itu men-`String()` nilai lebih dulu sehingga
   serial tanggal Google (`46023.402…`) tidak lagi dikenali `parseSheetTimestamp()`; pakai `cgRaw()`.
   Gejalanya: semua `date`/`timeStamp` kosong dan `value` 0 di seluruh tabel.
+- **Kolom Pabrik** (permintaan user 18 Okt 2026): diambil dari kaitan `product_factories` → `factories`
+  (`factoryId`/`factoryName`, NULL kalau produk belum dikaitkan), bukan kolom sheet. Halaman
+  `/claim-garansi` menampilkannya sebagai kolom + dropdown filter pabrik, dan pencarian ikut mencocokkan
+  nama pabrik. `GET /api/warranty-claims?factoryId=` juga didukung.
+- Kartu **Claim Garansi BARDI** di halaman Report ikut filter pabrik dengan cara yang sama (daftar produk
+  pabrik itu dari `product_factories`); "Semua Pabrik" menghitung semua baris.
 - Perbandingan "berubah/tidak" saat sync **wajib** melewati `sheetSyncedAt`/`updatedAt` (selalu beda
   karena presisi detik vs milidetik) — tanpa itu tiap sync melaporkan "diperbarui: 7.996".
 - Identitas baris = `claimMatchKey(claimId, date, productId)` dari `src/lib/claim-match.ts` (dipakai

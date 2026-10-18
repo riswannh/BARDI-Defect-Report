@@ -163,6 +163,7 @@ export async function reportGET(req: NextRequest) {
           status: warrantyClaims.status,
           quantity: warrantyClaims.quantity,
           value: warrantyClaims.value,
+          productId: warrantyClaims.productId,
         })
         .from(warrantyClaims),
       // Pemetaan produk → pabrik. Baris Repair tidak menyimpan pabrik, jadi
@@ -238,7 +239,13 @@ export async function reportGET(req: NextRequest) {
    * `matchesDefectPeriod` seperti baris repair.
    */
   const claimSummary = summarizeClaims(
-    claimRows.filter((row) => countsForClaimSummary(row.status) && matchesDefectPeriod(row.date, f))
+    claimRows.filter(
+      (row) =>
+        countsForClaimSummary(row.status) &&
+        matchesDefectPeriod(row.date, f) &&
+        (factoryProductIds === null ||
+          (row.productId !== null && factoryProductIds.has(row.productId)))
+    )
   );
 
   /**

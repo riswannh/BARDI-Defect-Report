@@ -65,6 +65,9 @@ export interface Repair {
   /** NULL = nama produk di sheet belum ada di Data Master (baris tetap diimpor). */
   productId: number | null;
   productName?: string | null;
+  /** Pabrik pemilik produk (kaitan produk → pabrik); null = produk belum dikaitkan. */
+  factoryId?: number | null;
+  factoryName?: string | null;
   /**
    * Kolom yang kosong/tidak dikenal saat impor sheet, dipisah koma
    * (mis. "claimId,product"). "" = baris lengkap.
@@ -144,6 +147,9 @@ export interface WarrantyClaim {
   /** NULL = Official Name belum ada di Data Master (baris tetap masuk). */
   productId: number | null;
   productName?: string | null;
+  /** Pabrik pemilik produk (kaitan produk → pabrik); null = produk belum dikaitkan. */
+  factoryId?: number | null;
+  factoryName?: string | null;
   quantity: number;
   /** Status Kondisi Barang (kolom X). */
   status: string;

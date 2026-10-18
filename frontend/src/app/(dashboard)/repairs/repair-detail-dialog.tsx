@@ -114,6 +114,9 @@ export function RepairDetailDialog({
             <Field label={t("common.product")}>
               <span className="font-medium">{repair.productName ?? "-"}</span>
             </Field>
+            <Field label={t("common.factory")}>
+              <span className="font-medium">{repair.factoryName ?? "-"}</span>
+            </Field>
             <Field label={t("common.quantity")}>
               <span className="tabular-nums">{formatNumber(repair.quantity)}</span>
             </Field>

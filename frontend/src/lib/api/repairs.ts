@@ -1,7 +1,14 @@
 import { and, desc, eq, inArray, isNull, like, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { problems, productPrices, products, repairs } from "@/lib/db/schema";
+import {
+  factories,
+  problems,
+  productFactories,
+  productPrices,
+  products,
+  repairs,
+} from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
@@ -36,6 +43,10 @@ const repairSelect = {
   month: repairs.month,
   productId: repairs.productId,
   productName: products.name,
+  // Pabrik tidak disimpan di baris repair; diambil dari kaitan produk → pabrik
+  // (satu produk satu pabrik, lihat `product_factories`).
+  factoryId: factories.id,
+  factoryName: factories.name,
   quantity: repairs.quantity,
   value: repairs.value,
   priceType: repairs.priceType,
@@ -114,6 +125,9 @@ function repairConditions(params: URLSearchParams): SQL[] {
 
   const productId = num("productId");
   if (productId !== null) conditions.push(eq(repairs.productId, productId));
+  // Filter pabrik lewat kaitan produk → pabrik (baris repair tidak menyimpan pabrik).
+  const factoryId = num("factoryId");
+  if (factoryId !== null) conditions.push(eq(productFactories.factoryId, factoryId));
   const problemId = num("problemId");
   if (problemId !== null) conditions.push(eq(repairs.problemId, problemId));
 
@@ -143,7 +157,8 @@ function repairConditions(params: URLSearchParams): SQL[] {
       like(repairs.claimId, `%${q}%`),
       like(repairs.resi, `%${q}%`),
       like(repairs.customerName, `%${q}%`),
-      like(products.name, `%${q}%`)
+      like(products.name, `%${q}%`),
+      like(factories.name, `%${q}%`)
     );
     if (clause) conditions.push(clause);
   }
@@ -156,6 +171,8 @@ export async function listRepairRows(params: URLSearchParams) {
     .select(repairSelect)
     .from(repairs)
     .leftJoin(products, eq(repairs.productId, products.id))
+    .leftJoin(productFactories, eq(productFactories.productId, repairs.productId))
+    .leftJoin(factories, eq(factories.id, productFactories.factoryId))
     .leftJoin(problems, eq(repairs.problemId, problems.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(repairs.date), desc(repairs.id));
