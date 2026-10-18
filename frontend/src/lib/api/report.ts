@@ -298,9 +298,13 @@ export async function reportGET(req: NextRequest) {
   );
 
   // Role Pabrik hanya melihat produk yang punya data (defect/sales) di pabriknya.
-  // Admin melihat semua produk.
   if (!user.isAdmin) {
     recap = recap.filter((row) => row.defectQty > 0 || row.salesQty > 0);
+  }
+  // Admin yang memfilter satu pabrik: tabel rekap hanya memuat produk pabrik itu
+  // (bukan semua produk dengan angka 0). "Semua Pabrik" tetap semua produk.
+  if (user.isAdmin && factoryProductIds !== null) {
+    recap = recap.filter((row) => factoryProductIds.has(row.productId));
   }
 
   const buckets = buildChartBuckets(filteredDefects, filteredSales, f);
