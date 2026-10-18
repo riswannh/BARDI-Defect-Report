@@ -520,7 +520,6 @@ export default function ReportPage() {
                   ? "-"
                   : `${(repairSalesRatio * 100).toFixed(2)}%`
               }
-              valueClassName={ratioTextClass(repairSalesRatio)}
               title={t("report.repairSalesRatioDesc")}
             />
           )}
