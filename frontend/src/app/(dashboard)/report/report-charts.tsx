@@ -141,6 +141,7 @@ function renderPieLabel(
     outerRadius?: number;
     percent?: number;
     value?: number;
+    index?: number;
   },
   metric: Metric,
 ) {
@@ -152,17 +153,20 @@ function renderPieLabel(
     outerRadius = 0,
     percent = 0,
     value = 0,
+    index = 0,
   } = props;
-  // Irisan tipis (<6%) dilewati supaya angka label tetangga tidak bertumpuk;
-  // angkanya tetap terbaca di legend bawah pie.
-  if (percent < 0.06) return null;
   const RADIAN = Math.PI / 180;
-  // Label ditaruh agak ke tepi supaya irisan kecil dapat ruang lebih lebar
-  // dan angka label tetangga tidak saling menimpa.
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.72;
+  // SEMUA irisan diberi angka, termasuk yang tipis. Irisan <6% tidak muat dua
+  // baris, jadi hanya nilainya yang ditulis (persennya sudah ada di legend) dan
+  // posisinya digeser selang-seling ke tiga radius supaya tidak bertumpuk.
+  const small = percent < 0.06;
+  const radiusFactor = small ? 0.45 + (index % 3) * 0.17 : 0.72;
+  const radius = innerRadius + (outerRadius - innerRadius) * radiusFactor;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  const size = Math.max(9, Math.min(13, outerRadius * 0.098));
+  const size = small
+    ? Math.max(7, Math.min(11, outerRadius * 0.075))
+    : Math.max(9, Math.min(13, outerRadius * 0.098));
   // Nilai ditulis LANGSUNG di irisan (bukan hanya di tooltip). Uang dipadatkan
   // ("Rp 1,6 M") supaya muat; angka lengkapnya tetap ada di tooltip.
   const text =
@@ -180,12 +184,20 @@ function renderPieLabel(
       dominantBaseline="central"
       fontWeight={600}
     >
-      <tspan x={x} dy={-size * 0.4} fontSize={size}>
-        {`${Math.round(percent * 100)}%`}
-      </tspan>
-      <tspan x={x} dy={size * 1.05} fontSize={size * 0.8} fontWeight={500}>
-        {text}
-      </tspan>
+      {small ? (
+        <tspan x={x} dy={0} fontSize={size}>
+          {text}
+        </tspan>
+      ) : (
+        <>
+          <tspan x={x} dy={-size * 0.4} fontSize={size}>
+            {`${Math.round(percent * 100)}%`}
+          </tspan>
+          <tspan x={x} dy={size * 1.05} fontSize={size * 0.8} fontWeight={500}>
+            {text}
+          </tspan>
+        </>
+      )}
     </text>
   );
 }
@@ -345,8 +357,13 @@ export function MetricBarChart({
   // tetap muncul di tooltip saat batangnya di-hover.
   const barLabel = (value: unknown) =>
     metric === "value" ? compactIDR.format(Number(value)) : formatNumber(Number(value));
+  // `h-full` + tinggi 100%: grafik batang ditarik mengisi tinggi kolom (yang
+  // ditentukan pie + legend di sebelahnya), jadi tidak menggantung menyisakan
+  // ruang kosong di bawah. `minHeight` menjaga tinggi minimum saat dipakai
+  // sendiri (dialog detail / layar sempit).
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <div className="h-full w-full min-w-0" style={{ minHeight: height }}>
+    <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={data}
         margin={{ top: 22, right: 8, left: 0, bottom: 0 }}
@@ -393,6 +410,7 @@ export function MetricBarChart({
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }
 
