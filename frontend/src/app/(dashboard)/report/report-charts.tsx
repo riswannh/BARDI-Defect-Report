@@ -81,17 +81,24 @@ export function RatioBadge({ ratio }: { ratio: number | null }) {
   );
 }
 
+/**
+ * Warna pie sengaja dibuat BERBEDA HUEnja (biru, oranye, hijau, merah, ungu,
+ * kuning, cyan, magenta, dst.) supaya tiap produk langsung ketahuan dari
+ * irisannya — bukan gradasi satu warna yang mirip semua.
+ */
 export const PIE_COLORS = [
-  "oklch(0.648 0.1 209.8)",
-  "oklch(0.731 0.104 203.2)",
-  "oklch(0.816 0.084 204.3)",
-  "oklch(0.76 0.15 82)",
-  "oklch(0.637 0.19 25)",
-  "oklch(0.62 0.15 295)",
-  "oklch(0.7 0.14 150)",
-  "oklch(0.68 0.12 250)",
-  "oklch(0.72 0.13 330)",
-  "oklch(0.65 0.1 180)",
+  "oklch(0.55 0.18 250)",
+  "oklch(0.68 0.17 45)",
+  "oklch(0.55 0.15 155)",
+  "oklch(0.58 0.21 20)",
+  "oklch(0.55 0.19 300)",
+  "oklch(0.72 0.16 85)",
+  "oklch(0.62 0.12 200)",
+  "oklch(0.62 0.2 340)",
+  "oklch(0.65 0.13 120)",
+  "oklch(0.5 0.09 60)",
+  "oklch(0.58 0.16 270)",
+  "oklch(0.76 0.13 180)",
 ];
 
 export interface PieSlice {
@@ -125,14 +132,18 @@ export function sumByKey(entries: Array<{ name: string; value: number }>): PieSl
   return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
 }
 
-function renderPieLabel(props: {
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  innerRadius?: number;
-  outerRadius?: number;
-  percent?: number;
-}) {
+function renderPieLabel(
+  props: {
+    cx?: number;
+    cy?: number;
+    midAngle?: number;
+    innerRadius?: number;
+    outerRadius?: number;
+    percent?: number;
+    value?: number;
+  },
+  metric: Metric,
+) {
   const {
     cx = 0,
     cy = 0,
@@ -140,27 +151,41 @@ function renderPieLabel(props: {
     innerRadius = 0,
     outerRadius = 0,
     percent = 0,
+    value = 0,
   } = props;
-  if (percent < 0.05) return null;
+  // Irisan tipis (<6%) dilewati supaya angka label tetangga tidak bertumpuk;
+  // angkanya tetap terbaca di legend bawah pie.
+  if (percent < 0.06) return null;
   const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.62;
+  // Label ditaruh agak ke tepi supaya irisan kecil dapat ruang lebih lebar
+  // dan angka label tetangga tidak saling menimpa.
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.72;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const size = Math.max(9, Math.min(13, outerRadius * 0.098));
+  // Nilai ditulis LANGSUNG di irisan (bukan hanya di tooltip). Uang dipadatkan
+  // ("Rp 1,6 M") supaya muat; angka lengkapnya tetap ada di tooltip.
+  const text =
+    metric === "value" ? compactIDR.format(value) : formatNumber(value);
   return (
     <text
       x={x}
       y={y}
       fill="#ffffff"
-      stroke="rgba(0,0,0,0.45)"
-      strokeWidth={2.5}
+      stroke="rgba(0,0,0,0.5)"
+      strokeWidth={3}
       paintOrder="stroke"
       strokeLinejoin="round"
       textAnchor="middle"
       dominantBaseline="central"
-      fontSize={11}
       fontWeight={600}
     >
-      {`${Math.round(percent * 100)}%`}
+      <tspan x={x} dy={-size * 0.4} fontSize={size}>
+        {`${Math.round(percent * 100)}%`}
+      </tspan>
+      <tspan x={x} dy={size * 1.05} fontSize={size * 0.8} fontWeight={500}>
+        {text}
+      </tspan>
     </text>
   );
 }
@@ -168,26 +193,35 @@ function renderPieLabel(props: {
 export function PieLegend({
   data,
   maxLen = 22,
+  metric = "qty",
 }: {
   data: PieSlice[];
   maxLen?: number;
+  metric?: Metric;
 }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
+  const format = (value: number) =>
+    metric === "value" ? compactIDR.format(value) : formatNumber(value);
   return (
-    <div className="flex flex-col items-start gap-1 text-[11px] leading-4">
+    <div className="mt-2 grid grid-cols-1 gap-x-5 gap-y-1 text-[11px] leading-4 sm:grid-cols-2">
       {data.map((item, index) => (
-        <div key={`${item.name}-${index}`} className="flex items-center gap-1.5">
+        <div
+          key={`${item.name}-${index}`}
+          className="flex min-w-0 items-center gap-1.5"
+        >
           <span
             className="size-2.5 shrink-0 rounded-[3px]"
             style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
           />
-          <span className="shrink-0" title={item.name}>
+          <span className="min-w-0 flex-1 truncate" title={item.name}>
             {item.name.length > maxLen
               ? `${item.name.slice(0, maxLen - 1)}…`
               : item.name}
           </span>
           <span className="shrink-0 tabular-nums text-muted-foreground">
-            {total > 0 ? `${((item.value / total) * 100).toFixed(1)}%` : "-"}
+            {total > 0
+              ? `${format(item.value)} · ${((item.value / total) * 100).toFixed(1)}%`
+              : "-"}
           </span>
         </div>
       ))}
@@ -286,7 +320,7 @@ export function MetricBarChart({
   data,
   metric,
   kind,
-  height = 240,
+  height = 300,
   rotateLabels = false,
 }: {
   data: ChartBucket[];
@@ -367,16 +401,16 @@ export function PieWithLegend({
   data,
   metric,
   kind,
-  height = 240,
-  outerRadius = 70,
-  legendMaxLen = 22,
+  height = 340,
+  outerRadius = "94%",
+  legendMaxLen = 28,
   title,
 }: {
   data: PieSlice[];
   metric: Metric;
   kind: "defect" | "sales";
   height?: number;
-  outerRadius?: number;
+  outerRadius?: number | `${number}%`;
   legendMaxLen?: number;
   title?: string;
 }) {
@@ -387,35 +421,33 @@ export function PieWithLegend({
           {title}
         </div>
       )}
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1" style={{ height }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={outerRadius}
-                label={renderPieLabel}
-                labelLine={false}
-              >
-                {data.map((entry, index) => (
-                  <Cell
-                    key={`${entry.name}-${index}`}
-                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<PieTooltip metric={metric} kind={kind} />} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="max-w-[50%] shrink-0">
-          <PieLegend data={data} maxLen={legendMaxLen} />
-        </div>
+      {/* Pie mengisi penuh lebar kolom kartu; legend pindah ke bawah supaya
+          irisannya bisa besar dan angkanya kebaca. */}
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={outerRadius}
+              label={(props) => renderPieLabel(props, metric)}
+              labelLine={false}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`${entry.name}-${index}`}
+                  fill={PIE_COLORS[index % PIE_COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<PieTooltip metric={metric} kind={kind} />} />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
+      <PieLegend data={data} maxLen={legendMaxLen} metric={metric} />
     </div>
   );
 }
@@ -438,9 +470,9 @@ export function ChartPairCard({
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div>{bar}</div>
-          <div>{pie}</div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.25fr]">
+          <div className="min-w-0">{bar}</div>
+          <div className="min-w-0">{pie}</div>
         </div>
         {footer}
       </CardContent>

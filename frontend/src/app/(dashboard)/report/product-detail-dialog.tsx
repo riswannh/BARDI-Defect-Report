@@ -173,9 +173,8 @@ export function ProductDetailDialog({
                   data={pieQty}
                   metric="qty"
                   kind="defect"
-                  height={180}
-                  outerRadius={55}
-                  legendMaxLen={16}
+                  height={220}
+                  legendMaxLen={22}
                   title={t("report.pieProblemTitle")}
                 />
               </div>
@@ -203,9 +202,8 @@ export function ProductDetailDialog({
                     data={pieValue}
                     metric="value"
                     kind="defect"
-                    height={180}
-                    outerRadius={55}
-                    legendMaxLen={16}
+                    height={220}
+                    legendMaxLen={22}
                     title={t("report.pieProblemTitle")}
                   />
                 </div>
