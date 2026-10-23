@@ -131,6 +131,16 @@ const translations = {
     en: "Invalid username or password.",
     zh: "用户名或密码错误。",
   },
+  "login.showPassword": {
+    id: "Tampilkan password",
+    en: "Show password",
+    zh: "显示密码",
+  },
+  "login.hidePassword": {
+    id: "Sembunyikan password",
+    en: "Hide password",
+    zh: "隐藏密码",
+  },
 
   // Pagination
   "pagination.showing": {
