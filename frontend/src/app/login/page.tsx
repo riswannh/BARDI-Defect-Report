@@ -36,15 +36,35 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Username dirapikan dulu: spasi/newline sisa salin-tempel bikin
+    // better-auth menjawab "Invalid username or password" walau akunnya ada.
+    const typed = username;
+    const cleanUsername = username.trim();
+    if (!cleanUsername) {
+      setError(true);
+      return;
+    }
+    if (cleanUsername !== username) setUsername(cleanUsername);
     setSubmitting(true);
     setError(false);
     const { error: signInError } = await authClient.signIn.username({
-      username,
+      username: cleanUsername,
       password,
     });
     setSubmitting(false);
     if (signInError) {
       setError(true);
+      // Jejak untuk operator: apa yang benar-benar diketik (password tidak ikut).
+      void fetch("/api/auth-diag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: typed,
+          code: signInError.code,
+          status: signInError.status,
+          page: "/login",
+        }),
+      }).catch(() => {});
       return;
     }
     router.replace("/report");
@@ -94,6 +114,7 @@ export default function LoginPage() {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onBlur={() => setUsername((value) => value.trim())}
                 placeholder={t("common.username")}
                 autoComplete="username"
               />
