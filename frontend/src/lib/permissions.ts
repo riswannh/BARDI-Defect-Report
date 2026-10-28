@@ -127,8 +127,9 @@ export const PABRIK_DEFAULT_PERMISSIONS: ReadonlyArray<{
   { menu: "po", read: true, write: false },
   // Alur eskalasi tiket butuh tim pabrik membalas chat.
   { menu: "tickets", read: true, write: true },
-  // Task planner dipakai semua tim, termasuk tim pabrik.
-  { menu: "tasks", read: true, write: true },
+  // Task planner boleh DILIHAT tim pabrik, tapi hanya grup role yang diberi
+  // izin tulis (mis. Produk Staff) yang masuk kalender bersama.
+  { menu: "tasks", read: true, write: false },
 ];
 
 /** Kode role yang aturannya di-hardcode di server (nilai Rupiah disembunyikan). */
