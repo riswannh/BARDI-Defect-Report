@@ -1,5 +1,7 @@
 /** Tipe data + konstanta bersama untuk halaman Task Planner. */
 
+import type { TranslationKey } from "@/lib/i18n";
+
 export interface TaskRow {
   id: number;
   userId: string;
@@ -40,26 +42,26 @@ export const TASK_STATUSES = ["Belum", "Selesai"] as const;
 
 export type RepeatRule = (typeof REPEAT_RULES)[number];
 
-export const REPEAT_LABEL_KEYS: Record<string, string> = {
+export const REPEAT_LABEL_KEYS: Record<string, TranslationKey> = {
   "": "tasks.repeatNone",
   daily: "tasks.repeatDaily",
   weekly: "tasks.repeatWeekly",
   monthly: "tasks.repeatMonthly",
 };
 
-export const PRIORITY_LABEL_KEYS: Record<string, string> = {
+export const PRIORITY_LABEL_KEYS: Record<string, TranslationKey> = {
   Urgent: "tasks.priorityUrgent",
   Segera: "tasks.prioritySegera",
   Normal: "tasks.priorityNormal",
 };
 
-export const DIFFICULTY_LABEL_KEYS: Record<string, string> = {
+export const DIFFICULTY_LABEL_KEYS: Record<string, TranslationKey> = {
   Mudah: "tasks.difficultyEasy",
   Sedang: "tasks.difficultyMedium",
   Sulit: "tasks.difficultyHard",
 };
 
-export const WEEKDAY_LABEL_KEYS = [
+export const WEEKDAY_LABEL_KEYS: TranslationKey[] = [
   "tasks.weekdayMon",
   "tasks.weekdayTue",
   "tasks.weekdayWed",
@@ -69,7 +71,7 @@ export const WEEKDAY_LABEL_KEYS = [
   "tasks.weekdaySun",
 ];
 
-export const ACTION_LABEL_KEYS: Record<string, string> = {
+export const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
   create: "tasks.actionCreate",
   update: "tasks.actionUpdate",
   progress: "tasks.actionProgress",

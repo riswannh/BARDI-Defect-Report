@@ -37,7 +37,9 @@ const DIFF_FIELDS = [
   "repeatDay",
 ] as const;
 
-function validateTask(values: TaskValues): string | null {
+function validateTask(
+  values: Pick<TaskValues, "startDate" | "dueDate" | "repeatRule" | "repeatWeekday" | "repeatDay">
+): string | null {
   if (values.dueDate < values.startDate) {
     return "Deadline tidak boleh sebelum tanggal mulai.";
   }
@@ -129,7 +131,13 @@ export async function tasksPOST(req: NextRequest) {
   }
 
   const { note, ...values } = parsed.data;
-  const invalid = validateTask(values);
+  const invalid = validateTask({
+    startDate: values.startDate,
+    dueDate: values.dueDate,
+    repeatRule: values.repeatRule ?? "",
+    repeatWeekday: values.repeatWeekday ?? null,
+    repeatDay: values.repeatDay ?? null,
+  });
   if (invalid) return jsonError(invalid, 400);
 
   const now = new Date();

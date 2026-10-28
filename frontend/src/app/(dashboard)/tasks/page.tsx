@@ -43,7 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskLogDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
-import { TaskTimeline } from "./task-timeline";
+import { TaskCalendar } from "./task-calendar";
 import {
   DIFFICULTIES,
   DIFFICULTY_LABEL_KEYS,
@@ -66,7 +66,7 @@ export default function TasksPage() {
   const mine = mineData ?? [];
   const everything = allData ?? [];
 
-  const [tab, setTab] = useState("mine");
+  const [tab, setTab] = useState("calendar");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
@@ -487,7 +487,7 @@ export default function TasksPage() {
               <CardTitle className="text-sm">{t("tasks.timelineTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <TaskTimeline tasks={everything} onSelect={(task) => setDetailTask(task)} />
+              <TaskCalendar tasks={everything} onSelect={(task) => setDetailTask(task)} />
             </CardContent>
           </Card>
         </TabsContent>
