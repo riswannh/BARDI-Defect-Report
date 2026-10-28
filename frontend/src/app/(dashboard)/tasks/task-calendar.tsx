@@ -219,15 +219,18 @@ function WeekStrip({
                   {t(WEEKDAY_LABEL_KEYS[isoWeekday(iso) - 1])}
                 </span>
               )}
-              <span
+              <button
+                type="button"
+                onClick={() => onMore(iso)}
+                title={t("tasks.openDay")}
                 className={
                   isToday
                     ? "flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground"
-                    : "text-[11px] text-muted-foreground"
+                    : "rounded px-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
                 }
               >
                 {Number(iso.slice(8, 10))}
-              </span>
+              </button>
             </div>
           );
         })}

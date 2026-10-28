@@ -232,6 +232,7 @@ const translations = {
   "tasks.prevMonth": { id: "Bulan sebelumnya", en: "Previous month", zh: "上个月" },
   "tasks.nextMonth": { id: "Bulan berikutnya", en: "Next month", zh: "下个月" },
   "tasks.moreCount": { id: "+{count} lagi", en: "+{count} more", zh: "还有 {count} 条" },
+  "tasks.openDay": { id: "Buka tampilan hari", en: "Open day view", zh: "打开日视图" },
   "tasks.viewDay": { id: "Hari", en: "Day", zh: "日" },
   "tasks.viewWeek": { id: "Minggu", en: "Week", zh: "周" },
   "tasks.viewMonth": { id: "Bulan", en: "Month", zh: "月" },
