@@ -350,8 +350,9 @@ export async function taskActivitiesGET(req: NextRequest) {
 
 /**
  * Daftar akun untuk panel "kalender" Task Planner. Hanya akun yang role-nya
- * diberi akses menu `tasks` (plus admin) — akun di luar grup role itu tidak
- * ikut tampil dan task-nya tidak muncul di kalender bersama.
+ * boleh MENULIS di menu `tasks` (plus admin) — grup role yang cuma punya akses
+ * baca tidak ikut tampil, jadi kalender bersama hanya berisi tim yang memang
+ * mengerjakan task.
  */
 export async function taskCalendarsGET() {
   const guard = await requireMenu("tasks", "read");
@@ -363,7 +364,7 @@ export async function taskCalendarsGET() {
       username: userTable.username,
       name: userTable.name,
       isAdmin: userTable.isAdmin,
-      canRead: rolePermissions.canRead,
+      canWrite: rolePermissions.canWrite,
     })
     .from(userTable)
     .leftJoin(roles, eq(userTable.roleId, roles.id))
@@ -374,7 +375,7 @@ export async function taskCalendarsGET() {
     .orderBy(userTable.username);
 
   const calendars: TaskCalendarUser[] = rows
-    .filter((row) => row.isAdmin || row.canRead === true)
+    .filter((row) => row.isAdmin || row.canWrite === true)
     .map((row) => ({ id: row.id, name: row.username || row.name || row.id }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
