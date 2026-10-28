@@ -9,7 +9,7 @@ import {
   products,
   repairs,
 } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import {
@@ -179,7 +179,7 @@ export async function listRepairRows(params: URLSearchParams) {
 }
 
 export async function repairsGET(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "read");
   if (!guard.ok) return guard.response;
 
   const rows = await listRepairRows(req.nextUrl.searchParams);
@@ -187,7 +187,7 @@ export async function repairsGET(req: NextRequest) {
 }
 
 export async function repairsPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = repairSchema.safeParse(await req.json());
@@ -245,7 +245,7 @@ export async function repairsPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -334,7 +334,7 @@ export async function repairsDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -347,7 +347,7 @@ export async function repairsDELETE(
 }
 
 export async function repairsDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   const backup = backupDatabase("repairs");
@@ -356,7 +356,7 @@ export async function repairsDELETEALL() {
 }
 
 export async function repairsBULKDELETE(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json()) as { ids?: unknown };

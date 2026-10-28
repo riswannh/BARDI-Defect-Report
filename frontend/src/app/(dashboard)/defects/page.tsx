@@ -24,7 +24,6 @@ import type {
   Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
-import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import {
@@ -496,7 +495,7 @@ export default function DefectsPage() {
   }
 
   return (
-    <AdminGuard>
+    <>
       <div>
       <PageHeader
         title={t("defects.title")}
@@ -1016,6 +1015,6 @@ export default function DefectsPage() {
         onConfirm={handleBulkDelete}
       />
       </div>
-    </AdminGuard>
+    </>
   );
 }

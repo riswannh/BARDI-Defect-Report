@@ -9,7 +9,7 @@ import {
   products,
   statuses,
 } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { defectSchema } from "@/lib/api/validation";
@@ -559,7 +559,7 @@ export async function runSync(options: {
 
 /** POST /api/defects/gsheet/sync — tarik perubahan sheet ke app (butuh admin). */
 export async function defectsGsheetSync(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   let body: { defaultChoice?: "sheet" | "app" } = {};
@@ -585,7 +585,7 @@ export async function defectsGsheetSync(req: NextRequest) {
  * Tidak menulis ke sheet; "app" berarti nilai app dipertahankan.
  */
 export async function defectsGsheetResolve(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = (await req.json().catch(() => ({}))) as {

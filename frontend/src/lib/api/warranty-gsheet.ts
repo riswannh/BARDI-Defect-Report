@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { productPrices, products, warrantyClaims } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { DEFAULT_PRICE_TYPE, normalizeDateOnly } from "@/lib/api/validation";
 import { claimMatchKey } from "@/lib/claim-match";
@@ -321,7 +321,7 @@ export async function runWarrantySync(): Promise<{
 
 /** POST /api/warranty-claims/gsheet/sync — tarik tab "Raw Combine CG" (admin saja). */
 export async function warrantyClaimsGsheetSync() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("claim-garansi", "write");
   if (!guard.ok) return guard.response;
 
   try {

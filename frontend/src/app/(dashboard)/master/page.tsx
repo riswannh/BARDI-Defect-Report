@@ -19,7 +19,6 @@ import {
   PRICE_MONTHS,
   PRICE_TYPES,
 } from "@/lib/api/validation";
-import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
@@ -401,7 +400,7 @@ export default function MasterPage() {
   }
 
   return (
-    <AdminGuard>
+    <>
       <div>
       <PageHeader
         title={t("master.title")}
@@ -797,6 +796,6 @@ export default function MasterPage() {
         }}
       />
       </div>
-    </AdminGuard>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { problems, productPrices, products, repairs, spareParts } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { DEFAULT_PRICE_TYPE, normalizeDateOnly } from "@/lib/api/validation";
 import { GsheetError } from "@/lib/gsheet/auth";
@@ -488,7 +488,7 @@ export async function runRepairSync(): Promise<{
 
 /** POST /api/repairs/gsheet/sync — tarik perubahan sheet ke app (admin saja). */
 export async function repairsGsheetSync() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("repairs", "write");
   if (!guard.ok) return guard.response;
 
   try {

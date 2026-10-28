@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Boxes, Eye, Loader2, PackageCheck, RefreshCw, Wallet } from "lucide-react";
-import { AdminGuard } from "@/components/admin-guard";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
@@ -51,9 +50,9 @@ import { incompleteFieldsLabel } from "./warranty-incomplete";
  */
 export default function WarrantyClaimsPage() {
   return (
-    <AdminGuard>
+    <>
       <WarrantyClaimsView />
-    </AdminGuard>
+    </>
   );
 }
 

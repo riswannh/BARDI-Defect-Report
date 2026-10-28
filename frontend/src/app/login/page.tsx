@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { apiGet } from "@/lib/api-client";
+import { homeHref, type PermissionMap } from "@/lib/permissions";
 import { useLanguage } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
@@ -28,11 +30,21 @@ export default function LoginPage() {
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!isPending && session?.user) {
+  /** Halaman pertama yang boleh dibuka role akun ini. */
+  const goHome = useCallback(async () => {
+    try {
+      const profile = await apiGet<{ permissions: PermissionMap }>("/api/me");
+      router.replace(homeHref(profile.permissions) ?? "/report");
+    } catch {
       router.replace("/report");
     }
-  }, [isPending, session, router]);
+  }, [router]);
+
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      void goHome();
+    }
+  }, [isPending, session, goHome]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,7 +79,7 @@ export default function LoginPage() {
       }).catch(() => {});
       return;
     }
-    router.replace("/report");
+    await goHome();
   }
 
   return (

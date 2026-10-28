@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, like, lte, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
+import type { SessionUser } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import {
   defects,
@@ -11,12 +12,7 @@ import {
   sales,
   statuses,
 } from "@/lib/db/schema";
-import {
-  requireAdmin,
-  requireUser,
-  scopedFactoryId,
-  type SessionUser,
-} from "@/lib/api/guard";
+import { requireMenu, scopedFactoryId } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import {
@@ -417,7 +413,7 @@ export { stripValue };
    tidak ada lagi penghitungan `quantity × harga master` di sini. */
 
 export async function defectsGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("defects", "read");
   if (!guard.ok) return guard.response;
 
   const rows = await listDefectRows(guard.user, req.nextUrl.searchParams);
@@ -425,7 +421,7 @@ export async function defectsGET(req: NextRequest) {
 }
 
 export async function defectsPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = defectSchema.safeParse(await req.json());
@@ -464,7 +460,7 @@ export async function defectsPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -519,7 +515,7 @@ export async function defectsDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -535,7 +531,7 @@ export async function defectsDELETE(
 }
 
 export async function defectsDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const backup = backupDatabase("defects");
@@ -544,7 +540,7 @@ export async function defectsDELETEALL() {
 }
 
 export async function defectsBULKDELETE(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("defects", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json()) as { ids?: unknown };
@@ -563,7 +559,7 @@ export async function defectsBULKDELETE(req: NextRequest) {
 /* =============================== Sales =============================== */
 
 export async function salesGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("sales", "read");
   if (!guard.ok) return guard.response;
 
   const rows = await listSaleRows(guard.user, req.nextUrl.searchParams);
@@ -571,7 +567,7 @@ export async function salesGET(req: NextRequest) {
 }
 
 export async function salesPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = saleSchema.safeParse(await req.json());
@@ -599,7 +595,7 @@ export async function salesPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -646,7 +642,7 @@ export async function salesDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -659,7 +655,7 @@ export async function salesDELETE(
 }
 
 export async function salesDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const backup = backupDatabase("sales");
@@ -668,7 +664,7 @@ export async function salesDELETEALL() {
 }
 
 export async function salesBULKDELETE(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json()) as { ids?: unknown };
@@ -687,7 +683,7 @@ export async function salesBULKDELETE(req: NextRequest) {
 /* ============================ PO Product ============================ */
 
 export async function purchaseOrdersGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("po", "read");
   if (!guard.ok) return guard.response;
 
   const rows = await listPurchaseOrderRows(guard.user, req.nextUrl.searchParams);
@@ -695,7 +691,7 @@ export async function purchaseOrdersGET(req: NextRequest) {
 }
 
 export async function purchaseOrdersPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("po", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = purchaseOrderSchema.safeParse(await req.json());
@@ -743,7 +739,7 @@ export async function purchaseOrdersPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("po", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -824,7 +820,7 @@ export async function purchaseOrdersDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("po", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -840,7 +836,7 @@ export async function purchaseOrdersDELETE(
 }
 
 export async function purchaseOrdersDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("po", "write");
   if (!guard.ok) return guard.response;
 
   const backup = backupDatabase("purchase-orders");
@@ -851,7 +847,7 @@ export async function purchaseOrdersDELETEALL() {
 }
 
 export async function purchaseOrdersBULKDELETE(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("po", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json()) as { ids?: unknown };

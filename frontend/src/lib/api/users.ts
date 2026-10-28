@@ -1,12 +1,13 @@
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { account, factories, user } from "@/lib/db/schema";
+import { account, factories, roles, user } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { userCreateSchema, userUpdateSchema } from "@/lib/api/validation";
+import { PABRIK_ROLE_CODE } from "@/lib/permissions";
 
 function syntheticEmail(username: string) {
   const local = username
@@ -16,11 +17,21 @@ function syntheticEmail(username: string) {
   return `${local || "user"}@pabrik.local`;
 }
 
+/** Jumlah super admin — dipakai supaya admin terakhir tidak bisa dicabut. */
+async function adminCount() {
+  const rows = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(user)
+    .where(eq(user.isAdmin, true));
+  return Number(rows[0]?.total ?? 0);
+}
+
 export async function createUserAccount(input: {
   username: string;
   password: string;
   isAdmin: boolean;
   factoryId: number | null;
+  roleId?: number | null;
 }): Promise<string> {
   const result = await auth.api.signUpEmail({
     body: {
@@ -33,7 +44,11 @@ export async function createUserAccount(input: {
 
   await db
     .update(user)
-    .set({ isAdmin: input.isAdmin, factoryId: input.factoryId })
+    .set({
+      isAdmin: input.isAdmin,
+      factoryId: input.factoryId,
+      roleId: input.roleId ?? null,
+    })
     .where(eq(user.id, result.user.id));
 
   return result.user.id;
@@ -51,9 +66,13 @@ export async function usersGET() {
       isAdmin: user.isAdmin,
       factoryId: user.factoryId,
       factoryName: factories.name,
+      roleId: user.roleId,
+      roleName: roles.name,
+      roleCode: roles.code,
     })
     .from(user)
     .leftJoin(factories, eq(user.factoryId, factories.id))
+    .leftJoin(roles, eq(user.roleId, roles.id))
     .orderBy(user.createdAt);
 
   return jsonOk(rows);
@@ -70,6 +89,16 @@ export async function usersPOST(req: NextRequest) {
 
   const { username, password, isAdmin } = parsed.data;
   const factoryId = isAdmin ? null : parsed.data.factoryId ?? null;
+  let roleId = isAdmin ? null : parsed.data.roleId ?? null;
+  if (!isAdmin && roleId === null) {
+    // Akun baru tanpa role akan terkunci tanpa menu sama sekali, jadi diberi
+    // akses dasar role Pabrik; admin bisa menggantinya kapan saja.
+    const [fallback] = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.code, PABRIK_ROLE_CODE));
+    roleId = fallback?.id ?? null;
+  }
 
   const existing = await db
     .select({ id: user.id })
@@ -83,8 +112,9 @@ export async function usersPOST(req: NextRequest) {
       password,
       isAdmin,
       factoryId,
+      roleId,
     });
-    return jsonOk({ id, username, isAdmin, factoryId }, 201);
+    return jsonOk({ id, username, isAdmin, factoryId, roleId }, 201);
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "Gagal membuat user.",
@@ -117,6 +147,15 @@ export async function usersPATCH(
     : parsed.data.factoryId !== undefined
       ? parsed.data.factoryId
       : current.factoryId;
+  const roleId = isAdmin
+    ? null
+    : parsed.data.roleId !== undefined
+      ? parsed.data.roleId
+      : current.roleId;
+
+  if (current.isAdmin && !isAdmin && (await adminCount()) <= 1) {
+    return jsonError("Minimal harus ada satu admin.", 400);
+  }
 
   if (parsed.data.username && parsed.data.username !== current.username) {
     const duplicate = await db
@@ -136,6 +175,7 @@ export async function usersPATCH(
       email: syntheticEmail(username),
       isAdmin,
       factoryId,
+      roleId,
       updatedAt: new Date(),
     })
     .where(eq(user.id, id));
@@ -151,7 +191,7 @@ export async function usersPATCH(
       );
   }
 
-  return jsonOk({ id, username, isAdmin, factoryId });
+  return jsonOk({ id, username, isAdmin, factoryId, roleId });
 }
 
 export async function usersDELETE(
@@ -164,6 +204,15 @@ export async function usersDELETE(
   const { id } = await ctx.params;
   if (id === guard.user.id) {
     return jsonError("Tidak bisa menghapus akun sendiri.", 400);
+  }
+
+  const [target] = await db
+    .select({ isAdmin: user.isAdmin })
+    .from(user)
+    .where(eq(user.id, id));
+  if (!target) return jsonError("User tidak ditemukan.", 404);
+  if (target.isAdmin && (await adminCount()) <= 1) {
+    return jsonError("Minimal harus ada satu admin.", 400);
   }
 
   const [row] = await db.delete(user).where(eq(user.id, id)).returning();

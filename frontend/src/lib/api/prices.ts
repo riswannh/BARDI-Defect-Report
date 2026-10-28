@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { productPrices, products, purchaseOrders } from "@/lib/db/schema";
-import { requireAdmin, requireUser } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { carryForwardMessage, lastPriceBefore } from "@/lib/api/price-period";
@@ -54,7 +54,7 @@ function listQuery() {
 }
 
 export async function pricesGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("master", "read");
   if (!guard.ok) return guard.response;
 
   const params = req.nextUrl.searchParams;
@@ -78,7 +78,7 @@ export async function pricesGET(req: NextRequest) {
 }
 
 export async function pricesPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = productPriceSchema.safeParse(await req.json());
@@ -132,7 +132,7 @@ export async function pricePATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -199,7 +199,7 @@ export async function priceDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -228,7 +228,7 @@ export async function priceDELETE(
 }
 
 export async function pricesDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const used = await db
@@ -261,7 +261,7 @@ export async function pricesDELETEALL() {
  * dilewati, jadi aman dijalankan berulang.
  */
 export async function pricesCARRYFORWARD(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => ({}))) as {

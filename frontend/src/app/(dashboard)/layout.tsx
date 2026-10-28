@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { AuthGuard } from "@/components/auth-guard";
+import { MenuGuard } from "@/components/menu-guard";
 
 export default function DashboardLayout({
   children,
@@ -24,7 +25,9 @@ export default function DashboardLayout({
           onMobileNavOpenChange={setMobileNavOpen}
         />
         <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          <AuthGuard>{children}</AuthGuard>
+          <AuthGuard>
+            <MenuGuard>{children}</MenuGuard>
+          </AuthGuard>
         </main>
       </div>
     </div>

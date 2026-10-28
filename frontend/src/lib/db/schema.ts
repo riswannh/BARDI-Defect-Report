@@ -47,6 +47,10 @@ export const user = sqliteTable("user", {
   factoryId: integer("factoryId").references(() => factories.id, {
     onDelete: "set null",
   }),
+  /** Role grup penentu menu yang boleh diakses; NULL = belum diatur. */
+  roleId: integer("roleId").references(() => roles.id, {
+    onDelete: "set null",
+  }),
 });
 
 export const session = sqliteTable(
@@ -713,4 +717,48 @@ export const warrantyClaims = sqliteTable(
     index("warranty_claims_product_idx").on(t.productId),
     index("warranty_claims_status_idx").on(t.status),
   ]
+);
+
+/* ============================================================
+ * Role grup & hak akses menu
+ * ============================================================ */
+
+export const roles = sqliteTable("roles", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Nama tampilan role, mis. "Pabrik". */
+  name: text("name").notNull().unique(),
+  /** Kode tetap untuk aturan yang di-hardcode di server ("pabrik"). */
+  code: text("code").notNull().unique(),
+  description: text("description").notNull().default(""),
+  /**
+   * Role bawaan sistem: nama & kode terkunci dan tidak bisa dihapus.
+   * Saat ini hanya "pabrik" — aturan penyembunyian nilai Rupiah menempel
+   * pada kode tersebut, bukan pada permission di tabel.
+   */
+  isSystem: integer("isSystem", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+/**
+ * Satu baris per (role, menu). Menu tanpa baris = tidak punya akses.
+ * Write selalu menyertakan Read (dinormalkan di `src/lib/api/validation.ts`).
+ */
+export const rolePermissions = sqliteTable(
+  "role_permissions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    roleId: integer("roleId")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    /** Kunci menu — lihat MENU_KEYS di `src/lib/permissions.ts`. */
+    menu: text("menu").notNull(),
+    canRead: integer("canRead", { mode: "boolean" }).notNull().default(false),
+    canWrite: integer("canWrite", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [unique("role_permissions_role_menu").on(t.roleId, t.menu)]
 );

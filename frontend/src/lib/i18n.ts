@@ -1587,6 +1587,84 @@ const translations = {
     en: "User Accounts",
     zh: "用户账户",
   },
+  "users.tabRoles": {
+    id: "Role & Akses",
+    en: "Roles & Access",
+    zh: "角色与权限",
+  },
+  "users.rolesHint": {
+    id: "Role menentukan menu apa yang bisa dibuka tiap user.",
+    en: "Roles decide which menus each user can open.",
+    zh: "角色决定每个用户可以打开哪些菜单。",
+  },
+  "users.addRole": { id: "Tambah Role", en: "Add Role", zh: "添加角色" },
+  "users.editRole": { id: "Ubah Role", en: "Edit Role", zh: "编辑角色" },
+  "users.roleName": { id: "Nama Role", en: "Role Name", zh: "角色名称" },
+  "users.roleNamePlaceholder": {
+    id: "mis. Tim CS",
+    en: "e.g. CS Team",
+    zh: "例如：客服团队",
+  },
+  "users.roleDescription": {
+    id: "Keterangan",
+    en: "Description",
+    zh: "说明",
+  },
+  "users.roleUsers": { id: "Jumlah User", en: "Users", zh: "用户数" },
+  "users.systemRole": { id: "Sistem", en: "System", zh: "系统" },
+  "users.noRole": { id: "Tanpa role", en: "No role", zh: "无角色" },
+  "users.roleHint": {
+    id: "Menu yang bisa dibuka ditentukan role. Role Pabrik otomatis menyembunyikan nilai Rupiah.",
+    en: "Available menus follow the role. The Factory role hides Rupiah values automatically.",
+    zh: "可访问的菜单由角色决定。工厂角色会自动隐藏印尼盾金额。",
+  },
+  "users.permissionMatrix": {
+    id: "Hak akses menu",
+    en: "Menu access",
+    zh: "菜单权限",
+  },
+  "users.permissionMatrixHint": {
+    id: "Baca = hanya melihat, Tulis = bisa menambah/mengubah. Tulis otomatis termasuk Baca.",
+    en: "Read = view only, Write = add/edit. Write automatically includes Read.",
+    zh: "读取 = 只能查看，写入 = 可新增/修改。写入自动包含读取。",
+  },
+  "users.readOn": { id: "Baca ✓", en: "Read ✓", zh: "读取 ✓" },
+  "users.readOff": { id: "Baca", en: "Read", zh: "读取" },
+  "users.writeOn": { id: "Tulis ✓", en: "Write ✓", zh: "写入 ✓" },
+  "users.writeOff": { id: "Tulis", en: "Write", zh: "写入" },
+  "users.roleCreated": { id: "Role dibuat.", en: "Role created.", zh: "角色已创建。" },
+  "users.roleUpdated": {
+    id: "Role diperbarui.",
+    en: "Role updated.",
+    zh: "角色已更新。",
+  },
+  "users.roleDeleted": {
+    id: "Role dihapus.",
+    en: "Role deleted.",
+    zh: "角色已删除。",
+  },
+  "users.roleSaveFailed": {
+    id: "Gagal menyimpan role.",
+    en: "Failed to save role.",
+    zh: "保存角色失败。",
+  },
+  "users.roleDeleteConfirm": {
+    id: "Hapus role {name}? User yang memakainya kehilangan akses.",
+    en: "Delete role {name}? Users using it lose access.",
+    zh: "删除角色 {name}？使用该角色的用户将失去访问权限。",
+  },
+
+  // Gerbang menu berbasis hak akses role
+  "guard.noAccessTitle": {
+    id: "Tidak punya akses",
+    en: "No access",
+    zh: "无权访问",
+  },
+  "guard.noAccessHint": {
+    id: "Role akun ini tidak diberi akses ke menu tersebut. Hubungi admin bila memang dibutuhkan.",
+    en: "This account's role has no access to that menu. Ask an admin if you need it.",
+    zh: "该账户的角色没有此菜单的访问权限。如确需使用请联系管理员。",
+  },
   "users.tabFactories": {
     id: "Daftar Pabrik",
     en: "Factory List",

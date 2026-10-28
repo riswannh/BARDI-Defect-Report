@@ -16,47 +16,40 @@ import {
   Wrench,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import type { MenuKey } from "@/lib/permissions";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
 
 interface NavItem {
   href: string;
   labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
+  menu: MenuKey;
 }
 
 const navItems: NavItem[] = [
-  { href: "/report", labelKey: "nav.report", icon: LayoutDashboard },
+  { href: "/report", labelKey: "nav.report", menu: "report", icon: LayoutDashboard },
   {
     href: "/sales",
-    labelKey: "nav.sales",
-    icon: ShoppingCart,
-    adminOnly: true,
-  },
+    labelKey: "nav.sales", menu: "sales",
+    icon: ShoppingCart,  },
   // PO Product juga dibuka untuk role Pabrik (read-only, tanpa harga/total).
-  { href: "/po", labelKey: "nav.po", icon: ClipboardList },
+  { href: "/po", labelKey: "nav.po", menu: "po", icon: ClipboardList },
   // Ticketing dipakai CS, Tim Produk, dan Tim Pabrik — bukan admin-only.
-  { href: "/tickets", labelKey: "nav.tickets", icon: Headset },
+  { href: "/tickets", labelKey: "nav.tickets", menu: "tickets", icon: Headset },
   {
     href: "/defects",
-    labelKey: "nav.defects",
-    icon: AlertTriangle,
-    adminOnly: true,
-  },
+    labelKey: "nav.defects", menu: "defects",
+    icon: AlertTriangle,  },
   {
     href: "/repairs",
-    labelKey: "nav.repairs",
-    icon: Wrench,
-    adminOnly: true,
-  },
+    labelKey: "nav.repairs", menu: "repairs",
+    icon: Wrench,  },
   {
     href: "/claim-garansi",
-    labelKey: "nav.warrantyClaims",
-    icon: ShieldCheck,
-    adminOnly: true,
-  },
-  { href: "/master", labelKey: "nav.master", icon: Database, adminOnly: true },
-  { href: "/users", labelKey: "nav.users", icon: Users, adminOnly: true },
+    labelKey: "nav.warrantyClaims", menu: "claim-garansi",
+    icon: ShieldCheck,  },
+  { href: "/master", labelKey: "nav.master", menu: "master", icon: Database },
+  { href: "/users", labelKey: "nav.users", menu: "users", icon: Users },
 ];
 
 /**
@@ -65,10 +58,14 @@ const navItems: NavItem[] = [
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { isAdmin, can, roleName, profileLoading } = useAuth();
   const { t } = useLanguage();
 
-  const items = navItems.filter((item) => !item.adminOnly || isAdmin);
+  // Menu yang tidak boleh dibaca role ini disembunyikan; selama profil belum
+  // datang, semua item ditahan supaya tidak berkedip-kedip.
+  const items = profileLoading
+    ? []
+    : navItems.filter((item) => can(item.menu, "read"));
 
   return (
     <>
@@ -140,7 +137,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 : "bg-amber-400"
             )}
           />
-          {isAdmin ? t("nav.adminAccess") : t("nav.factoryAccess")}
+          {isAdmin
+            ? t("nav.adminAccess")
+            : (roleName ?? t("nav.factoryAccess"))}
         </div>
       </div>
     </>

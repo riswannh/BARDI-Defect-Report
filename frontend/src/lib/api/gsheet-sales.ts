@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { factories, products, sales } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { GsheetError } from "@/lib/gsheet/auth";
 import { batchGetValues, type SheetCell } from "@/lib/gsheet/values";
@@ -364,7 +364,7 @@ function friendly(error: unknown, fallback: string) {
 
 /** POST /api/sales/gsheet/sync — tarik perubahan sheet ke app (butuh admin). */
 export async function salesGsheetSync(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   let body: { defaultChoice?: FieldChoice } = {};
@@ -390,7 +390,7 @@ export async function salesGsheetSync(req: NextRequest) {
  * Tidak menulis ke sheet; "app" berarti nilai app dipertahankan.
  */
 export async function salesGsheetResolve(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("sales", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = (await req.json().catch(() => ({}))) as {

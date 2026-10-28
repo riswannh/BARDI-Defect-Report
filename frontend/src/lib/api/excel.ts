@@ -16,7 +16,8 @@ import {
   statuses,
   user,
 } from "@/lib/db/schema";
-import { requireAdmin, requireUser } from "@/lib/api/guard";
+import { requireMenu, requireUser } from "@/lib/api/guard";
+import type { MenuKey } from "@/lib/permissions";
 import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import {
@@ -286,6 +287,24 @@ const REPAIR_OPTIONS: Record<string, readonly string[]> = {
 
 /* ------------------------------- export ------------------------------- */
 
+/**
+ * Modul Excel ikut izin tulis menu asalnya, jadi role yang cuma boleh membaca
+ * data defect tidak bisa mengekspornya lewat jalur Excel.
+ */
+function excelMenu(moduleName: string): MenuKey {
+  const map: Record<string, MenuKey> = {
+    defects: "defects",
+    sales: "sales",
+    "purchase-orders": "po",
+    repairs: "repairs",
+    users: "users",
+    "product-prices": "master",
+    "spare-part-prices": "master",
+    "claim-garansi": "claim-garansi",
+  };
+  return map[moduleName] ?? "master";
+}
+
 export async function excelExport(moduleName: string, req: NextRequest) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
@@ -323,7 +342,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
   }
 
   if (moduleName === PRICE_MODULE || moduleName === SPARE_PART_PRICE_MODULE) {
-    const admin = await requireAdmin();
+    const admin = await requireMenu(excelMenu(moduleName), "write");
     if (!admin.ok) return admin.response;
 
     if (moduleName === PRICE_MODULE) {
@@ -425,7 +444,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
   if (moduleName === REPAIR_MODULE) {
     // Saving Value memuat Rupiah, jadi modul ini admin saja — sama seperti kartu
     // Allowance Defect: role Pabrik tidak menerima filenya sama sekali.
-    const admin = await requireAdmin();
+    const admin = await requireMenu(excelMenu(moduleName), "write");
     if (!admin.ok) return admin.response;
 
     // Filter query sengaja TIDAK dipakai: sama seperti ekspor sales & defect,
@@ -500,7 +519,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
   }
 
   if (moduleName === "users") {
-    const admin = await requireAdmin();
+    const admin = await requireMenu(excelMenu(moduleName), "write");
     if (!admin.ok) return admin.response;
     const rows = await db
       .select({
@@ -528,7 +547,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
 /* ------------------------------- import ------------------------------- */
 
 export async function excelImport(moduleName: string, req: NextRequest) {
-  const admin = await requireAdmin();
+  const admin = await requireMenu(excelMenu(moduleName), "write");
   if (!admin.ok) return admin.response;
 
   const sheet = await readSheet(req);
@@ -1496,7 +1515,7 @@ async function importSparePartPrices(sheet: SheetRow[]) {
 }
 
 export async function excelTemplate(moduleName: string) {
-  const admin = await requireAdmin();
+  const admin = await requireMenu(excelMenu(moduleName), "write");
   if (!admin.ok) return admin.response;
 
   // Dicek SEBELUM isMasterModule: "purchase-orders" bukan master, dan urutan

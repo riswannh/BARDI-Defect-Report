@@ -1,5 +1,6 @@
 import { eq, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
+import type { SessionUser } from "@/lib/api/guard";
 import {
   buildChartBuckets,
   buildYearlyBuckets,
@@ -32,11 +33,7 @@ import {
 } from "@/lib/db/schema";
 import { countsForRepairValue } from "@/lib/repair-value";
 import { countsForClaimSummary, summarizeClaims } from "@/lib/claim-summary";
-import {
-  requireUser,
-  scopedFactoryId,
-  type SessionUser,
-} from "@/lib/api/guard";
+import { requireMenu, scopedFactoryId } from "@/lib/api/guard";
 import { jsonOk } from "@/lib/api/response";
 import type { PeriodType } from "@/lib/types";
 
@@ -83,7 +80,7 @@ function stripPoMoney<
 }
 
 export async function reportGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("report", "read");
   if (!guard.ok) return guard.response;
   const { user } = guard;
 

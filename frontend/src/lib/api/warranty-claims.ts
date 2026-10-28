@@ -2,8 +2,8 @@ import { and, desc, eq, like, ne, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { factories, productFactories, products, warrantyClaims } from "@/lib/db/schema";
-import { requireAdmin } from "@/lib/api/guard";
-import { jsonOk } from "@/lib/api/response";
+import { requireMenu } from "@/lib/api/guard";
+import { jsonError, jsonOk } from "@/lib/api/response";
 
 /**
  * Modul Claim Garansi BARDI — baca saja.
@@ -106,10 +106,14 @@ export async function listWarrantyRows(params: URLSearchParams) {
     .orderBy(desc(warrantyClaims.date), desc(warrantyClaims.id));
 }
 
-/** GET /api/warranty-claims — daftar claim garansi (admin saja; memuat Rupiah). */
+/** GET /api/warranty-claims — daftar claim garansi (memuat Rupiah, jadi role
+ *  yang value-nya disembunyikan tidak boleh membaca sama sekali). */
 export async function warrantyClaimsGET(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("claim-garansi", "read");
   if (!guard.ok) return guard.response;
+  if (guard.user.hideFinance) {
+    return jsonError("Role ini tidak boleh melihat data claim garansi.", 403);
+  }
 
   const rows = await listWarrantyRows(req.nextUrl.searchParams);
   return jsonOk(rows);

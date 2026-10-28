@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { AdminGuard } from "@/components/admin-guard";
 import { PageHeader } from "@/components/page-header";
 import { SummaryCard } from "@/components/summary-card";
 import { Pagination } from "@/components/pagination";
@@ -353,7 +352,7 @@ export default function RepairsPage() {
   const allSelected = paged.length > 0 && paged.every((row) => selected.includes(row.id));
 
   return (
-    <AdminGuard>
+    <>
       <div>
         <PageHeader
           title={t("repair.title")}
@@ -840,6 +839,6 @@ export default function RepairsPage() {
           onConfirm={handleBulkDelete}
         />
       </div>
-    </AdminGuard>
+    </>
   );
 }

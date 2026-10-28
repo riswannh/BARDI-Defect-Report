@@ -28,6 +28,10 @@ async function main() {
     statuses,
   } = await import("./schema");
   const { createUserAccount } = await import("../api/users");
+  const { ensureRoles } = await import("./ensure-roles");
+
+  // Role bawaan + pengaitan user lama HARUS jalan walau DB sudah berisi data.
+  await ensureRoles();
 
   const existing = await db
     .select({ id: factories.id })

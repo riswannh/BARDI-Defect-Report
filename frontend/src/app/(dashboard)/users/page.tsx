@@ -17,6 +17,7 @@ import { DeleteAllDialog } from "@/components/delete-all-dialog";
 import { ImportResultDialog } from "@/components/import-result-dialog";
 import { MasterList } from "@/components/master-list";
 import { FactoryProductsDialog } from "./factory-products-dialog";
+import { RolesTab, type RoleRow } from "./roles-tab";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
@@ -56,20 +57,24 @@ interface UserRow {
   isAdmin: boolean;
   factoryId: number | null;
   factoryName: string | null;
+  roleId: number | null;
+  roleName: string | null;
+  roleCode: string | null;
 }
 
 interface UserForm {
   username: string;
   password: string;
   factoryId: string;
-  isAdmin: string;
+  /** "admin" atau "role:<id>". */
+  role: string;
 }
 
 const emptyUserForm: UserForm = {
   username: "",
   password: "",
   factoryId: "",
-  isAdmin: "false",
+  role: "admin",
 };
 
 export default function UsersPage() {
@@ -82,6 +87,8 @@ export default function UsersPage() {
 
   const { data: userData, reload: reloadUsers } =
     useApi<UserRow[]>("/api/users");
+  const { data: roleData } = useApi<RoleRow[]>("/api/roles");
+  const roles = roleData ?? [];
   const { data: factoryData, reload: reloadFactories } =
     useApi<Factory[]>("/api/factories");
 
@@ -92,6 +99,11 @@ export default function UsersPage() {
     value: String(f.id),
     label: f.name,
   }));
+  const roleOptions = [
+    { value: "admin", label: t("common.admin") },
+    { value: "none", label: t("users.noRole") },
+    ...roles.map((role) => ({ value: `role:${role.id}`, label: role.name })),
+  ];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -108,7 +120,8 @@ export default function UsersPage() {
   const setPage = (next: number) =>
     setPageState({ signature: tab, page: next });
 
-  const activeItems = tab === "users" ? sortedUsers : factories;
+  const activeItems =
+    tab === "users" ? sortedUsers : tab === "factories" ? factories : [];
   const totalPages = Math.max(1, Math.ceil(activeItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
@@ -128,15 +141,19 @@ export default function UsersPage() {
       username: u.username ?? u.name,
       password: "",
       factoryId: u.factoryId ? String(u.factoryId) : "",
-      isAdmin: u.isAdmin ? "true" : "false",
+      role: u.isAdmin ? "admin" : u.roleId ? `role:${u.roleId}` : "none",
     });
     setDialogOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const isAdmin = form.isAdmin === "true";
+    const isAdmin = form.role === "admin";
     const factoryId = isAdmin ? null : Number(form.factoryId) || null;
+    const roleId =
+      isAdmin || form.role === "none"
+        ? null
+        : Number(form.role.replace("role:", ""));
     if (!form.username.trim()) return;
 
     try {
@@ -146,6 +163,7 @@ export default function UsersPage() {
           password: form.password,
           factoryId,
           isAdmin,
+          roleId,
         });
       } else {
         await apiPatch(`/api/users/${editingId}`, {
@@ -153,6 +171,7 @@ export default function UsersPage() {
           ...(form.password ? { password: form.password } : {}),
           factoryId,
           isAdmin,
+          roleId,
         });
       }
       setDialogOpen(false);
@@ -293,6 +312,7 @@ export default function UsersPage() {
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
           <TabsTrigger value="users">{t("users.tabAccounts")}</TabsTrigger>
+          <TabsTrigger value="roles">{t("users.tabRoles")}</TabsTrigger>
           <TabsTrigger value="factories">{t("users.tabFactories")}</TabsTrigger>
         </TabsList>
 
@@ -322,7 +342,9 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={u.isAdmin ? "default" : "secondary"}>
-                          {u.isAdmin ? t("common.admin") : t("common.factory")}
+                          {u.isAdmin
+                            ? t("common.admin")
+                            : (u.roleName ?? t("users.noRole"))}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -363,6 +385,10 @@ export default function UsersPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="roles" className="mt-4">
+          <RolesTab />
         </TabsContent>
 
         <TabsContent value="factories" className="mt-4">
@@ -440,25 +466,28 @@ export default function UsersPage() {
             <div className="flex flex-col gap-1.5">
               <Label>{t("common.role")}</Label>
               <Select
-                value={form.isAdmin}
+                value={form.role}
                 onValueChange={(v) =>
-                  setForm((f) => ({ ...f, isAdmin: String(v) }))
+                  setForm((f) => ({ ...f, role: String(v) }))
                 }
-                items={[
-                  { value: "false", label: t("common.factory") },
-                  { value: "true", label: t("common.admin") },
-                ]}
+                items={roleOptions}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="false">{t("common.factory")}</SelectItem>
-                  <SelectItem value="true">{t("common.admin")}</SelectItem>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {t("users.roleHint")}
+              </p>
             </div>
-            {form.isAdmin !== "true" && (
+            {form.role !== "admin" && (
               <div className="flex flex-col gap-1.5">
                 <Label>{t("common.factory")}</Label>
                 <Select

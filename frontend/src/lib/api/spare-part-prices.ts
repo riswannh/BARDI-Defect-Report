@@ -2,7 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { sparePartPrices, spareParts } from "@/lib/db/schema";
-import { requireAdmin, requireUser } from "@/lib/api/guard";
+import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { carryForwardMessage, lastPriceBefore } from "@/lib/api/price-period";
@@ -48,7 +48,7 @@ function listQuery() {
 }
 
 export async function sparePartPricesGET(req: NextRequest) {
-  const guard = await requireUser();
+  const guard = await requireMenu("master", "read");
   if (!guard.ok) return guard.response;
 
   const params = req.nextUrl.searchParams;
@@ -70,7 +70,7 @@ export async function sparePartPricesGET(req: NextRequest) {
 }
 
 export async function sparePartPricesPOST(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const parsed = sparePartPriceSchema.safeParse(await req.json());
@@ -122,7 +122,7 @@ export async function sparePartPricePATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -190,7 +190,7 @@ export async function sparePartPriceDELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -206,7 +206,7 @@ export async function sparePartPriceDELETE(
 }
 
 export async function sparePartPricesDELETEALL() {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const backup = backupDatabase("spare-part-prices");
@@ -221,7 +221,7 @@ export async function sparePartPricesDELETEALL() {
  * produk — lihat `src/lib/api/price-period.ts` untuk aturan pemilihannya).
  */
 export async function sparePartPricesCARRYFORWARD(req: NextRequest) {
-  const guard = await requireAdmin();
+  const guard = await requireMenu("master", "write");
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => ({}))) as {

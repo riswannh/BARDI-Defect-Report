@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MONTHS_FULL } from "@/lib/format";
+import { MENU_KEYS } from "@/lib/permissions";
 
 export function normalizeTimestamp(value: string): string {
   const s = value.trim().replace(" ", "T");
@@ -494,6 +495,7 @@ export const userCreateSchema = z.object({
   password: z.string().min(6),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().default(false),
+  roleId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export const userUpdateSchema = z.object({
@@ -501,4 +503,27 @@ export const userUpdateSchema = z.object({
   password: z.string().min(6).optional(),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().optional(),
+  roleId: z.coerce.number().int().positive().nullable().optional(),
+});
+
+/**
+ * Satu baris matriks akses. Dikirim sebagai array (bukan record) supaya menu
+ * yang tidak dikirim benar-benar absen — pola yang sama dengan `buildUpdate`.
+ */
+export const permissionEntrySchema = z.object({
+  menu: z.enum(MENU_KEYS),
+  read: z.boolean().default(false),
+  write: z.boolean().default(false),
+});
+
+export const roleCreateSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  description: z.string().trim().max(200).default(""),
+  permissions: z.array(permissionEntrySchema).default([]),
+});
+
+export const roleUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  description: z.string().trim().max(200).optional(),
+  permissions: z.array(permissionEntrySchema).optional(),
 });
