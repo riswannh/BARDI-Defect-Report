@@ -64,7 +64,12 @@ function isChecked(matrix: Matrix, menu: MenuKey, mode: "read" | "write") {
   return mode === "write" ? access.write : access.read;
 }
 
-export function RolesTab() {
+export function RolesTab({
+  onRolesChanged,
+}: {
+  /** Dipanggil setelah role dibuat/diubah/dihapus supaya induk ikut menyegarkan. */
+  onRolesChanged?: () => void;
+}) {
   const { t } = useLanguage();
   const { data, reload } = useApi<RoleRow[]>("/api/roles");
   const roles = data ?? [];
@@ -127,6 +132,7 @@ export function RolesTab() {
       }
       setOpen(false);
       reload();
+      onRolesChanged?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("users.roleSaveFailed"));
     }
@@ -140,6 +146,7 @@ export function RolesTab() {
       await apiDelete(`/api/roles/${role.id}`);
       toast.success(t("users.roleDeleted"));
       reload();
+      onRolesChanged?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("users.roleSaveFailed"));
     }

@@ -87,7 +87,8 @@ export default function UsersPage() {
 
   const { data: userData, reload: reloadUsers } =
     useApi<UserRow[]>("/api/users");
-  const { data: roleData } = useApi<RoleRow[]>("/api/roles");
+  const { data: roleData, reload: reloadRoles } =
+    useApi<RoleRow[]>("/api/roles");
   const roles = roleData ?? [];
   const { data: factoryData, reload: reloadFactories } =
     useApi<Factory[]>("/api/factories");
@@ -99,15 +100,21 @@ export default function UsersPage() {
     value: String(f.id),
     label: f.name,
   }));
-  const roleOptions = [
-    { value: "admin", label: t("common.admin") },
-    { value: "none", label: t("users.noRole") },
-    ...roles.map((role) => ({ value: `role:${role.id}`, label: role.name })),
-  ];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyUserForm);
+
+  // Pilihan role = daftar group role (tabel roles) + role Admin. "Tanpa Role"
+  // tidak ditawarkan lagi; hanya disisipkan sebagai nilai tampil untuk user
+  // lama yang belum punya role supaya form-nya tidak kosong.
+  const roleOptions = [
+    ...roles.map((role) => ({ value: `role:${role.id}`, label: role.name })),
+    { value: "admin", label: t("common.admin") },
+    ...(form.role === "none"
+      ? [{ value: "none", label: t("users.noRole") }]
+      : []),
+  ];
 
   const sortedUsers = useMemo(() => {
     const users = userData ?? [];
@@ -388,7 +395,14 @@ export default function UsersPage() {
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
-          <RolesTab />
+          <RolesTab
+            onRolesChanged={() => {
+              // Daftar role di tab Akun User ikut disegarkan; hapus role juga
+              // mengosongkan role user, jadi daftar user ikut dimuat ulang.
+              reloadRoles();
+              reloadUsers();
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="factories" className="mt-4">
