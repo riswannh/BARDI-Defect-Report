@@ -61,7 +61,7 @@ function blankMatrix(): Matrix {
 function isChecked(matrix: Matrix, menu: MenuKey, mode: "read" | "write") {
   const access = matrix[menu];
   if (!access) return false;
-  return mode === "write" ? access.write : access.read || access.write;
+  return mode === "write" ? access.write : access.read;
 }
 
 export function RolesTab() {
@@ -94,18 +94,12 @@ export function RolesTab() {
     setOpen(true);
   }
 
+  // Dua saklar terpisah: mengubah Lihat tidak menyentuh Ubah, dan sebaliknya.
   function toggle(menu: MenuKey, mode: "read" | "write") {
     setForm((current) => {
       const matrix: Matrix = { ...current.matrix };
       const access = { ...(matrix[menu] ?? { read: false, write: false }) };
-      if (mode === "write") {
-        access.write = !access.write;
-        // Write tanpa Read tidak ada artinya; Read ikut menyala/terbuka.
-        if (access.write) access.read = true;
-      } else {
-        access.read = !(access.read || access.write);
-        if (!access.read) access.write = false;
-      }
+      access[mode] = !access[mode];
       matrix[menu] = access;
       return { ...current, matrix };
     });
@@ -117,11 +111,10 @@ export function RolesTab() {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
-      permissions: GRANTABLE_MENUS.map((menu) => ({
-        menu,
-        read: isChecked(form.matrix, menu, "read"),
-        write: isChecked(form.matrix, menu, "write"),
-      })),
+      permissions: GRANTABLE_MENUS.map((menu) => {
+        const access = form.matrix[menu] ?? { read: false, write: false };
+        return { menu, read: access.read, write: access.write };
+      }),
     };
 
     try {
@@ -233,6 +226,7 @@ export function RolesTab() {
                 }
                 placeholder={t("users.roleNamePlaceholder")}
                 required
+                disabled={editing?.isSystem}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -242,7 +236,13 @@ export function RolesTab() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
                 }
+                disabled={editing?.isSystem}
               />
+              {editing?.isSystem && (
+                <p className="text-xs text-muted-foreground">
+                  {t("users.systemRoleLocked")}
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label>{t("users.permissionMatrix")}</Label>
@@ -285,7 +285,7 @@ export function RolesTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={editing?.isSystem}>
+              <Button type="submit">
                 {editing === null ? t("common.save") : t("common.update")}
               </Button>
             </DialogFooter>

@@ -16,7 +16,7 @@ type PermissionInput = { menu: MenuKey; read: boolean; write: boolean };
 
 /**
  * Normalisasi matriks dari klien:
- * - write otomatis menyertakan read;
+ * - read dan write disimpan apa adanya (dua saklar terpisah);
  * - menu khusus admin ("users") tidak pernah disimpan ke role.
  */
 function normalizePermissions(input: PermissionInput[]): PermissionEntry[] {
@@ -26,7 +26,7 @@ function normalizePermissions(input: PermissionInput[]): PermissionEntry[] {
     if (item.menu === "users") continue;
     byMenu.set(item.menu, {
       menu: item.menu,
-      read: item.write || item.read,
+      read: item.read,
       write: item.write,
     });
   }
@@ -54,7 +54,7 @@ async function permissionsByRole(): Promise<
   for (const row of rows) {
     result[row.roleId] ??= {};
     result[row.roleId][row.menu] = {
-      read: Boolean(row.canRead) || Boolean(row.canWrite),
+      read: Boolean(row.canRead),
       write: Boolean(row.canWrite),
     };
   }
@@ -149,11 +149,12 @@ export async function rolesPATCH(
     .from(roles)
     .where(eq(roles.id, roleId));
   if (!current) return jsonError("Role tidak ditemukan.", 404);
-  if (current.isSystem) {
-    return jsonError("Role sistem tidak bisa diubah.", 400);
-  }
 
-  if (parsed.data.name && parsed.data.name !== current.name) {
+  // Role sistem (Pabrik) boleh diubah HAK AKSESNYA, tapi nama & deskripsinya
+  // dikunci karena kode role dipakai aturan hardcode di server.
+  const isSystem = current.isSystem;
+
+  if (!isSystem && parsed.data.name && parsed.data.name !== current.name) {
     const duplicate = await db
       .select({ id: roles.id })
       .from(roles)
@@ -166,8 +167,10 @@ export async function rolesPATCH(
   await db
     .update(roles)
     .set({
-      name: parsed.data.name ?? current.name,
-      description: parsed.data.description ?? current.description,
+      name: isSystem ? current.name : parsed.data.name ?? current.name,
+      description: isSystem
+        ? current.description
+        : parsed.data.description ?? current.description,
       updatedAt: new Date(),
     })
     .where(eq(roles.id, roleId));

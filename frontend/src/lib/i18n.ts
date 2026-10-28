@@ -1612,6 +1612,11 @@ const translations = {
   },
   "users.roleUsers": { id: "Jumlah User", en: "Users", zh: "用户数" },
   "users.systemRole": { id: "Sistem", en: "System", zh: "系统" },
+  "users.systemRoleLocked": {
+    id: "Role sistem: nama dan deskripsi dikunci, hanya hak akses yang bisa diubah.",
+    en: "System role: name and description are locked; only permissions can be changed.",
+    zh: "系统角色：名称和描述锁定，只能修改权限。",
+  },
   "users.noRole": { id: "Tanpa role", en: "No role", zh: "无角色" },
   "users.roleHint": {
     id: "Menu yang bisa dibuka ditentukan role. Role Pabrik otomatis menyembunyikan nilai Rupiah.",

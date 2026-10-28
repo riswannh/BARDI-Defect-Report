@@ -98,7 +98,11 @@ export function can(
 ): boolean {
   const access = permissions[menu];
   if (!access) return false;
-  return mode === "write" ? access.write : access.read;
+  // Matriks menyimpan read/write terpisah (admin boleh menyalakan write saja).
+  // Halaman tetap bisa dibuka kalau write menyala, supaya izin ubah tidak
+  // berubah jadi izin kosong yang tidak bisa dipakai.
+  if (mode === "write") return access.write;
+  return access.read || access.write;
 }
 
 /** Halaman pertama yang boleh dibuka — tujuan redirect setelah login. */
