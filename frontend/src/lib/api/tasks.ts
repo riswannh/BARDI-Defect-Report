@@ -333,10 +333,11 @@ export async function taskActivitiesGET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
   const taskId = Number(params.get("taskId"));
-  const limitRaw = Number(params.get("limit"));
-  const limit = Number.isFinite(limitRaw)
-    ? Math.min(Math.max(limitRaw, 1), 500)
-    : 200;
+  // `params.get` null jangan di-Number-kan: Number(null) = 0 (finite) sehingga
+  // tanpa parameter limit endpoint ini dulu hanya mengembalikan 1 baris log.
+  const limitParam = params.get("limit");
+  const limit =
+    limitParam === null ? 200 : Math.min(Math.max(Number(limitParam) || 1, 1), 500);
 
   const rows = await db
     .select()
