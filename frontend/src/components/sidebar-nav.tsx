@@ -87,9 +87,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           <span className="font-heading text-sm font-semibold tracking-tight text-white">
             {t("nav.brand")}
           </span>
-          <span className="text-[10px] font-medium tracking-widest text-white/50 uppercase">
-            Analysis
-          </span>
         </div>
       </div>
 
