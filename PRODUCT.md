@@ -65,7 +65,7 @@ Belum diputuskan:
 
 ## Brand Commitments
 
-- **Nama**: BARDI Defect Report — label sidebar "Analysis".
+- **Nama**: Portal Produk BARDI (dulu "BARDI Defect Report" / label sidebar "Analysis").
 - **Warna utama `#46BBC5`**, diambil dari logo perusahaan. Ini komitmen brand, bukan pilihan selera.
 - **Font Plus Jakarta Sans** (heading + body). Sudah terpasang; mempertahankannya menghindari penambahan aset baru.
 - Logo asli ada di `frontend/public/logo.png` (256×256).

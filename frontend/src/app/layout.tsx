@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Defect & Sales Analysis",
+  title: "Portal Produk BARDI",
   description:
-    "Aplikasi analisa defect dan sales produk untuk menggantikan pencatatan manual.",
+    "Portal produk BARDI: defect, sales, PO, klaim garansi, dan tiket kendala.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

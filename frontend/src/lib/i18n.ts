@@ -65,7 +65,11 @@ const translations = {
   "common.video": { id: "Video", en: "Video", zh: "视频" },
 
   // Layout
-  "nav.brand": { id: "Defect & Sales", en: "Defect & Sales", zh: "缺陷与销售" },
+  "nav.brand": {
+    id: "Portal Produk BARDI",
+    en: "Portal Produk BARDI",
+    zh: "BARDI 产品门户",
+  },
   "nav.report": { id: "Report", en: "Report", zh: "报告" },
   "nav.sales": { id: "Data Sales", en: "Sales Data", zh: "销售数据" },
   "nav.po": { id: "PO Product", en: "PO Product", zh: "采购订单" },
@@ -116,9 +120,9 @@ const translations = {
 
   // Login
   "login.title": {
-    id: "Defect & Sales Analysis",
-    en: "Defect & Sales Analysis",
-    zh: "缺陷与销售分析",
+    id: "Portal Produk BARDI",
+    en: "Portal Produk BARDI",
+    zh: "BARDI 产品门户",
   },
   "login.subtitle": {
     id: "Masuk dengan username dan password Anda",

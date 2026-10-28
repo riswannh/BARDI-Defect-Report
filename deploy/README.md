@@ -1,4 +1,4 @@
-# Deploy BARDI Defect Report ke VPS Hostinger
+# Deploy Portal Produk BARDI ke VPS Hostinger
 
 > **STATUS: SUDAH TER-DEPLOY** (20 September 2026) di
 > **https://portalbardi.cloud** — VPS Hostinger `srv1992782`

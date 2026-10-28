@@ -4,7 +4,7 @@ import { username } from "better-auth/plugins";
 import { db, schema } from "@/lib/db";
 
 export const auth = betterAuth({
-  appName: "Defect & Sales Analysis",
+  appName: "Portal Produk BARDI",
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   // Origin tambahan (mis. alamat LAN saat uji dari HP) — dipisah koma.
   // better-auth menolak POST login dengan 403 bila Origin tidak terdaftar.

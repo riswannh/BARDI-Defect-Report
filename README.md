@@ -1,4 +1,4 @@
-# BARDI Defect Report — Web Analisa Defect & Sales Produk
+# Portal Produk BARDI — Web Analisa Defect & Sales Produk
 
 > **Dokumen ini adalah PRD lengkap + dokumentasi implementasi terkini (single source of truth).**
 > Cocok dipakai sebagai konteks awal untuk sesi baru (AI agent / harness lain).
