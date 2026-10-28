@@ -1,13 +1,19 @@
 import { and, desc, eq, like, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { taskActivities, tasks } from "@/lib/db/schema";
+import { taskActivities, tasks, user as userTable } from "@/lib/db/schema";
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { taskCreateSchema, taskUpdateSchema } from "@/lib/api/validation";
 import { nextOccurrence } from "@/lib/task-dates";
 
 type TaskRow = typeof tasks.$inferSelect;
+
+/** Satu kolom "kalender" di panel kiri Task Planner (satu akun = satu kalender). */
+export interface TaskCalendarUser {
+  id: string;
+  name: string;
+}
 
 interface TaskValues {
   title: string;
@@ -336,4 +342,24 @@ export async function taskActivitiesGET(req: NextRequest) {
     .limit(limit);
 
   return jsonOk(rows);
+}
+
+/**
+ * Daftar akun untuk panel "kalender" Task Planner. Semua akun ikut supaya
+ * tampilan Hari punya satu kolom per akun, walaupun akun itu belum punya task.
+ */
+export async function taskCalendarsGET() {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const rows = await db
+    .select({ id: userTable.id, username: userTable.username, name: userTable.name })
+    .from(userTable)
+    .orderBy(userTable.username);
+
+  const calendars: TaskCalendarUser[] = rows
+    .map((row) => ({ id: row.id, name: row.username || row.name || row.id }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return jsonOk(calendars);
 }

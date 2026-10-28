@@ -63,6 +63,7 @@ export default function TasksPage() {
 
   const { data: mineData, reload: reloadMine } = useApi<TaskRow[]>("/api/tasks?scope=mine");
   const { data: allData, reload: reloadAll } = useApi<TaskRow[]>("/api/tasks?scope=all");
+  const { data: calendarData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/calendars");
   const mine = mineData ?? [];
   const everything = allData ?? [];
 
@@ -487,7 +488,11 @@ export default function TasksPage() {
               <CardTitle className="text-sm">{t("tasks.timelineTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <TaskCalendar tasks={everything} onSelect={(task) => setDetailTask(task)} />
+              <TaskCalendar
+                tasks={everything}
+                calendars={calendarData ?? []}
+                onSelect={(task) => setDetailTask(task)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
