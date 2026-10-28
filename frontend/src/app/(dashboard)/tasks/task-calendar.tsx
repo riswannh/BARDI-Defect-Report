@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarRange,
   Check,
@@ -183,6 +183,7 @@ function WeekStrip({
   tasks,
   today,
   maxLanes,
+  height,
   large,
   onSelect,
   onMore,
@@ -191,6 +192,8 @@ function WeekStrip({
   tasks: TaskRow[];
   today: string;
   maxLanes: number;
+  /** Tinggi strip dari sisa layar; 0 = pakai tinggi bawaan. */
+  height?: number;
   large?: boolean;
   onSelect: (task: TaskRow) => void;
   onMore: (iso: string) => void;
@@ -198,19 +201,19 @@ function WeekStrip({
   const { t } = useLanguage();
   const { segments, overflow } = layoutWeek(tasks, days, maxLanes);
   const headHeight = large ? 44 : 24;
-  // Tinggi baris SELALU sebesar kapasitas lane: pindah bulan/tahun tidak lagi
-  // mengecil walau isi task-nya sedikit.
   const rows = Math.max(maxLanes, 1);
   const hasOverflow = overflow.some((count) => count > 0);
-  // Baris "lebih banyak" selalu disediakan supaya tinggi strip antar bulan sama.
-  const height = headHeight + rows * LANE_HEIGHT + 18 + 6;
+  // Tanpa tinggi dari luar, strip memakai tinggi kapasitas lane (dipakai sebelum
+  // pengukuran selesai). Dengan tinggi dari luar, strip mengikuti sisa layar.
+  const fallbackHeight = headHeight + rows * LANE_HEIGHT + 18 + 6;
+  const stripHeight = height && height > 0 ? height : fallbackHeight;
 
   return (
     <div
       data-calendar-strip
       data-strip-lanes={rows}
-      className="relative overflow-hidden rounded-md border"
-      style={{ height: large ? Math.max(420, height) : height }}
+      className="relative shrink-0 overflow-hidden rounded-md border"
+      style={{ height: large ? Math.max(420, stripHeight) : stripHeight }}
     >
       <div className="absolute inset-0 grid grid-cols-7">
         {days.map((iso) => {
@@ -318,6 +321,22 @@ export function TaskCalendar({
   const [pickerYear, setPickerYear] = useState(Number(today.slice(0, 4)));
   const [pickerMode, setPickerMode] = useState<"month" | "year">("month");
 
+  const areaRef = useRef<HTMLDivElement | null>(null);
+  const [areaHeight, setAreaHeight] = useState(0);
+
+  // Kalender selalu setinggi sisa layar: ukur area yang tersedia lalu bagi ke
+  // baris minggu. Diukur lewat ResizeObserver (callback, bukan body effect)
+  // supaya tidak melanggar aturan react-hooks/set-state-in-effect.
+  useEffect(() => {
+    const element = areaRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver((entries) => {
+      setAreaHeight(Math.round(entries[0]?.contentRect.height ?? 0));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
   /** Daftar kalender: semua akun; kalau endpoint belum siap pakai pemilik task. */
   const owners = useMemo<CalendarUser[]>(() => {
     if (calendars.length > 0) return calendars;
@@ -386,6 +405,23 @@ export function TaskCalendar({
     monthWeeks.push(Array.from({ length: 7 }, (_, index) => addDays(lastDay, index + 1)));
   }
 
+  // Tinggi dinamis: kalender memakai sisa layar, jadi tidak perlu scroll. Di
+  // layar sangat pendek baris tetap setinggi MIN_STRIP dan area kalender yang
+  // menggulir sendiri (bukan halaman).
+  const STRIP_GAP = 4;
+  const MONTH_HEAD = 26;
+  const MIN_STRIP = 70;
+  const monthStripHeight = areaHeight
+    ? Math.max(MIN_STRIP, Math.floor((areaHeight - MONTH_HEAD - STRIP_GAP * 5) / 6))
+    : 0;
+  const monthLanes = monthStripHeight
+    ? Math.max(1, Math.floor((monthStripHeight - 24 - 24) / LANE_HEIGHT))
+    : 4;
+  const weekLanes = areaHeight
+    ? Math.max(2, Math.floor((areaHeight - 44 - 24) / LANE_HEIGHT))
+    : 12;
+  const dayColumnHeight = areaHeight ? Math.max(160, areaHeight - 24) : 420;
+
   const periodLabel =
     view === "month"
       ? `${MONTH_NAMES[anchorMonth - 1]} ${anchorYear}`
@@ -394,8 +430,8 @@ export function TaskCalendar({
         : `${t(WEEKDAY_LABEL_KEYS[isoWeekday(anchor) - 1])}, ${formatTaskDate(anchor)}`;
 
   return (
-    <div className="flex flex-col gap-3 lg:flex-row">
-      <aside className="flex w-full shrink-0 flex-col gap-2 rounded-lg border p-2 lg:w-52">
+    <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
+      <aside className="flex w-full shrink-0 flex-col gap-2 rounded-lg border p-2 lg:h-full lg:min-h-0 lg:w-52 lg:overflow-hidden">
         <p className="px-1 text-xs font-medium text-muted-foreground">
           {t("tasks.calendars")}{" "}
           <span className="text-foreground">
@@ -446,7 +482,7 @@ export function TaskCalendar({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1">
             <Button
@@ -569,7 +605,7 @@ export function TaskCalendar({
             </Button>
           </div>
 
-          <div className="flex items-center gap-0.5">
+          <div className="flex flex-wrap items-center gap-0.5">
             {(Object.keys(VIEW_LABEL_KEYS) as ViewMode[]).map((mode) => (
               <Button
                 key={mode}
@@ -580,61 +616,68 @@ export function TaskCalendar({
                 {t(VIEW_LABEL_KEYS[mode])}
               </Button>
             ))}
+            {/* Legenda warna card ikut baris toolbar supaya kalender dapat sisa layar. */}
+            <span className="ml-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-xs bg-red-500/70" aria-hidden />
+                {t("tasks.legendOverdue")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-xs bg-emerald-500/70" aria-hidden />
+                {t("tasks.legendDone")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="size-2 rounded-xs bg-muted-foreground/40" aria-hidden />
+                {t("tasks.legendProgress")}
+              </span>
+            </span>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/60 px-2 py-1 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-xs bg-red-500/70" aria-hidden />
-            {t("tasks.legendOverdue")}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-xs bg-emerald-500/70" aria-hidden />
-            {t("tasks.legendDone")}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-xs bg-muted-foreground/40" aria-hidden />
-            {t("tasks.legendProgress")}
-          </span>
-        </div>
+        <div
+          ref={areaRef}
+          data-calendar-area
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+        >
+          {view === "month" && (
+            <>
+              <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
+                {WEEKDAY_LABEL_KEYS.map((key) => (
+                  <div key={key} className="py-1">
+                    {t(key)}
+                  </div>
+                ))}
+              </div>
 
-        {view === "month" && (
-          <div className="flex flex-col gap-1">
-            <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
-              {WEEKDAY_LABEL_KEYS.map((key) => (
-                <div key={key} className="py-1">
-                  {t(key)}
-                </div>
-              ))}
-            </div>
+              <div className="flex min-h-0 flex-1 flex-col gap-1">
+                {monthWeeks.map((days) => (
+                  <WeekStrip
+                    key={days[0]}
+                    days={days}
+                    tasks={visibleTasks}
+                    today={today}
+                    maxLanes={monthLanes}
+                    height={monthStripHeight}
+                    onSelect={onSelect}
+                    onMore={jumpToDay}
+                  />
+                ))}
+              </div>
+            </>
+          )}
 
-            <div className="flex flex-col gap-1">
-              {monthWeeks.map((days) => (
-                <WeekStrip
-                  key={days[0]}
-                  days={days}
-                  tasks={visibleTasks}
-                  today={today}
-                  maxLanes={4}
-                  onSelect={onSelect}
-                  onMore={jumpToDay}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "week" && (
-          <WeekStrip
-            days={weekDays}
-            tasks={visibleTasks}
-            today={today}
-            maxLanes={12}
-            large
-            onSelect={onSelect}
-            onMore={jumpToDay}
-          />
-        )}
+          {view === "week" && (
+            <WeekStrip
+              days={weekDays}
+              tasks={visibleTasks}
+              today={today}
+              maxLanes={weekLanes}
+              height={areaHeight}
+              large
+              onSelect={onSelect}
+              onMore={jumpToDay}
+            />
+          )}
 
         {view === "day" && (
           <div className="flex flex-col gap-2">
@@ -653,7 +696,8 @@ export function TaskCalendar({
                   <div
                     key={owner.id}
                     data-calendar-column
-                    className="flex min-h-[420px] w-48 min-w-48 shrink-0 flex-col gap-1 rounded-md border p-1"
+                    className="flex w-48 min-w-48 shrink-0 flex-col gap-1 overflow-y-auto rounded-md border p-1"
+                    style={{ height: dayColumnHeight }}
                   >
                     <div className="mb-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-[11px]">
                       <span
@@ -682,6 +726,7 @@ export function TaskCalendar({
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

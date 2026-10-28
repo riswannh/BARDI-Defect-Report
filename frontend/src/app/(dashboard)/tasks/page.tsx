@@ -372,7 +372,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         title={t("tasks.title")}
         actions={
@@ -385,6 +385,7 @@ export default function TasksPage() {
       />
 
       <Tabs
+        className="flex min-h-0 flex-1 flex-col"
         value={tab}
         onValueChange={(value) => {
           setTab(String(value));
@@ -398,7 +399,7 @@ export default function TasksPage() {
           <TabsTrigger value="log">{t("tasks.tabLog")}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="mine" className="mt-4">
+        <TabsContent value="mine" className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {renderFilters()}
           <Card size="sm" className="overflow-hidden py-0">
             <CardContent className="px-0">
@@ -421,7 +422,7 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="all" className="mt-4">
+        <TabsContent value="all" className="mt-4 min-h-0 flex-1 overflow-y-auto">
           {renderFilters()}
           <Card size="sm" className="overflow-hidden py-0">
             <CardContent className="px-0">
@@ -444,12 +445,9 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="calendar" className="mt-4">
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm">{t("tasks.timelineTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <TabsContent value="calendar" className="mt-4 flex min-h-0 flex-1 flex-col">
+          <Card size="sm" className="flex min-h-0 flex-1 flex-col">
+            <CardContent className="flex min-h-0 flex-1 flex-col pt-3">
               <TaskCalendar
                 tasks={isAdmin ? everything : mine}
                 calendars={calendarData ?? []}
@@ -459,7 +457,7 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="log" className="mt-4">
+        <TabsContent value="log" className="mt-4 min-h-0 flex-1 overflow-y-auto">
           <Card size="sm">
             <CardHeader>
               <CardTitle className="text-sm">{t("tasks.logAllTitle")}</CardTitle>
