@@ -83,15 +83,24 @@ function TaskCard({
       onClick={() => onSelect(task)}
       title={`${task.title} · ${formatTaskDate(task.dueDate)}`}
       className={[
-        "w-full rounded-md border border-l-4 bg-card px-1.5 py-1 text-left text-[11px] shadow-xs transition-colors hover:bg-accent",
+        "flex w-full flex-col gap-0.5 rounded-md border border-l-4 bg-card px-1.5 py-1 text-left shadow-xs transition-colors hover:bg-accent",
         OWNER_EDGES[ownerIndex(task.userId)],
         done ? "opacity-60" : "",
       ].join(" ")}
     >
-      <span className={done ? "line-through" : "font-medium"}>{task.title}</span>
-      <span className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+      <span
+        className={[
+          "line-clamp-2 text-[11px] leading-4",
+          done ? "text-muted-foreground line-through" : "font-medium",
+        ].join(" ")}
+      >
+        {task.title}
+      </span>
+      <span className="flex items-center gap-1 text-[10px] leading-3 text-muted-foreground">
         {showOwner && <span className="truncate">{task.ownerName}</span>}
-        {overdue && <span className="text-red-600 dark:text-red-400">{t("tasks.overdueShort")}</span>}
+        {overdue && (
+          <span className="shrink-0 text-red-600 dark:text-red-400">{t("tasks.overdueShort")}</span>
+        )}
         {task.repeatRule && <Repeat className="size-2.5 shrink-0" aria-hidden />}
       </span>
     </button>
@@ -366,7 +375,7 @@ export function TaskCalendar({
             return (
               <div
                 key={owner.id}
-                className="flex min-h-[420px] w-48 shrink-0 flex-col gap-1 rounded-md border p-1"
+                className="flex min-h-[420px] w-48 min-w-48 flex-1 shrink-0 flex-col gap-1 rounded-md border p-1"
               >
                 <div className="mb-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-[11px]">
                   <span className={`size-2.5 shrink-0 rounded-xs ${OWNER_DOTS[ownerIndex(owner.id)]}`} />
