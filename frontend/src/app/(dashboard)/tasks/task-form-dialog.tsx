@@ -205,7 +205,11 @@ export function TaskFormDialog({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                disabled={!task}
               />
+              {!task && (
+                <p className="text-xs text-muted-foreground">{t("tasks.startFixedHint")}</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

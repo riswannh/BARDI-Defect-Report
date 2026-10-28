@@ -3,11 +3,9 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  AlarmClock,
   CircleCheck,
   CircleDashed,
   History,
-  ListTodo,
   Pencil,
   Plus,
   Trash2,
@@ -21,7 +19,6 @@ import { formatTaskDate, todayISO } from "@/lib/task-dates";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,19 +54,21 @@ const ALL = "all";
 
 export default function TasksPage() {
   const { t } = useLanguage();
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
   const canWrite = can("tasks", "write");
   const today = todayISO();
 
   const { data: mineData, reload: reloadMine } = useApi<TaskRow[]>("/api/tasks?scope=mine");
-  const { data: allData, reload: reloadAll } = useApi<TaskRow[]>("/api/tasks?scope=all");
+  const { data: allData, reload: reloadAll } = useApi<TaskRow[]>(
+    isAdmin ? "/api/tasks?scope=all" : null
+  );
   const { data: calendarData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/calendars");
   const mine = mineData ?? [];
   const everything = allData ?? [];
 
   const [tab, setTab] = useState("calendar");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(ALL);
+  const [statusFilter, setStatusFilter] = useState("Belum");
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [difficultyFilter, setDifficultyFilter] = useState(ALL);
   const [page, setPage] = useState(1);
@@ -83,7 +82,6 @@ export default function TasksPage() {
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
 
   const activeRows = tab === "all" ? everything : mine;
-
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return activeRows.filter((task) => {
@@ -98,14 +96,6 @@ export default function TasksPage() {
       );
     });
   }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter]);
-
-  const stats = useMemo(() => {
-    const done = activeRows.filter((task) => task.status === "Selesai").length;
-    const overdue = activeRows.filter(
-      (task) => task.status === "Belum" && task.dueDate < today
-    ).length;
-    return { total: activeRows.length, done, open: activeRows.length - done, overdue };
-  }, [activeRows, today]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -395,33 +385,6 @@ export default function TasksPage() {
         }
       />
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          title={t("tasks.total")}
-          value={stats.total}
-          icon={ListTodo}
-          description={t("tasks.totalHint")}
-        />
-        <SummaryCard
-          title={t("tasks.open")}
-          value={stats.open}
-          icon={CircleDashed}
-          description={t("tasks.openHint")}
-        />
-        <SummaryCard
-          title={t("tasks.done")}
-          value={stats.done}
-          icon={CircleCheck}
-          description={t("tasks.doneHint")}
-        />
-        <SummaryCard
-          title={t("tasks.overdue")}
-          value={stats.overdue}
-          icon={AlarmClock}
-          description={t("tasks.overdueHint")}
-        />
-      </div>
-
       <Tabs
         value={tab}
         onValueChange={(value) => {
@@ -431,7 +394,7 @@ export default function TasksPage() {
       >
         <TabsList>
           <TabsTrigger value="mine">{t("tasks.tabMine")}</TabsTrigger>
-          <TabsTrigger value="all">{t("tasks.tabAll")}</TabsTrigger>
+          {isAdmin && <TabsTrigger value="all">{t("tasks.tabAll")}</TabsTrigger>}
           <TabsTrigger value="calendar">{t("tasks.tabCalendar")}</TabsTrigger>
           <TabsTrigger value="log">{t("tasks.tabLog")}</TabsTrigger>
         </TabsList>
@@ -489,7 +452,7 @@ export default function TasksPage() {
             </CardHeader>
             <CardContent>
               <TaskCalendar
-                tasks={everything}
+                tasks={isAdmin ? everything : mine}
                 calendars={calendarData ?? []}
                 onSelect={(task) => setDetailTask(task)}
               />

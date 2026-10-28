@@ -154,6 +154,11 @@ const translations = {
   "tasks.fieldDifficulty": { id: "Tingkat Kesulitan", en: "Difficulty", zh: "难度" },
   "tasks.fieldStatus": { id: "Status", en: "Status", zh: "状态" },
   "tasks.fieldStart": { id: "Tanggal Mulai", en: "Start Date", zh: "开始日期" },
+  "tasks.startFixedHint": {
+    id: "Tanggal mulai otomatis hari ini.",
+    en: "Start date is set to today automatically.",
+    zh: "开始日期自动设为今天。",
+  },
   "tasks.fieldDue": { id: "Deadline", en: "Due Date", zh: "截止日期" },
   "tasks.fieldRepeat": { id: "Repeat", en: "Repeat", zh: "重复" },
   "tasks.fieldWeekday": { id: "Hari Repeat", en: "Repeat Day", zh: "重复日" },

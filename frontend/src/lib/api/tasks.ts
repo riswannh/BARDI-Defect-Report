@@ -1,7 +1,7 @@
 import { and, desc, eq, like, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { taskActivities, tasks, user as userTable } from "@/lib/db/schema";
+import { rolePermissions, roles, taskActivities, tasks, user as userTable } from "@/lib/db/schema";
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { taskCreateSchema, taskUpdateSchema } from "@/lib/api/validation";
@@ -95,6 +95,10 @@ export async function tasksGET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const scope = params.get("scope") === "all" ? "all" : "mine";
   const conditions: SQL[] = [];
+
+  if (scope === "all" && !guard.user.isAdmin) {
+    return jsonError("Hanya admin yang bisa melihat semua task.", 403);
+  }
 
   if (scope === "mine") conditions.push(eq(tasks.userId, guard.user.id));
 
@@ -345,19 +349,32 @@ export async function taskActivitiesGET(req: NextRequest) {
 }
 
 /**
- * Daftar akun untuk panel "kalender" Task Planner. Semua akun ikut supaya
- * tampilan Hari punya satu kolom per akun, walaupun akun itu belum punya task.
+ * Daftar akun untuk panel "kalender" Task Planner. Hanya akun yang role-nya
+ * diberi akses menu `tasks` (plus admin) — akun di luar grup role itu tidak
+ * ikut tampil dan task-nya tidak muncul di kalender bersama.
  */
 export async function taskCalendarsGET() {
   const guard = await requireMenu("tasks", "read");
   if (!guard.ok) return guard.response;
 
   const rows = await db
-    .select({ id: userTable.id, username: userTable.username, name: userTable.name })
+    .select({
+      id: userTable.id,
+      username: userTable.username,
+      name: userTable.name,
+      isAdmin: userTable.isAdmin,
+      canRead: rolePermissions.canRead,
+    })
     .from(userTable)
+    .leftJoin(roles, eq(userTable.roleId, roles.id))
+    .leftJoin(
+      rolePermissions,
+      and(eq(rolePermissions.roleId, roles.id), eq(rolePermissions.menu, "tasks"))
+    )
     .orderBy(userTable.username);
 
   const calendars: TaskCalendarUser[] = rows
+    .filter((row) => row.isAdmin || row.canRead === true)
     .map((row) => ({ id: row.id, name: row.username || row.name || row.id }))
     .sort((a, b) => a.name.localeCompare(b.name));
 

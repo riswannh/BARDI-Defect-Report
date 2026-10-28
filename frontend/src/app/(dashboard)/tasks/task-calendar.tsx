@@ -124,7 +124,7 @@ export function TaskCalendar({
 }) {
   const { t } = useLanguage();
   const today = todayISO();
-  const [view, setView] = useState<ViewMode>("month");
+  const [view, setView] = useState<ViewMode>("day");
   const [anchor, setAnchor] = useState(today);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
 
