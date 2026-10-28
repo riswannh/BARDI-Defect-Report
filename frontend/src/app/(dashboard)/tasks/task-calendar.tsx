@@ -303,6 +303,7 @@ export function TaskCalendar({
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(Number(today.slice(0, 4)));
+  const [pickerMode, setPickerMode] = useState<"month" | "year">("month");
 
   /** Daftar kalender: semua akun; kalau endpoint belum siap pakai pemilik task. */
   const owners = useMemo<CalendarUser[]>(() => {
@@ -442,6 +443,7 @@ export function TaskCalendar({
                 type="button"
                 onClick={() => {
                   setPickerYear(Number(anchor.slice(0, 4)));
+                  setPickerMode("month");
                   setPickerOpen((open) => !open);
                 }}
                 className="min-w-32 rounded-md px-2 py-1 text-center font-heading text-sm font-semibold hover:bg-muted"
@@ -456,40 +458,76 @@ export function TaskCalendar({
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        aria-label={t("tasks.prevYear")}
-                        onClick={() => setPickerYear((year) => year - 1)}
+                        aria-label={pickerMode === "month" ? t("tasks.prevYear") : t("tasks.prevYears")}
+                        onClick={() =>
+                          setPickerYear((year) => year - (pickerMode === "month" ? 1 : 12))
+                        }
                       >
                         <ChevronLeft className="size-4" />
                       </Button>
-                      <span className="font-heading text-sm font-semibold">{pickerYear}</span>
+                      <button
+                        type="button"
+                        onClick={() => setPickerMode((mode) => (mode === "month" ? "year" : "month"))}
+                        className="rounded-md px-2 py-0.5 font-heading text-sm font-semibold hover:bg-muted"
+                      >
+                        {pickerMode === "month"
+                          ? pickerYear
+                          : `${Math.floor(pickerYear / 12) * 12} – ${Math.floor(pickerYear / 12) * 12 + 11}`}
+                      </button>
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        aria-label={t("tasks.nextYear")}
-                        onClick={() => setPickerYear((year) => year + 1)}
+                        aria-label={pickerMode === "month" ? t("tasks.nextYear") : t("tasks.nextYears")}
+                        onClick={() =>
+                          setPickerYear((year) => year + (pickerMode === "month" ? 1 : 12))
+                        }
                       >
                         <ChevronRight className="size-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-3 gap-1">
-                      {MONTH_NAMES.map((name, index) => {
-                        const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
-                        return (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={() => pickMonth(pickerYear, index + 1)}
-                            className={cn(
-                              "rounded-md px-1 py-1.5 text-xs hover:bg-muted",
-                              anchor.slice(0, 7) === value &&
-                                "bg-primary text-primary-foreground hover:bg-primary"
-                            )}
-                          >
-                            {name.slice(0, 3)}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {pickerMode === "year" ? (
+                      <div className="grid grid-cols-3 gap-1">
+                        {Array.from({ length: 12 }, (_, index) => Math.floor(pickerYear / 12) * 12 + index).map(
+                          (year) => (
+                            <button
+                              key={year}
+                              type="button"
+                              onClick={() => {
+                                setPickerYear(year);
+                                setPickerMode("month");
+                              }}
+                              className={cn(
+                                "rounded-md px-1 py-1.5 text-xs hover:bg-muted",
+                                anchor.slice(0, 4) === String(year) &&
+                                  "bg-primary text-primary-foreground hover:bg-primary"
+                              )}
+                            >
+                              {year}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1">
+                        {MONTH_NAMES.map((name, index) => {
+                          const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => pickMonth(pickerYear, index + 1)}
+                              className={cn(
+                                "rounded-md px-1 py-1.5 text-xs hover:bg-muted",
+                                anchor.slice(0, 7) === value &&
+                                  "bg-primary text-primary-foreground hover:bg-primary"
+                              )}
+                            >
+                              {name.slice(0, 3)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

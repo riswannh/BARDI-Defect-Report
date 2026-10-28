@@ -243,6 +243,8 @@ const translations = {
   "tasks.nextPeriod": { id: "Berikutnya", en: "Next", zh: "下一个" },
   "tasks.prevYear": { id: "Tahun sebelumnya", en: "Previous year", zh: "上一年" },
   "tasks.nextYear": { id: "Tahun berikutnya", en: "Next year", zh: "下一年" },
+  "tasks.prevYears": { id: "12 tahun sebelumnya", en: "Previous 12 years", zh: "前 12 年" },
+  "tasks.nextYears": { id: "12 tahun berikutnya", en: "Next 12 years", zh: "后 12 年" },
   "tasks.noTasks": { id: "Tidak ada task", en: "No tasks", zh: "没有任务" },
   "tasks.noUsersSelected": {
     id: "Pilih minimal satu user di daftar kalender.",
