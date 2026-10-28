@@ -39,6 +39,31 @@ export async function ensureRoles() {
     console.log(`Role Pabrik dibuat (id ${pabrik.id}).`);
   }
 
+  // Role sistem bisa tertinggal saat menu baru ditambahkan (mis. "tasks"):
+  // lengkapi hanya baris yang BELUM ada supaya setelan admin tidak tertimpa.
+  const currentRows = await db
+    .select({ menu: rolePermissions.menu })
+    .from(rolePermissions)
+    .where(eq(rolePermissions.roleId, pabrik.id));
+  const currentMenus = new Set(currentRows.map((row) => row.menu));
+  const missing = PABRIK_DEFAULT_PERMISSIONS.filter(
+    (permission) => !currentMenus.has(permission.menu)
+  );
+
+  if (missing.length > 0) {
+    await db.insert(rolePermissions).values(
+      missing.map((permission) => ({
+        roleId: pabrik.id,
+        menu: permission.menu,
+        canRead: permission.read,
+        canWrite: permission.write,
+      }))
+    );
+    console.log(
+      `Role Pabrik dilengkapi menu baru: ${missing.map((item) => item.menu).join(", ")}.`
+    );
+  }
+
   const orphans = await db
     .select({ id: user.id })
     .from(user)

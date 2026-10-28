@@ -10,6 +10,7 @@ export const MENU_KEYS = [
   "sales",
   "po",
   "tickets",
+  "tasks",
   "defects",
   "repairs",
   "claim-garansi",
@@ -40,6 +41,7 @@ export const MENU_HREF: Record<MenuKey, string> = {
   sales: "/sales",
   po: "/po",
   tickets: "/tickets",
+  tasks: "/tasks",
   defects: "/defects",
   repairs: "/repairs",
   "claim-garansi": "/claim-garansi",
@@ -53,6 +55,7 @@ export const MENU_LABEL_KEY: Record<MenuKey, string> = {
   sales: "nav.sales",
   po: "nav.po",
   tickets: "nav.tickets",
+  tasks: "nav.tasks",
   defects: "nav.defects",
   repairs: "nav.repairs",
   "claim-garansi": "nav.warrantyClaims",
@@ -124,6 +127,8 @@ export const PABRIK_DEFAULT_PERMISSIONS: ReadonlyArray<{
   { menu: "po", read: true, write: false },
   // Alur eskalasi tiket butuh tim pabrik membalas chat.
   { menu: "tickets", read: true, write: true },
+  // Task planner dipakai semua tim, termasuk tim pabrik.
+  { menu: "tasks", read: true, write: true },
 ];
 
 /** Kode role yang aturannya di-hardcode di server (nilai Rupiah disembunyikan). */

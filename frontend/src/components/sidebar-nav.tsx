@@ -14,6 +14,7 @@ import {
   Headset,
   ShieldCheck,
   Wrench,
+  ListTodo,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import type { MenuKey } from "@/lib/permissions";
@@ -36,6 +37,8 @@ const navItems: NavItem[] = [
   { href: "/po", labelKey: "nav.po", menu: "po", icon: ClipboardList },
   // Ticketing dipakai CS, Tim Produk, dan Tim Pabrik — bukan admin-only.
   { href: "/tickets", labelKey: "nav.tickets", menu: "tickets", icon: Headset },
+  // Task planner terbuka untuk semua tim; akses tetap mengikuti matriks role.
+  { href: "/tasks", labelKey: "nav.tasks", menu: "tasks", icon: ListTodo },
   {
     href: "/defects",
     labelKey: "nav.defects", menu: "defects",

@@ -527,3 +527,58 @@ export const roleUpdateSchema = z.object({
   description: z.string().trim().max(200).optional(),
   permissions: z.array(permissionEntrySchema).optional(),
 });
+
+/* ============================================================
+ * Task planner
+ * ============================================================ */
+
+export const TASK_PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
+export const TASK_DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
+export const TASK_STATUSES = ["Belum", "Selesai"] as const;
+export const TASK_REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
+
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export type TaskDifficulty = (typeof TASK_DIFFICULTIES)[number];
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+export type TaskRepeatRule = (typeof TASK_REPEAT_RULES)[number];
+
+/** Tanggal murni "YYYY-MM-DD" — tanpa jam supaya bebas zona waktu. */
+const isoDateField = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * Bentuk field task. Dipakai `taskCreateSchema` (dengan default) dan
+ * `taskUpdateSchema` (tanpa default, lewat `buildUpdate`) — pola yang sama
+ * dengan modul lain supaya PATCH tidak menimpa field yang tidak dikirim.
+ */
+const taskFields = {
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000),
+  progress: z.coerce.number().int().min(0).max(100),
+  priority: z.enum(TASK_PRIORITIES),
+  difficulty: z.enum(TASK_DIFFICULTIES),
+  status: z.enum(TASK_STATUSES),
+  startDate: isoDateField,
+  dueDate: isoDateField,
+  repeatRule: z.enum(TASK_REPEAT_RULES),
+  repeatWeekday: z.coerce.number().int().min(1).max(7).nullable(),
+  repeatDay: z.coerce.number().int().min(1).max(31).nullable(),
+  /** Catatan bebas untuk log aktivitas (tidak disimpan di baris task). */
+  note: z.string().trim().max(500),
+};
+
+export const taskCreateSchema = buildCreate(taskFields, {
+  description: z.string().trim().max(2000).default(""),
+  progress: z.coerce.number().int().min(0).max(100).default(0),
+  priority: z.enum(TASK_PRIORITIES).default("Normal"),
+  difficulty: z.enum(TASK_DIFFICULTIES).default("Sedang"),
+  status: z.enum(TASK_STATUSES).default("Belum"),
+  repeatRule: z.enum(TASK_REPEAT_RULES).default(""),
+  repeatWeekday: z.coerce.number().int().min(1).max(7).nullable().default(null),
+  repeatDay: z.coerce.number().int().min(1).max(31).nullable().default(null),
+  note: z.string().trim().max(500).default(""),
+});
+
+export const taskUpdateSchema = buildUpdate(taskFields);

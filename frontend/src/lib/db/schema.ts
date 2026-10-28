@@ -762,3 +762,77 @@ export const rolePermissions = sqliteTable(
   },
   (t) => [unique("role_permissions_role_menu").on(t.roleId, t.menu)]
 );
+
+/* ============================================================
+ * Task planner
+ * ============================================================ */
+
+/**
+ * Satu task per baris. Tanggal disimpan sebagai teks "YYYY-MM-DD" (tanggal
+ * murni, tanpa zona waktu) supaya perbandingan & highlight kalender konsisten.
+ */
+export const tasks = sqliteTable(
+  "tasks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Snapshot nama pembuat: daftar task tidak perlu join ke tabel user. */
+    ownerName: text("ownerName").notNull().default(""),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    progress: integer("progress").notNull().default(0),
+    /** Urgent / Segera / Normal. */
+    priority: text("priority").notNull().default("Normal"),
+    /** Mudah / Sedang / Sulit. */
+    difficulty: text("difficulty").notNull().default("Sedang"),
+    /** Selesai / Belum — terpisah dari progress sesuai permintaan user. */
+    status: text("status").notNull().default("Belum"),
+    startDate: text("startDate").notNull(),
+    dueDate: text("dueDate").notNull(),
+    /** "" / daily / weekly / monthly. */
+    repeatRule: text("repeatRule").notNull().default(""),
+    /** 1=Senin … 7=Minggu, hanya untuk repeatRule "weekly". */
+    repeatWeekday: integer("repeatWeekday"),
+    /** Tanggal 1–31, hanya untuk repeatRule "monthly" (di-clamp bulan pendek). */
+    repeatDay: integer("repeatDay"),
+    /** Induk rantai occurrence (null untuk task pertama). */
+    repeatParentId: integer("repeatParentId"),
+    completedAt: integer("completedAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [index("tasks_user_idx").on(t.userId), index("tasks_due_idx").on(t.dueDate)]
+);
+
+/**
+ * Log append-only. `taskId` sengaja TANPA foreign key supaya jejak log tetap
+ * ada setelah task dihapus; judul disimpan sebagai snapshot.
+ */
+export const taskActivities = sqliteTable(
+  "task_activities",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    taskId: integer("taskId"),
+    taskTitle: text("taskTitle").notNull().default(""),
+    actorId: text("actorId").notNull().default(""),
+    actorName: text("actorName").notNull().default(""),
+    /** create / update / progress / status / repeat / delete. */
+    action: text("action").notNull(),
+    /** JSON `[{ field, from, to }]` — hanya field yang benar-benar berubah. */
+    changes: text("changes").notNull().default(""),
+    note: text("note").notNull().default(""),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    index("task_activities_task_idx").on(t.taskId),
+    index("task_activities_created_idx").on(t.createdAt),
+  ]
+);
