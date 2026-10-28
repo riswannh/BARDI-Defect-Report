@@ -375,7 +375,6 @@ export default function TasksPage() {
     <div>
       <PageHeader
         title={t("tasks.title")}
-        description={t("tasks.description")}
         actions={
           canWrite && (
             <Button size="sm" onClick={() => setFormTask(null)}>
@@ -393,9 +392,9 @@ export default function TasksPage() {
         }}
       >
         <TabsList>
+          <TabsTrigger value="calendar">{t("tasks.tabCalendar")}</TabsTrigger>
           <TabsTrigger value="mine">{t("tasks.tabMine")}</TabsTrigger>
           {isAdmin && <TabsTrigger value="all">{t("tasks.tabAll")}</TabsTrigger>}
-          <TabsTrigger value="calendar">{t("tasks.tabCalendar")}</TabsTrigger>
           <TabsTrigger value="log">{t("tasks.tabLog")}</TabsTrigger>
         </TabsList>
 

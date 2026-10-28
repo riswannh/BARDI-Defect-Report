@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarRange, Check, ChevronLeft, ChevronRight, Repeat, Users } from "lucide-react";
+import {
+  CalendarRange,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Repeat,
+  Users,
+} from "lucide-react";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
 import { addDays, dateToISO, formatTaskDate, isWithin, isoWeekday, monthGrid, todayISO } from "@/lib/task-dates";
 import { Button } from "@/components/ui/button";
@@ -112,6 +121,172 @@ function TaskCard({
   );
 }
 
+const LANE_HEIGHT = 22;
+
+interface BarSegment {
+  task: TaskRow;
+  startIdx: number;
+  endIdx: number;
+  lane: number;
+}
+
+/**
+ * Susun task satu minggu jadi batang selebar rentang tanggalnya (bukan kartu
+ * terpisah di tiap hari). Task lintas minggu dipotong di tepi minggu.
+ */
+function layoutWeek(tasks: TaskRow[], days: string[], maxLanes: number) {
+  const weekStart = days[0];
+  const weekEnd = days[6];
+  const laneEnds: number[] = [];
+  const segments: BarSegment[] = [];
+  const candidates = tasks
+    .filter((task) => task.startDate <= weekEnd && task.dueDate >= weekStart)
+    .sort(
+      (a, b) =>
+        a.startDate.localeCompare(b.startDate) || a.dueDate.localeCompare(b.dueDate)
+    );
+
+  for (const task of candidates) {
+    const startIdx = task.startDate <= weekStart ? 0 : days.indexOf(task.startDate);
+    const endIdx = task.dueDate >= weekEnd ? 6 : days.indexOf(task.dueDate);
+    if (startIdx < 0 || endIdx < 0) continue;
+    let lane = laneEnds.findIndex((end) => end < startIdx);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(endIdx);
+    } else {
+      laneEnds[lane] = endIdx;
+    }
+    segments.push({ task, startIdx, endIdx, lane });
+  }
+
+  const overflow = days.map((_, index) =>
+    segments.filter(
+      (segment) =>
+        segment.lane >= maxLanes && segment.startIdx <= index && segment.endIdx >= index
+    ).length
+  );
+
+  return {
+    segments: segments.filter((segment) => segment.lane < maxLanes),
+    overflow,
+    laneCount: Math.min(laneEnds.length, maxLanes),
+  };
+}
+
+/** Satu baris minggu: 7 kolom tanggal + batang task yang membentang beberapa hari. */
+function WeekStrip({
+  days,
+  tasks,
+  today,
+  maxLanes,
+  large,
+  onSelect,
+  onMore,
+}: {
+  days: string[];
+  tasks: TaskRow[];
+  today: string;
+  maxLanes: number;
+  large?: boolean;
+  onSelect: (task: TaskRow) => void;
+  onMore: (iso: string) => void;
+}) {
+  const { t } = useLanguage();
+  const { segments, overflow, laneCount } = layoutWeek(tasks, days, maxLanes);
+  const headHeight = large ? 44 : 24;
+  const rows = Math.max(laneCount, 1);
+  const hasOverflow = overflow.some((count) => count > 0);
+  const height = headHeight + rows * LANE_HEIGHT + (hasOverflow ? 18 : 0) + 6;
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-md border"
+      style={{ height: large ? Math.max(420, height) : height }}
+    >
+      <div className="absolute inset-0 grid grid-cols-7">
+        {days.map((iso) => {
+          const isToday = iso === today;
+          return (
+            <div
+              key={iso}
+              className={[
+                "flex flex-col items-center gap-0.5 border-r border-border/60 px-0.5 pt-1 text-[11px] last:border-r-0",
+                isToday ? "bg-primary/5" : "",
+              ].join(" ")}
+            >
+              {large && (
+                <span className={isToday ? "text-primary" : "text-muted-foreground"}>
+                  {t(WEEKDAY_LABEL_KEYS[isoWeekday(iso) - 1])}
+                </span>
+              )}
+              <span
+                className={
+                  isToday
+                    ? "flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground"
+                    : "text-[11px] text-muted-foreground"
+                }
+              >
+                {Number(iso.slice(8, 10))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {segments.map((segment) => {
+        const done = segment.task.status === "Selesai";
+        const overdue = !done && segment.task.dueDate < today;
+        return (
+          <button
+            key={segment.task.id}
+            type="button"
+            onClick={() => onSelect(segment.task)}
+            title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate)} – ${formatTaskDate(segment.task.dueDate)}`}
+            className={[
+              "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-2 px-1 text-left text-[10px] leading-none",
+              OWNER_EDGES[ownerIndex(segment.task.userId)],
+              done
+                ? "bg-emerald-500/15 text-emerald-700 line-through dark:text-emerald-300"
+                : overdue
+                  ? "bg-red-500/15 text-red-700 dark:text-red-300"
+                  : "bg-muted/70 text-foreground hover:bg-accent",
+            ].join(" ")}
+            style={{
+              left: `calc(${(segment.startIdx / 7) * 100}% + 2px)`,
+              width: `calc(${((segment.endIdx - segment.startIdx + 1) / 7) * 100}% - 4px)`,
+              top: headHeight + segment.lane * LANE_HEIGHT,
+            }}
+          >
+            {segment.task.repeatRule && <Repeat className="size-2.5 shrink-0" aria-hidden />}
+            <span className="truncate">{segment.task.title}</span>
+          </button>
+        );
+      })}
+
+      {hasOverflow &&
+        days.map((iso, index) =>
+          overflow[index] > 0 ? (
+            <button
+              key={`more-${iso}`}
+              type="button"
+              onClick={() => onMore(iso)}
+              className="absolute truncate text-left text-[10px] text-muted-foreground hover:text-foreground hover:underline"
+              style={{
+                left: `${(index / 7) * 100}%`,
+                width: `${100 / 7}%`,
+                top: headHeight + rows * LANE_HEIGHT,
+                paddingLeft: 4,
+              }}
+            >
+              {t("tasks.moreCount", { count: overflow[index] })}
+            </button>
+          ) : null
+        )}
+    </div>
+  );
+}
+
 /** Kalender Task Planner: panel kalender per akun + tampilan Hari/Minggu/Bulan. */
 export function TaskCalendar({
   tasks,
@@ -124,7 +299,7 @@ export function TaskCalendar({
 }) {
   const { t } = useLanguage();
   const today = todayISO();
-  const [view, setView] = useState<ViewMode>("day");
+  const [view, setView] = useState<ViewMode>("month");
   const [anchor, setAnchor] = useState(today);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
 
@@ -165,10 +340,34 @@ export function TaskCalendar({
     setAnchor(dateToISO(new Date(Date.UTC(year, month - 1 + delta, 1))));
   }
 
+  /** Lompat setahun: tanggal dijepit ke akhir bulan bila 29–31 tidak ada. */
+  function shiftYear(delta: number) {
+    const [year, month] = anchor.split("-").map(Number);
+    const day = Number(anchor.slice(8, 10));
+    const nextYear = year + delta;
+    const maxDay = new Date(Date.UTC(nextYear, month, 0)).getUTCDate();
+    setAnchor(dateToISO(new Date(Date.UTC(nextYear, month - 1, Math.min(day, maxDay)))));
+  }
+
+  /** Tekan "+N more": buka tampilan Hari pada tanggal itu. */
+  function jumpToDay(iso: string) {
+    setAnchor(iso);
+    setView("day");
+  }
+
   const weekStart = addDays(anchor, -(isoWeekday(anchor) - 1));
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
 
   const [anchorYear, anchorMonth] = anchor.split("-").map(Number);
+  // Bulan dibagi per minggu supaya tiap baris bisa memuat batang lintas hari.
+  const monthWeeks = monthGrid(anchorYear, anchorMonth).reduce<string[][]>(
+    (weeks, cell, index) => {
+      if (index % 7 === 0) weeks.push([]);
+      weeks[weeks.length - 1].push(cell.iso);
+      return weeks;
+    },
+    []
+  );
   const periodLabel =
     view === "month"
       ? `${MONTH_NAMES[anchorMonth - 1]} ${anchorYear}`
@@ -235,6 +434,14 @@ export function TaskCalendar({
             <Button
               variant="outline"
               size="icon-xs"
+              aria-label={t("tasks.prevYear")}
+              onClick={() => shiftYear(-1)}
+            >
+              <ChevronsLeft className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
               aria-label={t("tasks.prevPeriod")}
               onClick={() => shiftAnchor(-1)}
             >
@@ -250,6 +457,14 @@ export function TaskCalendar({
               onClick={() => shiftAnchor(1)}
             >
               <ChevronRight className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon-xs"
+              aria-label={t("tasks.nextYear")}
+              onClick={() => shiftYear(1)}
+            >
+              <ChevronsRight className="size-4" />
             </Button>
             <span className="ml-1 font-heading text-sm font-semibold">{periodLabel}</span>
           </div>
@@ -270,7 +485,7 @@ export function TaskCalendar({
 
         {view === "month" && (
           <div className="flex flex-col gap-1">
-            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted-foreground">
+            <div className="grid grid-cols-7 text-center text-[11px] font-medium text-muted-foreground">
               {WEEKDAY_LABEL_KEYS.map((key) => (
                 <div key={key} className="py-1">
                   {t(key)}
@@ -278,104 +493,32 @@ export function TaskCalendar({
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
-              {monthGrid(anchorYear, anchorMonth).map((cell) => {
-                const dayTasks = visibleTasks.filter((task) =>
-                  isWithin(cell.iso, task.startDate, task.dueDate)
-                );
-                const isToday = cell.iso === today;
-                return (
-                  <div
-                    key={cell.iso}
-                    className={[
-                      "flex min-h-24 flex-col gap-1 rounded-md border p-1 text-[11px]",
-                      cell.inMonth
-                        ? "border-border/70"
-                        : "border-transparent bg-muted/30 text-muted-foreground/60",
-                      isToday ? "ring-2 ring-primary/40" : "",
-                    ].join(" ")}
-                  >
-                    <span
-                      className={
-                        isToday
-                          ? "flex size-5 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground"
-                          : ""
-                      }
-                    >
-                      {cell.day}
-                    </span>
-                    {dayTasks.slice(0, 3).map((task) => {
-                      const done = task.status === "Selesai";
-                      const overdue = !done && task.dueDate < today;
-                      return (
-                        <button
-                          key={task.id}
-                          type="button"
-                          onClick={() => onSelect(task)}
-                          title={`${task.title} · ${formatTaskDate(task.dueDate)}`}
-                          className={[
-                            "flex items-center gap-1 truncate rounded border-l-2 px-1 py-0.5 text-left",
-                            OWNER_EDGES[ownerIndex(task.userId)],
-                            done
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                              : overdue
-                                ? "bg-red-500/15 text-red-700 dark:text-red-300"
-                                : "bg-muted/60 text-foreground",
-                          ].join(" ")}
-                        >
-                          {task.repeatRule && <Repeat className="size-2.5 shrink-0" aria-hidden />}
-                          <span className="truncate">{task.title}</span>
-                        </button>
-                      );
-                    })}
-                    {dayTasks.length > 3 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {t("tasks.moreCount", { count: dayTasks.length - 3 })}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-1">
+              {monthWeeks.map((days) => (
+                <WeekStrip
+                  key={days[0]}
+                  days={days}
+                  tasks={visibleTasks}
+                  today={today}
+                  maxLanes={4}
+                  onSelect={onSelect}
+                  onMore={jumpToDay}
+                />
+              ))}
             </div>
           </div>
         )}
 
         {view === "week" && (
-          <div className="grid grid-cols-7 gap-1">
-            {weekDays.map((iso) => {
-              const dayTasks = visibleTasks.filter((task) =>
-                isWithin(iso, task.startDate, task.dueDate)
-              );
-              const isToday = iso === today;
-              return (
-                <div key={iso} className="flex min-h-[420px] flex-col gap-1 rounded-md border p-1">
-                  <div
-                    className={[
-                      "mb-1 flex flex-col items-center rounded px-1 py-0.5 text-[11px]",
-                      isToday ? "text-primary" : "text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    <span>{t(WEEKDAY_LABEL_KEYS[isoWeekday(iso) - 1])}</span>
-                    <span
-                      className={
-                        isToday
-                          ? "flex size-6 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground"
-                          : ""
-                      }
-                    >
-                      {Number(iso.slice(8, 10))}
-                    </span>
-                  </div>
-                  {dayTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} today={today} showOwner onSelect={onSelect} />
-                  ))}
-                  {dayTasks.length === 0 && (
-                    <span className="px-1 text-[10px] text-muted-foreground">{t("tasks.noTasks")}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <WeekStrip
+            days={weekDays}
+            tasks={visibleTasks}
+            today={today}
+            maxLanes={12}
+            large
+            onSelect={onSelect}
+            onMore={jumpToDay}
+          />
         )}
 
         {view === "day" && (

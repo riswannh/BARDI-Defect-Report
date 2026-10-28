@@ -241,6 +241,8 @@ const translations = {
   "tasks.today": { id: "Hari ini", en: "Today", zh: "今天" },
   "tasks.prevPeriod": { id: "Sebelumnya", en: "Previous", zh: "上一个" },
   "tasks.nextPeriod": { id: "Berikutnya", en: "Next", zh: "下一个" },
+  "tasks.prevYear": { id: "Tahun sebelumnya", en: "Previous year", zh: "上一年" },
+  "tasks.nextYear": { id: "Tahun berikutnya", en: "Next year", zh: "下一年" },
   "tasks.noTasks": { id: "Tidak ada task", en: "No tasks", zh: "没有任务" },
   "tasks.noUsersSelected": {
     id: "Pilih minimal satu user di daftar kalender.",
