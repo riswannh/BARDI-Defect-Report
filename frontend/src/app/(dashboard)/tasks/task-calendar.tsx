@@ -93,23 +93,27 @@ function TaskCard({
   return (
     <button
       type="button"
+      data-task-card
       onClick={() => onSelect(task)}
       title={`${task.title} · ${formatTaskDate(task.dueDate)}`}
       className={[
-        "flex w-full flex-col gap-0.5 rounded-md border border-l-4 bg-card px-1.5 py-1 text-left shadow-xs transition-colors hover:bg-accent",
+        "flex w-full flex-col gap-0.5 rounded-md border border-l-[6px] px-1.5 py-1 text-left shadow-xs transition-colors hover:bg-accent",
         OWNER_EDGES[ownerIndex(task.userId)],
-        done ? "opacity-60" : "",
+        done
+          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+          : overdue
+            ? "bg-red-500/10 text-red-700 dark:text-red-300"
+            : "bg-card text-foreground",
       ].join(" ")}
     >
-      <span
-        className={[
-          "line-clamp-2 text-[11px] leading-4",
-          done ? "text-muted-foreground line-through" : "font-medium",
-        ].join(" ")}
-      >
-        {task.title}
-      </span>
+      <span className="line-clamp-2 text-[11px] leading-4 font-medium">{task.title}</span>
       <span className="flex items-center gap-1 text-[10px] leading-3 text-muted-foreground">
+        {showOwner && (
+          <span
+            className={`size-2 shrink-0 rounded-full ${OWNER_DOTS[ownerIndex(task.userId)]}`}
+            aria-hidden
+          />
+        )}
         {showOwner && <span className="truncate">{task.ownerName}</span>}
         {overdue && (
           <span className="shrink-0 text-red-600 dark:text-red-400">{t("tasks.overdueShort")}</span>
@@ -192,14 +196,19 @@ function WeekStrip({
   onMore: (iso: string) => void;
 }) {
   const { t } = useLanguage();
-  const { segments, overflow, laneCount } = layoutWeek(tasks, days, maxLanes);
+  const { segments, overflow } = layoutWeek(tasks, days, maxLanes);
   const headHeight = large ? 44 : 24;
-  const rows = Math.max(laneCount, 1);
+  // Tinggi baris SELALU sebesar kapasitas lane: pindah bulan/tahun tidak lagi
+  // mengecil walau isi task-nya sedikit.
+  const rows = Math.max(maxLanes, 1);
   const hasOverflow = overflow.some((count) => count > 0);
-  const height = headHeight + rows * LANE_HEIGHT + (hasOverflow ? 18 : 0) + 6;
+  // Baris "lebih banyak" selalu disediakan supaya tinggi strip antar bulan sama.
+  const height = headHeight + rows * LANE_HEIGHT + 18 + 6;
 
   return (
     <div
+      data-calendar-strip
+      data-strip-lanes={rows}
       className="relative overflow-hidden rounded-md border"
       style={{ height: large ? Math.max(420, height) : height }}
     >
@@ -243,13 +252,14 @@ function WeekStrip({
           <button
             key={segment.task.id}
             type="button"
+            data-task-bar
             onClick={() => onSelect(segment.task)}
             title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate)} – ${formatTaskDate(segment.task.dueDate)}`}
             className={[
-              "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-2 px-1 text-left text-[10px] leading-none",
+              "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-[4px] px-1 text-left text-[10px] leading-none",
               OWNER_EDGES[ownerIndex(segment.task.userId)],
               done
-                ? "bg-emerald-500/15 text-emerald-700 line-through dark:text-emerald-300"
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                 : overdue
                   ? "bg-red-500/15 text-red-700 dark:text-red-300"
                   : "bg-muted/70 text-foreground hover:bg-accent",
@@ -370,6 +380,12 @@ export function TaskCalendar({
     },
     []
   );
+  // Tinggi kalender tidak boleh berubah antar bulan/tahun: selalu 6 baris minggu.
+  while (monthWeeks.length < 6) {
+    const lastDay = monthWeeks[monthWeeks.length - 1][6];
+    monthWeeks.push(Array.from({ length: 7 }, (_, index) => addDays(lastDay, index + 1)));
+  }
+
   const periodLabel =
     view === "month"
       ? `${MONTH_NAMES[anchorMonth - 1]} ${anchorYear}`
@@ -403,13 +419,13 @@ export function TaskCalendar({
                 />
                 <span
                   className={[
-                    "flex size-3.5 shrink-0 items-center justify-center rounded-xs border transition-colors",
+                    "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
                     checked
                       ? `${OWNER_DOTS[ownerIndex(owner.id)]} border-transparent`
                       : "border-muted-foreground/40",
                   ].join(" ")}
                 >
-                  {checked && <Check className="size-2.5 text-white" aria-hidden />}
+                  {checked && <Check className="size-3 text-white" aria-hidden />}
                 </span>
                 <span className="truncate">{owner.name}</span>
               </label>
@@ -565,6 +581,21 @@ export function TaskCalendar({
               </Button>
             ))}
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/60 px-2 py-1 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-xs bg-red-500/70" aria-hidden />
+            {t("tasks.legendOverdue")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-xs bg-emerald-500/70" aria-hidden />
+            {t("tasks.legendDone")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-xs bg-muted-foreground/40" aria-hidden />
+            {t("tasks.legendProgress")}
+          </span>
         </div>
 
         {view === "month" && (

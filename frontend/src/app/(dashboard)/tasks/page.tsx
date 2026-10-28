@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
-import { TaskLogDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
+import { TaskDetailDialog, TaskLogDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
 import {
   DIFFICULTIES,
@@ -496,7 +496,7 @@ export default function TasksPage() {
       {logTask && <TaskLogDialog task={logTask} onClose={() => setLogTask(null)} />}
 
       {detailTask && (
-        <TaskLogDialog task={detailTask} onClose={() => setDetailTask(null)} />
+        <TaskDetailDialog task={detailTask} onClose={() => setDetailTask(null)} />
       )}
 
       <ConfirmDialog
