@@ -6,14 +6,13 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Repeat,
   Users,
 } from "lucide-react";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
 import { addDays, dateToISO, formatTaskDate, isWithin, isoWeekday, monthGrid, todayISO } from "@/lib/task-dates";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { WEEKDAY_LABEL_KEYS, type TaskRow } from "./task-types";
 
 type ViewMode = "day" | "week" | "month";
@@ -302,6 +301,8 @@ export function TaskCalendar({
   const [view, setView] = useState<ViewMode>("month");
   const [anchor, setAnchor] = useState(today);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(Number(today.slice(0, 4)));
 
   /** Daftar kalender: semua akun; kalau endpoint belum siap pakai pemilik task. */
   const owners = useMemo<CalendarUser[]>(() => {
@@ -340,13 +341,10 @@ export function TaskCalendar({
     setAnchor(dateToISO(new Date(Date.UTC(year, month - 1 + delta, 1))));
   }
 
-  /** Lompat setahun: tanggal dijepit ke akhir bulan bila 29–31 tidak ada. */
-  function shiftYear(delta: number) {
-    const [year, month] = anchor.split("-").map(Number);
-    const day = Number(anchor.slice(8, 10));
-    const nextYear = year + delta;
-    const maxDay = new Date(Date.UTC(nextYear, month, 0)).getUTCDate();
-    setAnchor(dateToISO(new Date(Date.UTC(nextYear, month - 1, Math.min(day, maxDay)))));
+  /** Lompat ke bulan/tahun tertentu dari pemilih judul. */
+  function pickMonth(year: number, month: number) {
+    setAnchor(`${year}-${String(month).padStart(2, "0")}-01`);
+    setPickerOpen(false);
   }
 
   /** Tekan "+N more": buka tampilan Hari pada tanggal itu. */
@@ -430,46 +428,91 @@ export function TaskCalendar({
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <Button
-              variant="outline"
-              size="icon-xs"
-              aria-label={t("tasks.prevYear")}
-              onClick={() => shiftYear(-1)}
-            >
-              <ChevronsLeft className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-xs"
+              variant="ghost"
+              size="icon-sm"
               aria-label={t("tasks.prevPeriod")}
               onClick={() => shiftAnchor(-1)}
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setAnchor(today)}>
-              {t("tasks.today")}
-            </Button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setPickerYear(Number(anchor.slice(0, 4)));
+                  setPickerOpen((open) => !open);
+                }}
+                className="min-w-32 rounded-md px-2 py-1 text-center font-heading text-sm font-semibold hover:bg-muted"
+              >
+                {periodLabel}
+              </button>
+              {pickerOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setPickerOpen(false)} />
+                  <div className="absolute left-0 top-full z-30 mt-1 w-56 rounded-lg border bg-popover p-2 shadow-md">
+                    <div className="mb-1 flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t("tasks.prevYear")}
+                        onClick={() => setPickerYear((year) => year - 1)}
+                      >
+                        <ChevronLeft className="size-4" />
+                      </Button>
+                      <span className="font-heading text-sm font-semibold">{pickerYear}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t("tasks.nextYear")}
+                        onClick={() => setPickerYear((year) => year + 1)}
+                      >
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {MONTH_NAMES.map((name, index) => {
+                        const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={() => pickMonth(pickerYear, index + 1)}
+                            className={cn(
+                              "rounded-md px-1 py-1.5 text-xs hover:bg-muted",
+                              anchor.slice(0, 7) === value &&
+                                "bg-primary text-primary-foreground hover:bg-primary"
+                            )}
+                          >
+                            {name.slice(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <Button
-              variant="outline"
-              size="icon-xs"
+              variant="ghost"
+              size="icon-sm"
               aria-label={t("tasks.nextPeriod")}
               onClick={() => shiftAnchor(1)}
             >
               <ChevronRight className="size-4" />
             </Button>
             <Button
-              variant="outline"
-              size="icon-xs"
-              aria-label={t("tasks.nextYear")}
-              onClick={() => shiftYear(1)}
+              variant="ghost"
+              size="sm"
+              className="ml-1 text-muted-foreground"
+              onClick={() => setAnchor(today)}
             >
-              <ChevronsRight className="size-4" />
+              {t("tasks.today")}
             </Button>
-            <span className="ml-1 font-heading text-sm font-semibold">{periodLabel}</span>
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg border p-0.5">
+          <div className="flex items-center gap-0.5">
             {(Object.keys(VIEW_LABEL_KEYS) as ViewMode[]).map((mode) => (
               <Button
                 key={mode}
