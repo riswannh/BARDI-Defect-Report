@@ -14,7 +14,7 @@ export default function DashboardLayout({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
-    <div className="flex min-h-full flex-1">
+    <div className="flex h-dvh w-full shrink-0 overflow-hidden">
       <Sidebar
         mobileOpen={mobileNavOpen}
         onMobileOpenChange={setMobileNavOpen}
@@ -24,7 +24,7 @@ export default function DashboardLayout({
           mobileNavOpen={mobileNavOpen}
           onMobileNavOpenChange={setMobileNavOpen}
         />
-        <main className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <AuthGuard>
             <MenuGuard>{children}</MenuGuard>
           </AuthGuard>

@@ -40,7 +40,7 @@ export function Sidebar({
 
   return (
     <>
-      <aside className="relative hidden w-60 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-gradient-to-b from-[oklch(0.375_0.058_213)] via-[oklch(0.33_0.052_215)] to-[oklch(0.26_0.042_216)] text-sidebar-foreground lg:flex">
+      <aside className="relative hidden h-dvh w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-gradient-to-b from-[oklch(0.375_0.058_213)] via-[oklch(0.33_0.052_215)] to-[oklch(0.26_0.042_216)] text-sidebar-foreground lg:flex">
         <SidebarNav />
       </aside>
 
