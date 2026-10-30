@@ -88,15 +88,15 @@ export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
   }
 
   return (
-    <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[260px_1fr]">
-      <Card size="sm" className="flex min-h-0 flex-col">
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
+    <div className="grid gap-3 lg:grid-cols-[260px_1fr]">
+      <Card size="sm" className="flex flex-col">
+        <CardContent className="flex flex-col gap-2 pt-3">
           {canWrite && (
             <Button size="sm" variant="outline" onClick={() => startEdit(null)}>
               <FilePlus2 className="size-4" /> {t("tasks.docsNew")}
             </Button>
           )}
-          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+          <div className="flex max-h-[420px] flex-col gap-1 overflow-y-auto">
             {docs.length === 0 && (
               <p className="px-1 py-6 text-center text-xs text-muted-foreground">
                 {t("tasks.docsEmpty")}
@@ -128,8 +128,8 @@ export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
         </CardContent>
       </Card>
 
-      <Card size="sm" className="flex min-h-0 flex-col">
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-2 pt-3">
+      <Card size="sm" className="flex flex-col">
+        <CardContent className="flex flex-col gap-2 pt-3">
           {editing ? (
             <>
               <Input
@@ -141,7 +141,7 @@ export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
                 value={draftBody}
                 onChange={(event) => setDraftBody(event.target.value)}
                 placeholder={t("tasks.docsBodyPlaceholder")}
-                className="min-h-0 flex-1 resize-none font-mono text-xs"
+                className="min-h-[380px] resize-y font-mono text-xs"
               />
               <div className="flex items-center justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
@@ -180,7 +180,7 @@ export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
                   </div>
                 )}
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-sm">
+              <div className="min-h-[380px] whitespace-pre-wrap text-sm">
                 {selected.body || t("tasks.docsBodyEmpty")}
               </div>
             </>

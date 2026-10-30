@@ -445,7 +445,7 @@ export default function TasksPage() {
   ];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col">
       <PageHeader
         title={t("tasks.title")}
         actions={
@@ -458,7 +458,7 @@ export default function TasksPage() {
       />
 
       <Tabs
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex flex-col"
         value={tab}
         onValueChange={(value) => {
           setTab(String(value));
@@ -477,15 +477,15 @@ export default function TasksPage() {
           })}
         </TabsList>
 
-        <TabsContent value="summary" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="summary" className="mt-4">
           <TaskSummaryView rows={viewRows} activities={activities} types={types} onOpen={setDetailTask} />
         </TabsContent>
 
-        <TabsContent value="list" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+        <TabsContent value="list" className="mt-4 flex flex-col gap-3">
           {renderFilters()}
-          <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
-            <CardContent className="flex min-h-0 flex-1 flex-col px-0">
-              <div className="min-h-0 flex-1 overflow-y-auto">
+          <Card size="sm" className="overflow-hidden py-0">
+            <CardContent className="px-0">
+              <div>
                 {renderTable(paged, scope === "all")}
               </div>
               {filtered.length > 0 && (
@@ -506,7 +506,7 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="board" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="board" className="mt-4">
           <TaskBoardView
             rows={viewRows}
             types={types}
@@ -515,9 +515,9 @@ export default function TasksPage() {
           />
         </TabsContent>
 
-        <TabsContent value="calendar" className="mt-4 flex min-h-0 flex-1 flex-col">
-          <Card size="sm" className="flex min-h-0 flex-1 flex-col">
-            <CardContent className="flex min-h-0 flex-1 flex-col pt-3">
+        <TabsContent value="calendar" className="mt-4">
+          <Card size="sm">
+            <CardContent className="pt-3">
               <TaskCalendar
                 tasks={viewRows}
                 calendars={calendarData ?? []}
@@ -527,15 +527,15 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="timeline" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="timeline" className="mt-4">
           <TaskTimelineView rows={viewRows} onOpen={setDetailTask} />
         </TabsContent>
 
-        <TabsContent value="docs" className="mt-4 flex min-h-0 flex-1 flex-col">
+        <TabsContent value="docs" className="mt-4 flex flex-col">
           <TaskDocsView canWrite={canWrite} />
         </TabsContent>
 
-        <TabsContent value="log" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="log" className="mt-4">
           <Card size="sm">
             <CardHeader>
               <CardTitle className="text-sm">{t("tasks.logAllTitle")}</CardTitle>
@@ -546,7 +546,7 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="settings" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="settings" className="mt-4">
           <TaskSettingsView
             types={types}
             me={{ id: user?.id ?? "", name: user?.username ?? "" }}

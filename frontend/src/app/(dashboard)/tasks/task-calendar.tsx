@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import {
   CalendarRange,
   Check,
@@ -303,21 +303,8 @@ export function TaskCalendar({
   const [pickerYear, setPickerYear] = useState(Number(today.slice(0, 4)));
   const [pickerMode, setPickerMode] = useState<"month" | "year">("month");
 
-  const areaRef = useRef<HTMLDivElement | null>(null);
-  const [areaHeight, setAreaHeight] = useState(0);
-
-  // Kalender selalu setinggi sisa layar: ukur area yang tersedia lalu bagi ke
-  // baris minggu. Diukur lewat ResizeObserver (callback, bukan body effect)
-  // supaya tidak melanggar aturan react-hooks/set-state-in-effect.
-  useEffect(() => {
-    const element = areaRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver((entries) => {
-      setAreaHeight(Math.round(entries[0]?.contentRect.height ?? 0));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
+  // Kalender tidak wajib muat satu layar: tinggi memakai ukuran tetap yang
+  // nyaman dibaca, dan halaman yang menggulir kalau isinya panjang.
 
   /** Daftar kalender: semua akun; kalau endpoint belum siap pakai pemilik task. */
   const owners = useMemo<TaskOwner[]>(() => {
@@ -387,22 +374,12 @@ export function TaskCalendar({
     monthWeeks.push(Array.from({ length: 7 }, (_, index) => addDays(lastDay, index + 1)));
   }
 
-  // Tinggi dinamis: kalender memakai sisa layar, jadi tidak perlu scroll. Di
-  // layar sangat pendek baris tetap setinggi MIN_STRIP dan area kalender yang
-  // menggulir sendiri (bukan halaman).
-  const STRIP_GAP = 4;
-  const MONTH_HEAD = 26;
-  const MIN_STRIP = 70;
-  const monthStripHeight = areaHeight
-    ? Math.max(MIN_STRIP, Math.floor((areaHeight - MONTH_HEAD - STRIP_GAP * 5) / 6))
-    : 0;
-  const monthLanes = monthStripHeight
-    ? Math.max(1, Math.floor((monthStripHeight - 24 - 24) / LANE_HEIGHT))
-    : 4;
-  const weekLanes = areaHeight
-    ? Math.max(2, Math.floor((areaHeight - 44 - 24) / LANE_HEIGHT))
-    : 12;
-  const dayColumnHeight = areaHeight ? Math.max(160, areaHeight - 24) : 420;
+  // Tinggi tetap: dulu kalender dipaksa memakai sisa layar, sekarang boleh
+  // lebih tinggi dari layar dan halaman yang menggulir.
+  const monthStripHeight = 116;
+  const monthLanes = Math.max(1, Math.floor((monthStripHeight - 24 - 24) / LANE_HEIGHT));
+  const weekLanes = 14;
+  const weekHeight = 620;
 
   const periodLabel =
     view === "month"
@@ -413,8 +390,8 @@ export function TaskCalendar({
 
   return (
     <OwnerColorContext.Provider value={owners}>
-      <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3">
+      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1">
             <Button
@@ -629,9 +606,8 @@ export function TaskCalendar({
         </div>
 
         <div
-          ref={areaRef}
           data-calendar-area
-          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+          className="flex flex-col gap-1"
         >
           {view === "month" && (
             <>
@@ -643,7 +619,7 @@ export function TaskCalendar({
                 ))}
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col gap-1">
+              <div className="flex flex-col gap-1">
                 {monthWeeks.map((days) => (
                   <WeekStrip
                     key={days[0]}
@@ -666,7 +642,7 @@ export function TaskCalendar({
               tasks={visibleTasks}
               today={today}
               maxLanes={weekLanes}
-              height={areaHeight}
+              height={weekHeight}
               large
               onSelect={onSelect}
               onMore={jumpToDay}
@@ -690,8 +666,7 @@ export function TaskCalendar({
                   <div
                     key={owner.id}
                     data-calendar-column
-                    className="flex w-48 min-w-48 shrink-0 flex-col gap-1 overflow-y-auto rounded-md border p-1"
-                    style={{ height: dayColumnHeight }}
+                    className="flex min-h-32 w-48 min-w-48 shrink-0 self-start flex-col gap-1 rounded-md border p-1"
                   >
                     <div className="mb-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-[11px]">
                       <span
