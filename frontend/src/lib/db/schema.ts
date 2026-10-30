@@ -7,6 +7,7 @@ import {
   sqliteTable,
   text,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 /* ============================================================
@@ -51,6 +52,8 @@ export const user = sqliteTable("user", {
   roleId: integer("roleId").references(() => roles.id, {
     onDelete: "set null",
   }),
+  /** Warna kartu akun ini di kalender Rencana Kerja (#rrggbb), NULL = warna bawaan. */
+  calendarColor: text("calendarColor"),
 });
 
 export const session = sqliteTable(
@@ -869,14 +872,18 @@ export const taskDocs = sqliteTable(
 );
 
 /**
- * Daftar tipe isu (dulu enum tetap). `code` yang disimpan di
- * `tasks.issueType`; `name` bebas diisi admin lewat tab Pengaturan.
+ * Daftar tipe isu (dulu enum tetap) — MILIK MASING-MASING AKUN.
+ * `code` yang disimpan di `tasks.issueType`; `name` diatur pemiliknya
+ * (admin boleh mengatur milik akun lain). Warna penanda kalender menempel di
+ * akun (`user.calendarColor`), bukan di tipe.
  */
 export const taskTypes = sqliteTable(
   "task_types",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    code: text("code").notNull().unique(),
+    /** Pemilik daftar (user.id). */
+    userId: text("userId").notNull().default(""),
+    code: text("code").notNull(),
     name: text("name").notNull(),
     /** Urutan tampil di dropdown (kecil dulu). */
     sortOrder: integer("sortOrder").notNull().default(0),
@@ -884,5 +891,8 @@ export const taskTypes = sqliteTable(
       .notNull()
       .default(sql`(unixepoch())`),
   },
-  (t) => [index("task_types_sort_idx").on(t.sortOrder)]
+  (t) => [
+    uniqueIndex("task_types_user_code_idx").on(t.userId, t.code),
+    index("task_types_sort_idx").on(t.sortOrder),
+  ]
 );

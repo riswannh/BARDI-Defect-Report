@@ -42,10 +42,19 @@ export interface TaskActivityRow {
 
 export interface TaskTypeRow {
   id: number;
+  /** Pemilik daftar (user.id). */
+  userId: string;
   code: string;
   name: string;
   sortOrder: number;
   used: number;
+}
+
+/** Akun pemilik kalender + warna kartunya. */
+export interface TaskOwner {
+  id: string;
+  name: string;
+  color?: string | null;
 }
 
 export const PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
@@ -53,11 +62,45 @@ export const DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
 
-/** Nama tipe dari daftar admin; kode tak dikenal tampil apa adanya. */
-export function typeName(types: TaskTypeRow[], code: string): string {
-  const found = types.find((item) => item.code === code);
+/** Palet warna bawaan untuk akun yang belum memilih warna kartu sendiri. */
+export const OWNER_COLORS = [
+  "#2563eb",
+  "#db2777",
+  "#0d9488",
+  "#f59e0b",
+  "#7c3aed",
+  "#dc2626",
+  "#0891b2",
+  "#65a30d",
+];
+
+/**
+ * Warna kartu sebuah akun di kalender: warna pilihannya sendiri
+ * (`user.calendarColor`), atau palet bawaan berdasarkan urutan akun.
+ */
+export function ownerColor(owners: TaskOwner[], userId: string): string {
+  const index = owners.findIndex((item) => item.id === userId);
+  const chosen = owners[index]?.color;
+  if (chosen) return chosen;
+  return OWNER_COLORS[(index < 0 ? 0 : index) % OWNER_COLORS.length];
+}
+
+/** Tipe milik satu akun, urut sesuai sortOrder. */
+export function typesOfOwner(types: TaskTypeRow[], userId?: string): TaskTypeRow[] {
+  if (!userId) return types;
+  return types.filter((item) => item.userId === userId);
+}
+
+/**
+ * Nama tipe dari daftar pemiliknya; kalau pemilik tidak diketahui, pakai
+ * kecocokan kode pertama. Kode tak dikenal tampil apa adanya.
+ */
+export function typeName(types: TaskTypeRow[], code: string, userId?: string): string {
+  const owned = typesOfOwner(types, userId);
+  const found = owned.find((item) => item.code === code) ?? types.find((item) => item.code === code);
   return found ? found.name : code || "—";
 }
+
 
 export const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
   Belum: "tasks.statusOpen",

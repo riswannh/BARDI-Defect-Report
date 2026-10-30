@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { rolePermissions, roles, taskActivities, tasks, user as userTable } from "@/lib/db/schema";
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
-import { taskCreateSchema, taskUpdateSchema } from "@/lib/api/validation";
+import { calendarColorSchema, taskCreateSchema, taskUpdateSchema } from "@/lib/api/validation";
 import { nextOccurrence } from "@/lib/task-dates";
 
 type TaskRow = typeof tasks.$inferSelect;
@@ -13,6 +13,8 @@ type TaskRow = typeof tasks.$inferSelect;
 export interface TaskCalendarUser {
   id: string;
   name: string;
+  /** Warna kartu akun di kalender (#rrggbb); null = pakai warna bawaan. */
+  color: string | null;
 }
 
 interface TaskValues {
@@ -189,13 +191,26 @@ export async function tasksPOST(req: NextRequest) {
   });
   if (invalid) return jsonError(invalid, 400);
 
+  // Admin boleh membuat task untuk akun lain (pilih pemilik di form); akun
+  // biasa selalu membuat task untuk dirinya sendiri.
+  const ownerId = guard.user.isAdmin && raw.ownerId ? raw.ownerId : guard.user.id;
+  let ownerName = guard.user.username;
+  if (ownerId !== guard.user.id) {
+    const [owner] = await db
+      .select({ username: userTable.username })
+      .from(userTable)
+      .where(eq(userTable.id, ownerId));
+    if (!owner) return jsonError("Akun pemilik task tidak ditemukan.", 400);
+    ownerName = owner.username ?? guard.user.username;
+  }
+
   const now = new Date();
   const [row] = await db
     .insert(tasks)
     .values({
       ...values,
-      userId: guard.user.id,
-      ownerName: guard.user.username,
+      userId: ownerId,
+      ownerName,
       completedAt: values.status === "Selesai" ? now : null,
       createdAt: now,
       updatedAt: now,
@@ -262,12 +277,30 @@ export async function tasksPATCH(
   const invalid = validateTask(merged);
   if (invalid) return jsonError(invalid, 400);
 
+  // Pindah pemilik task: hanya admin.
+  let nextOwnerId = current.userId;
+  let nextOwnerName = current.ownerName;
+  if (patch.ownerId && patch.ownerId !== current.userId) {
+    if (!guard.user.isAdmin) {
+      return jsonError("Hanya admin yang bisa memindahkan task ke akun lain.", 403);
+    }
+    const [owner] = await db
+      .select({ username: userTable.username })
+      .from(userTable)
+      .where(eq(userTable.id, patch.ownerId));
+    if (!owner) return jsonError("Akun pemilik task tidak ditemukan.", 400);
+    nextOwnerId = patch.ownerId;
+    nextOwnerName = owner.username ?? current.ownerName;
+  }
+
   const now = new Date();
   const becomingDone = merged.status === "Selesai" && current.status !== "Selesai";
   const [updated] = await db
     .update(tasks)
     .set({
       ...merged,
+      userId: nextOwnerId,
+      ownerName: nextOwnerName,
       completedAt: becomingDone
         ? now
         : merged.status === "Selesai"
@@ -411,7 +444,9 @@ export async function taskCalendarsGET() {
       username: userTable.username,
       name: userTable.name,
       isAdmin: userTable.isAdmin,
+      canRead: rolePermissions.canRead,
       canWrite: rolePermissions.canWrite,
+      calendarColor: userTable.calendarColor,
     })
     .from(userTable)
     .leftJoin(roles, eq(userTable.roleId, roles.id))
@@ -422,9 +457,44 @@ export async function taskCalendarsGET() {
     .orderBy(userTable.username);
 
   const calendars: TaskCalendarUser[] = rows
-    .filter((row) => !row.isAdmin && row.canWrite === true)
-    .map((row) => ({ id: row.id, name: row.username || row.name || row.id }))
+    // Kalender menampilkan semua akun yang boleh membuka Rencana Kerja (baca
+    // pun cukup, karena warna kartu hanya penanda visual).
+    .filter((row) => row.isAdmin || row.canRead === true || row.canWrite === true)
+    .map((row) => ({
+      id: row.id,
+      name: row.username || row.name || row.id,
+      color: row.calendarColor ?? null,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return jsonOk(calendars);
+}
+
+/**
+ * Atur warna kartu sebuah akun di kalender. Pemilik boleh mengatur warnanya
+ * sendiri; admin boleh mengatur akun lain.
+ */
+export async function taskCalendarsPATCH(req: NextRequest) {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const body = await req.json().catch(() => null);
+  const parsed = calendarColorSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(parsed.error.issues[0]?.message ?? "Data tidak valid", 400);
+  }
+
+  const targetId = parsed.data.userId || guard.user.id;
+  if (targetId !== guard.user.id && !guard.user.isAdmin) {
+    return jsonError("Hanya admin yang bisa mengatur warna akun lain.", 403);
+  }
+
+  const [row] = await db
+    .update(userTable)
+    .set({ calendarColor: parsed.data.color })
+    .where(eq(userTable.id, targetId))
+    .returning({ id: userTable.id, calendarColor: userTable.calendarColor });
+  if (!row) return jsonError("Akun tidak ditemukan.", 404);
+
+  return jsonOk({ id: row.id, color: row.calendarColor });
 }

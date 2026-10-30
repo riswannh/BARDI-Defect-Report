@@ -544,9 +544,29 @@ export type TaskDifficulty = (typeof TASK_DIFFICULTIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskRepeatRule = (typeof TASK_REPEAT_RULES)[number];
 
-/** Tambah tipe isu: admin cukup mengetik nama, kode dibuat otomatis. */
+/** Warna kartu akun di kalender, format #rrggbb. */
+export const CALENDAR_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Tambah tipe isu. Tiap akun punya daftar sendiri; admin boleh menambah untuk
+ * akun lain lewat `userId`.
+ */
 export const taskTypeCreateSchema = z.object({
   name: z.string().trim().min(1, "Nama tipe wajib diisi").max(TASK_ISSUE_TYPE_MAX),
+  userId: z.string().trim().max(64).default(""),
+});
+
+/** Ubah nama tipe (pemilik daftar atau admin). */
+export const taskTypeUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1, "Nama tipe wajib diisi").max(TASK_ISSUE_TYPE_MAX),
+  })
+  .partial();
+
+/** Warna kartu akun di kalender Rencana Kerja; `null` = warna bawaan. */
+export const calendarColorSchema = z.object({
+  userId: z.string().trim().max(64).default(""),
+  color: z.string().trim().regex(CALENDAR_COLOR, "Warna harus format #rrggbb").nullable(),
 });
 
 /** Tanggal murni "YYYY-MM-DD" — tanpa jam supaya bebas zona waktu. */
@@ -562,6 +582,8 @@ const isoDateField = z
  */
 const taskFields = {
   title: z.string().trim().min(1).max(200),
+  /** Admin membuat/mengubah task milik akun lain; kosong = milik sendiri. */
+  ownerId: z.string().trim().max(64),
   description: z.string().trim().max(2000),
   progress: z.coerce.number().int().min(0).max(100),
   priority: z.enum(TASK_PRIORITIES),
@@ -580,6 +602,7 @@ const taskFields = {
 };
 
 export const taskCreateSchema = buildCreate(taskFields, {
+  ownerId: z.string().trim().max(64).default(""),
   description: z.string().trim().max(2000).default(""),
   progress: z.coerce.number().int().min(0).max(100).default(0),
   priority: z.enum(TASK_PRIORITIES).default("Normal"),

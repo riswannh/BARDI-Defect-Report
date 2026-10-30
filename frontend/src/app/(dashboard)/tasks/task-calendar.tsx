@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarRange,
   Check,
@@ -22,37 +22,21 @@ import {
 } from "@/lib/task-dates";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { WEEKDAY_LABEL_KEYS, type TaskRow } from "./task-types";
+import { ownerColor, WEEKDAY_LABEL_KEYS, type TaskOwner, type TaskRow } from "./task-types";
 
 type ViewMode = "day" | "week" | "month";
 
-interface CalendarUser {
-  id: string;
-  name: string;
+/**
+ * Warna kartu per akun (diatur sendiri di tab Pengaturan), meniru daftar
+ * kalender Google Calendar. Ditaruh di context supaya kartu di dalam strip
+ * minggu/bulan tidak perlu menerima daftar akun lewat berlapis-lapis props.
+ */
+const OwnerColorContext = createContext<TaskOwner[]>([]);
+
+function useOwnerColor() {
+  const owners = useContext(OwnerColorContext);
+  return (userId: string) => ownerColor(owners, userId);
 }
-
-/** Warna pembeda per pemilik task, meniru daftar kalender Google Calendar. */
-const OWNER_DOTS = [
-  "bg-sky-500",
-  "bg-violet-500",
-  "bg-emerald-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-teal-500",
-  "bg-indigo-500",
-  "bg-orange-500",
-];
-
-const OWNER_EDGES = [
-  "border-l-sky-500",
-  "border-l-violet-500",
-  "border-l-emerald-500",
-  "border-l-amber-500",
-  "border-l-rose-500",
-  "border-l-teal-500",
-  "border-l-indigo-500",
-  "border-l-orange-500",
-];
 
 const VIEW_LABEL_KEYS: Record<ViewMode, TranslationKey> = {
   day: "tasks.viewDay",
@@ -60,13 +44,6 @@ const VIEW_LABEL_KEYS: Record<ViewMode, TranslationKey> = {
   month: "tasks.viewMonth",
 };
 
-function ownerIndex(userId: string): number {
-  let hash = 0;
-  for (let index = 0; index < userId.length; index += 1) {
-    hash = (hash * 31 + userId.charCodeAt(index)) % 9973;
-  }
-  return hash % OWNER_DOTS.length;
-}
 
 /** Kartu satu task di tampilan hari/minggu (tanpa jam, meniru Google Calendar). */
 function TaskCard({
@@ -81,6 +58,7 @@ function TaskCard({
   onSelect: (task: TaskRow) => void;
 }) {
   const { t, language } = useLanguage();
+  const colorFor = useOwnerColor();
   const done = task.status === "Selesai";
   const overdue = !done && task.dueDate < today;
 
@@ -88,23 +66,25 @@ function TaskCard({
     <button
       type="button"
       data-task-card
+      data-type-color={colorFor(task.userId)}
       onClick={() => onSelect(task)}
       title={`${task.title} · ${formatTaskDate(task.dueDate, language)}`}
       className={[
         "flex w-full flex-col gap-0.5 rounded-md border border-l-[6px] px-1.5 py-1 text-left shadow-xs transition-colors hover:bg-accent",
-        OWNER_EDGES[ownerIndex(task.userId)],
         done
           ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
           : overdue
             ? "bg-red-500/10 text-red-700 dark:text-red-300"
             : "bg-card text-foreground",
       ].join(" ")}
+      style={{ borderLeftColor: colorFor(task.userId) }}
     >
       <span className="line-clamp-2 text-[11px] leading-4 font-medium">{task.title}</span>
       <span className="flex items-center gap-1 text-[10px] leading-3 text-muted-foreground">
         {showOwner && (
           <span
-            className={`size-2 shrink-0 rounded-full ${OWNER_DOTS[ownerIndex(task.userId)]}`}
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: colorFor(task.userId) }}
             aria-hidden
           />
         )}
@@ -193,6 +173,7 @@ function WeekStrip({
   onMore: (iso: string) => void;
 }) {
   const { t, language } = useLanguage();
+  const colorFor = useOwnerColor();
   const { segments, overflow } = layoutWeek(tasks, days, maxLanes);
   const headHeight = large ? 44 : 24;
   const rows = Math.max(maxLanes, 1);
@@ -250,11 +231,11 @@ function WeekStrip({
             key={segment.task.id}
             type="button"
             data-task-bar
+            data-type-color={colorFor(segment.task.userId)}
             onClick={() => onSelect(segment.task)}
             title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate, language)} – ${formatTaskDate(segment.task.dueDate, language)}`}
             className={[
               "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-[4px] px-1 text-left text-[10px] leading-none",
-              OWNER_EDGES[ownerIndex(segment.task.userId)],
               done
                 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                 : overdue
@@ -265,6 +246,7 @@ function WeekStrip({
               left: `calc(${(segment.startIdx / 7) * 100}% + 2px)`,
               width: `calc(${((segment.endIdx - segment.startIdx + 1) / 7) * 100}% - 4px)`,
               top: headHeight + segment.lane * LANE_HEIGHT,
+              borderLeftColor: colorFor(segment.task.userId),
             }}
           >
             {segment.task.repeatRule && <Repeat className="size-2.5 shrink-0" aria-hidden />}
@@ -303,7 +285,7 @@ export function TaskCalendar({
   onSelect,
 }: {
   tasks: TaskRow[];
-  calendars: CalendarUser[];
+  calendars: TaskOwner[];
   onSelect: (task: TaskRow) => void;
 }) {
   const { t, language } = useLanguage();
@@ -332,9 +314,9 @@ export function TaskCalendar({
   }, []);
 
   /** Daftar kalender: semua akun; kalau endpoint belum siap pakai pemilik task. */
-  const owners = useMemo<CalendarUser[]>(() => {
+  const owners = useMemo<TaskOwner[]>(() => {
     if (calendars.length > 0) return calendars;
-    const map = new Map<string, CalendarUser>();
+    const map = new Map<string, TaskOwner>();
     for (const task of tasks) {
       if (!map.has(task.userId)) {
         map.set(task.userId, { id: task.userId, name: task.ownerName || task.userId });
@@ -424,7 +406,8 @@ export function TaskCalendar({
         : `${t(WEEKDAY_LABEL_KEYS[isoWeekday(anchor) - 1])}, ${formatTaskDate(anchor, language)}`;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
+    <OwnerColorContext.Provider value={owners}>
+      <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
       <aside className="flex w-full shrink-0 flex-col gap-2 rounded-lg border p-2 lg:h-full lg:min-h-0 lg:w-52 lg:overflow-hidden">
         <p className="px-1 text-xs font-medium text-muted-foreground">
           {t("tasks.calendars")}{" "}
@@ -450,10 +433,9 @@ export function TaskCalendar({
                 <span
                   className={[
                     "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                    checked
-                      ? `${OWNER_DOTS[ownerIndex(owner.id)]} border-transparent`
-                      : "border-muted-foreground/40",
+                    checked ? "border-transparent" : "border-muted-foreground/40",
                   ].join(" ")}
+                  style={checked ? { backgroundColor: ownerColor(owners, owner.id) } : undefined}
                 >
                   {checked && <Check className="size-3 text-white" aria-hidden />}
                 </span>
@@ -695,7 +677,8 @@ export function TaskCalendar({
                   >
                     <div className="mb-1 flex items-center gap-1.5 rounded px-1 py-0.5 text-[11px]">
                       <span
-                        className={`size-2.5 shrink-0 rounded-xs ${OWNER_DOTS[ownerIndex(owner.id)]}`}
+                        className="size-2.5 shrink-0 rounded-xs"
+                        style={{ backgroundColor: ownerColor(owners, owner.id) }}
                       />
                       <span className="truncate font-medium">{owner.name}</span>
                       <span className="ml-auto text-[10px] text-muted-foreground">
@@ -722,6 +705,7 @@ export function TaskCalendar({
         )}
         </div>
       </div>
-    </div>
+      </div>
+    </OwnerColorContext.Provider>
   );
 }

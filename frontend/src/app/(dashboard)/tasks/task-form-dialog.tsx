@@ -29,6 +29,7 @@ import {
   TASK_STATUSES,
   WEEKDAY_LABEL_KEYS,
   typeName,
+  typesOfOwner,
   type TaskRow,
   type TaskTypeRow,
 } from "./task-types";
@@ -38,11 +39,17 @@ const NONE = "none";
 export function TaskFormDialog({
   task,
   types,
+  me,
+  users,
+  isAdmin,
   onSaved,
   onCancel,
 }: {
   task: TaskRow | null;
   types: TaskTypeRow[];
+  me: { id: string; name: string };
+  users: Array<{ id: string; name: string }>;
+  isAdmin: boolean;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -50,9 +57,18 @@ export function TaskFormDialog({
   const today = todayISO();
   const [saving, setSaving] = useState(false);
 
+  /** Pemilik task: admin boleh memilih akun lain, tipe ikut daftar pemilik. */
+  const [ownerId, setOwnerId] = useState(task?.userId ?? me.id);
+  const ownerTypes = typesOfOwner(types, isAdmin ? ownerId : me.id);
+
+  function changeOwner(next: string) {
+    setOwnerId(next);
+    setIssueType(typesOfOwner(types, next)[0]?.code ?? "task");
+  }
+
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [issueType, setIssueType] = useState(task?.issueType ?? types[0]?.code ?? "task");
+  const [issueType, setIssueType] = useState(task?.issueType ?? ownerTypes[0]?.code ?? "task");
   const [labels, setLabels] = useState(task?.labels ?? "");
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
@@ -78,14 +94,14 @@ export function TaskFormDialog({
       `tasks.difficulty${value === "Mudah" ? "Easy" : value === "Sedang" ? "Medium" : "Hard"}`
     ),
   }));
-  // Tipe dari master; kalau task lama memakai kode yang sudah dihapus, tetap
-  // ditampilkan supaya tidak berubah tanpa disengaja.
-  const typeCodes = types.some((item) => item.code === issueType)
-    ? types.map((item) => item.code)
-    : [...types.map((item) => item.code), issueType];
+  // Tipe dari master milik pemilik task; kalau task lama memakai kode yang
+  // sudah dihapus, tetap ditampilkan supaya tidak berubah tanpa disengaja.
+  const typeCodes = ownerTypes.some((item) => item.code === issueType)
+    ? ownerTypes.map((item) => item.code)
+    : [...ownerTypes.map((item) => item.code), issueType];
   const issueOptions = typeCodes.map((value) => ({
     value,
-    label: typeName(types, value),
+    label: typeName(types, value, isAdmin ? ownerId : me.id),
   }));
   const statusOptions = TASK_STATUSES.map((value) => ({
     value,
@@ -131,6 +147,8 @@ export function TaskFormDialog({
       repeatRule,
       repeatWeekday: repeatRule === "weekly" ? Number(repeatWeekday) : null,
       repeatDay: repeatRule === "monthly" ? Number(repeatDay) : null,
+      // Hanya admin yang boleh membuat/memindahkan task ke akun lain.
+      ownerId: isAdmin ? ownerId : undefined,
     };
 
     setSaving(true);
@@ -174,6 +192,29 @@ export function TaskFormDialog({
               rows={3}
             />
           </div>
+
+          {isAdmin && (
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("tasks.fieldOwner")}</Label>
+              <Select
+                value={ownerId}
+                onValueChange={(value) => changeOwner(String(value))}
+                items={users.map((item) => ({ value: item.id, label: item.name }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t("tasks.fieldOwnerHint")}</p>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">

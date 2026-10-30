@@ -68,7 +68,7 @@ const ALL = "all";
 
 export default function TasksPage() {
   const { t, language } = useLanguage();
-  const { can, isAdmin } = useAuth();
+  const { can, isAdmin, user } = useAuth();
   const canWrite = can("tasks", "write");
   const today = todayISO();
 
@@ -76,7 +76,9 @@ export default function TasksPage() {
   const { data: allData, reload: reloadAll } = useApi<TaskRow[]>(
     isAdmin ? "/api/tasks?scope=all" : null
   );
-  const { data: calendarData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/calendars");
+  const { data: calendarData, reload: reloadCalendars } = useApi<Array<{ id: string; name: string }>>(
+    "/api/tasks/calendars"
+  );
   const { data: typeData, reload: reloadTypes } = useApi<TaskTypeRow[]>("/api/task-types");
   const { data: activityData } = useApi<TaskActivityRow[]>(
     "/api/tasks/activities?limit=12"
@@ -215,7 +217,7 @@ export default function TasksPage() {
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-xs">
-                  {typeName(types, task.issueType)}
+                  {typeName(types, task.issueType, task.userId)}
                 </TableCell>
                 {showOwner && (
                   <TableCell className="text-sm">{task.ownerName || "—"}</TableCell>
@@ -559,7 +561,16 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="settings" className="mt-4 min-h-0 flex-1 overflow-y-auto">
-          <TaskSettingsView types={types} canEdit={isAdmin} onChanged={reloadTypes} />
+          <TaskSettingsView
+            types={types}
+            me={{ id: user?.id ?? "", name: user?.username ?? "" }}
+            users={calendarData ?? []}
+            isAdmin={isAdmin}
+            onChanged={() => {
+              reloadTypes();
+              reloadCalendars();
+            }}
+          />
         </TabsContent>
       </Tabs>
 
@@ -567,6 +578,9 @@ export default function TasksPage() {
         <TaskFormDialog
           task={formTask}
           types={types}
+          me={{ id: user?.id ?? "", name: user?.username ?? "" }}
+          users={calendarData ?? []}
+          isAdmin={isAdmin}
           onSaved={() => {
             setFormTask(undefined);
             refreshAll();
