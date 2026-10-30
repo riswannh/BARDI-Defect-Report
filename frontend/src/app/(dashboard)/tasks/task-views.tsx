@@ -2,15 +2,12 @@
 
 import { useMemo, useState } from "react";
 import {
-  Bug,
   ChevronLeft,
   ChevronRight,
   CircleDashed,
   Clock,
   FileText,
-  Layers,
   ListChecks,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
@@ -47,13 +44,6 @@ function startOfWeek(date: Date): Date {
 
 function daysBetween(from: Date, to: Date): number {
   return Math.round((to.getTime() - from.getTime()) / DAY);
-}
-
-function issueIcon(type: string) {
-  if (type === "bug") return <Bug className="size-3.5 text-red-500" />;
-  if (type === "feature") return <Sparkles className="size-3.5 text-violet-500" />;
-  if (type === "subtask") return <Layers className="size-3.5 text-sky-500" />;
-  return <ListChecks className="size-3.5 text-blue-500" />;
 }
 
 function within(iso: string | null, days: number): boolean {
@@ -203,7 +193,6 @@ export function TaskSummaryView({
                   onClick={() => onOpen(task)}
                   className="flex items-center gap-2 py-1.5 text-left text-xs hover:text-primary"
                 >
-                  {issueIcon(task.issueType)}
                   <span className="truncate font-medium">{task.title}</span>
                   <Badge variant="outline" className={cn("ml-auto shrink-0", statusTone(task.status))}>
                     {t(STATUS_LABEL_KEYS[task.status] ?? "tasks.statusOpen")}
@@ -246,7 +235,6 @@ export function TaskSummaryView({
               <div key={item.type} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5">
-                    {issueIcon(item.type)}
                     {typeName(types, item.type)}
                   </span>
                   <span className="tabular-nums text-muted-foreground">{item.count}</span>
@@ -361,7 +349,6 @@ export function TaskBoardView({
                 className="flex flex-col items-start gap-1 text-left"
               >
                 <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  {issueIcon(task.issueType)}
                   #{task.id}
                   <Badge variant="outline" className={cn("h-5 px-1.5 text-[10px]", priorityTone(task.priority))}>
                     {t(PRIORITY_LABEL_KEYS[task.priority] ?? "tasks.priorityNormal")}
@@ -492,7 +479,6 @@ export function TaskTimelineView({
                   onClick={() => onOpen(task)}
                   className="flex min-w-0 items-center gap-1.5 px-3 py-2 text-left hover:text-primary"
                 >
-                  {issueIcon(task.issueType)}
                   <span className="truncate font-medium">{task.title}</span>
                 </button>
                 <div className="relative py-2">
