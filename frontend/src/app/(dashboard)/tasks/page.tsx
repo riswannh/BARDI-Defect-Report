@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CircleCheck,
   CircleDashed,
+  Download,
   FileText,
   GanttChartSquare,
   History,
@@ -29,6 +30,12 @@ import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -89,6 +96,21 @@ export default function TasksPage() {
   const types = typeData ?? [];
   /** Admin melihat semua task di view ringkasan/board/timeline/kalender. */
   const viewRows = isAdmin ? everything : mine;
+  const exportOwners =
+    isAdmin || !user
+      ? calendarData ?? []
+      : [{ id: user.id, name: user.username }];
+
+  /** Unduh laporan Excel Task Planner: semua akun sekaligus atau satu akun. */
+  const exportTasks = (ownerId: string) => {
+    const query = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+    const link = document.createElement("a");
+    link.href = `/api/tasks/export${query}`;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   const [tab, setTab] = useState("summary");
   const [scope, setScope] = useState("mine");
@@ -450,11 +472,36 @@ export default function TasksPage() {
       <PageHeader
         title={t("tasks.title")}
         actions={
-          canWrite && (
-            <Button size="sm" onClick={() => setFormTask(null)}>
-              <Plus className="size-4" /> {t("tasks.newTask")}
-            </Button>
-          )
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="sm" className="gap-1.5" />}
+              >
+                <Download className="size-4" />
+                {t("tasks.export")}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-1">
+                <p className="px-1.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  {t("tasks.exportHint")}
+                </p>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => exportTasks("")}>
+                    {t("tasks.exportAll")}
+                  </DropdownMenuItem>
+                )}
+                {exportOwners.map((owner) => (
+                  <DropdownMenuItem key={owner.id} onClick={() => exportTasks(owner.id)}>
+                    {owner.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {canWrite && (
+              <Button size="sm" onClick={() => setFormTask(null)}>
+                <Plus className="size-4" /> {t("tasks.newTask")}
+              </Button>
+            )}
+          </div>
         }
       />
 

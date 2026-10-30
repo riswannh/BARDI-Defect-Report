@@ -354,6 +354,13 @@ const translations = {
   "tasks.viewMonth": { id: "Bulan", en: "Month", zh: "月" },
   "tasks.calendars": { id: "Kalender", en: "Calendars", zh: "日历" },
   "tasks.filter": { id: "Filter", en: "Filter", zh: "筛选" },
+  "tasks.export": { id: "Ekspor", en: "Export", zh: "导出" },
+  "tasks.exportAll": { id: "Semua akun", en: "All accounts", zh: "所有账号" },
+  "tasks.exportHint": {
+    id: "Unduh laporan Excel Task Planner",
+    en: "Download the Task Planner Excel report",
+    zh: "下载任务计划 Excel 报表",
+  },
   "tasks.showAllUsers": { id: "Tampilkan semua pengguna", en: "Show all users", zh: "显示所有用户" },
   "tasks.hideAllUsers": { id: "Sembunyikan semua pengguna", en: "Hide all users", zh: "隐藏所有用户" },
   "tasks.today": { id: "Hari ini", en: "Today", zh: "今天" },
