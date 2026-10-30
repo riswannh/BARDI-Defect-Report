@@ -534,12 +534,14 @@ export const roleUpdateSchema = z.object({
 
 export const TASK_PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
 export const TASK_DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
-export const TASK_STATUSES = ["Belum", "Selesai"] as const;
+export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
+export const TASK_ISSUE_TYPES = ["task", "bug", "feature", "subtask"] as const;
 export const TASK_REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export type TaskDifficulty = (typeof TASK_DIFFICULTIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+export type TaskIssueType = (typeof TASK_ISSUE_TYPES)[number];
 export type TaskRepeatRule = (typeof TASK_REPEAT_RULES)[number];
 
 /** Tanggal murni "YYYY-MM-DD" — tanpa jam supaya bebas zona waktu. */
@@ -559,6 +561,10 @@ const taskFields = {
   progress: z.coerce.number().int().min(0).max(100),
   priority: z.enum(TASK_PRIORITIES),
   difficulty: z.enum(TASK_DIFFICULTIES),
+  issueType: z.enum(TASK_ISSUE_TYPES),
+  labels: z.string().trim().max(200),
+  storyPoints: z.coerce.number().int().min(0).max(100).nullable(),
+  boardOrder: z.coerce.number(),
   status: z.enum(TASK_STATUSES),
   startDate: isoDateField,
   dueDate: isoDateField,
@@ -574,6 +580,10 @@ export const taskCreateSchema = buildCreate(taskFields, {
   progress: z.coerce.number().int().min(0).max(100).default(0),
   priority: z.enum(TASK_PRIORITIES).default("Normal"),
   difficulty: z.enum(TASK_DIFFICULTIES).default("Sedang"),
+  issueType: z.enum(TASK_ISSUE_TYPES).default("task"),
+  labels: z.string().trim().max(200).default(""),
+  storyPoints: z.coerce.number().int().min(0).max(100).nullable().default(null),
+  boardOrder: z.coerce.number().default(0),
   status: z.enum(TASK_STATUSES).default("Belum"),
   repeatRule: z.enum(TASK_REPEAT_RULES).default(""),
   repeatWeekday: z.coerce.number().int().min(1).max(7).nullable().default(null),
@@ -582,3 +592,16 @@ export const taskCreateSchema = buildCreate(taskFields, {
 });
 
 export const taskUpdateSchema = buildUpdate(taskFields);
+
+/* ---- Dokumentasi Task Planner (tab Docs) ---- */
+
+const taskDocFields = {
+  title: z.string().trim().min(3).max(160),
+  body: z.string().max(20_000),
+};
+
+export const taskDocCreateSchema = buildCreate(taskDocFields, {
+  body: z.string().max(20_000).default(""),
+});
+
+export const taskDocUpdateSchema = buildUpdate(taskDocFields);

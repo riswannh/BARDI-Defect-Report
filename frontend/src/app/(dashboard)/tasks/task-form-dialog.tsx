@@ -25,6 +25,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   DIFFICULTIES,
+  ISSUE_TYPES,
+  ISSUE_TYPE_LABEL_KEYS,
   PRIORITIES,
   TASK_STATUSES,
   WEEKDAY_LABEL_KEYS,
@@ -48,6 +50,11 @@ export function TaskFormDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  const [issueType, setIssueType] = useState(task?.issueType ?? "task");
+  const [labels, setLabels] = useState(task?.labels ?? "");
+  const [storyPoints, setStoryPoints] = useState(
+    task?.storyPoints === null || task?.storyPoints === undefined ? "" : String(task.storyPoints)
+  );
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
   const [difficulty, setDifficulty] = useState(task?.difficulty ?? "Sedang");
@@ -72,9 +79,13 @@ export function TaskFormDialog({
       `tasks.difficulty${value === "Mudah" ? "Easy" : value === "Sedang" ? "Medium" : "Hard"}`
     ),
   }));
+  const issueOptions = ISSUE_TYPES.map((value) => ({
+    value,
+    label: t(ISSUE_TYPE_LABEL_KEYS[value]),
+  }));
   const statusOptions = TASK_STATUSES.map((value) => ({
     value,
-    label: t(value === "Selesai" ? "tasks.statusDone" : "tasks.statusOpen"),
+    label: t(value === "Selesai" ? "tasks.statusDone" : value === "Proses" ? "tasks.statusProses" : "tasks.statusOpen"),
   }));
   const repeatOptions = [
     { value: NONE, label: t("tasks.repeatNone") },
@@ -109,6 +120,9 @@ export function TaskFormDialog({
       priority,
       difficulty,
       status,
+      issueType,
+      labels: labels.trim(),
+      storyPoints: storyPoints.trim() === "" ? null : Number(storyPoints),
       startDate,
       dueDate,
       repeatRule,
@@ -156,6 +170,49 @@ export function TaskFormDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("tasks.fieldIssueType")}</Label>
+              <Select
+                value={issueType}
+                onValueChange={(value) => setIssueType(String(value))}
+                items={issueOptions}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {issueOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("tasks.fieldLabels")}</Label>
+              <Input
+                value={labels}
+                onChange={(e) => setLabels(e.target.value)}
+                placeholder={t("tasks.fieldLabelsHint")}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("tasks.fieldStoryPoints")}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={storyPoints}
+                onChange={(e) => setStoryPoints(e.target.value)}
+                placeholder="—"
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

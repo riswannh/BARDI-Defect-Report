@@ -11,6 +11,12 @@ export interface TaskRow {
   progress: number;
   priority: string;
   difficulty: string;
+  /** task / bug / feature / subtask. */
+  issueType: string;
+  /** Label dipisah koma. */
+  labels: string;
+  storyPoints: number | null;
+  boardOrder: number;
   status: string;
   startDate: string;
   dueDate: string;
@@ -38,7 +44,36 @@ export interface TaskActivityRow {
 export const PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
 export const DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
-export const TASK_STATUSES = ["Belum", "Selesai"] as const;
+export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
+export const ISSUE_TYPES = ["task", "bug", "feature", "subtask"] as const;
+
+export const ISSUE_TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
+  task: "tasks.issueTask",
+  bug: "tasks.issueBug",
+  feature: "tasks.issueFeature",
+  subtask: "tasks.issueSubtask",
+};
+
+export const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
+  Belum: "tasks.statusOpen",
+  Proses: "tasks.statusProses",
+  Selesai: "tasks.statusDone",
+};
+
+/** Warna badge status (aman mode gelap). */
+export function statusTone(status: string): string {
+  if (status === "Selesai") return "bg-emerald-500/10 text-emerald-600 ring-emerald-500/25 dark:text-emerald-400";
+  if (status === "Proses") return "bg-blue-500/10 text-blue-600 ring-blue-500/25 dark:text-blue-400";
+  return "bg-slate-500/10 text-slate-600 ring-slate-500/20 dark:text-slate-300";
+}
+
+/** Label dipisah koma → array rapi. */
+export function parseLabels(labels: string): string[] {
+  return labels
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export type RepeatRule = (typeof REPEAT_RULES)[number];
 

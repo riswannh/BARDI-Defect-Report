@@ -21,6 +21,10 @@ interface TaskValues {
   progress: number;
   priority: string;
   difficulty: string;
+  issueType: string;
+  labels: string;
+  storyPoints: number | null;
+  boardOrder: number;
   status: string;
   startDate: string;
   dueDate: string;
@@ -35,6 +39,10 @@ const DIFF_FIELDS = [
   "progress",
   "priority",
   "difficulty",
+  "issueType",
+  "labels",
+  "storyPoints",
+  "boardOrder",
   "status",
   "startDate",
   "dueDate",
@@ -42,6 +50,17 @@ const DIFF_FIELDS = [
   "repeatWeekday",
   "repeatDay",
 ] as const;
+
+/**
+ * Status "Selesai" berarti 100% dan sebaliknya: progress 100 tidak boleh
+ * berstatus lain. Dipakai di POST dan PATCH supaya papan, daftar, dan
+ * kalender tidak pernah bertentangan.
+ */
+function syncStatusProgress<T extends { status: string; progress: number }>(values: T): T {
+  if (values.status === "Selesai") return { ...values, progress: 100 };
+  if (values.progress >= 100) return { ...values, progress: 99 };
+  return values;
+}
 
 function validateTask(
   values: Pick<TaskValues, "startDate" | "dueDate" | "repeatRule" | "repeatWeekday" | "repeatDay">
@@ -140,13 +159,36 @@ export async function tasksPOST(req: NextRequest) {
     return jsonError(parsed.error.issues[0]?.message ?? "Data tidak valid", 400);
   }
 
-  const { note, ...values } = parsed.data;
+  const { note, ...raw } = parsed.data;
+  const synced = syncStatusProgress({
+    status: raw.status ?? "Belum",
+    progress: raw.progress ?? 0,
+  });
+  const values = {
+    title: raw.title,
+    description: raw.description ?? "",
+    priority: raw.priority ?? "Normal",
+    difficulty: raw.difficulty ?? "Sedang",
+    issueType: raw.issueType ?? "task",
+    labels: raw.labels ?? "",
+    storyPoints: raw.storyPoints ?? null,
+    // Kartu baru masuk paling bawah kolom papan (urutan naik = Date.now()).
+    boardOrder:
+      Number(raw.boardOrder ?? 0) > 0 ? Number(raw.boardOrder) : Date.now(),
+    status: synced.status,
+    progress: synced.progress,
+    startDate: raw.startDate,
+    dueDate: raw.dueDate,
+    repeatRule: raw.repeatRule ?? "",
+    repeatWeekday: raw.repeatWeekday ?? null,
+    repeatDay: raw.repeatDay ?? null,
+  };
   const invalid = validateTask({
     startDate: values.startDate,
     dueDate: values.dueDate,
-    repeatRule: values.repeatRule ?? "",
-    repeatWeekday: values.repeatWeekday ?? null,
-    repeatDay: values.repeatDay ?? null,
+    repeatRule: values.repeatRule,
+    repeatWeekday: values.repeatWeekday,
+    repeatDay: values.repeatDay,
   });
   if (invalid) return jsonError(invalid, 400);
 
@@ -202,12 +244,16 @@ export async function tasksPATCH(
     return jsonError("Tidak ada perubahan.", 400);
   }
 
-  const merged: TaskValues = {
+  const merged: TaskValues = syncStatusProgress({
     title: patch.title ?? current.title,
     description: patch.description ?? current.description,
     progress: patch.progress ?? current.progress,
     priority: patch.priority ?? current.priority,
     difficulty: patch.difficulty ?? current.difficulty,
+    issueType: patch.issueType ?? current.issueType,
+    labels: patch.labels ?? current.labels,
+    storyPoints: patch.storyPoints !== undefined ? patch.storyPoints : current.storyPoints,
+    boardOrder: patch.boardOrder ?? current.boardOrder,
     status: patch.status ?? current.status,
     startDate: patch.startDate ?? current.startDate,
     dueDate: patch.dueDate ?? current.dueDate,
@@ -215,7 +261,7 @@ export async function tasksPATCH(
     repeatWeekday:
       patch.repeatWeekday !== undefined ? patch.repeatWeekday : current.repeatWeekday,
     repeatDay: patch.repeatDay !== undefined ? patch.repeatDay : current.repeatDay,
-  };
+  });
 
   const invalid = validateTask(merged);
   if (invalid) return jsonError(invalid, 400);
@@ -273,6 +319,10 @@ export async function tasksPATCH(
           progress: 0,
           priority: merged.priority,
           difficulty: merged.difficulty,
+          issueType: merged.issueType,
+          labels: merged.labels,
+          storyPoints: merged.storyPoints,
+          boardOrder: Date.now(),
           status: "Belum",
           startDate: nextStartISO,
           dueDate: nextDue,

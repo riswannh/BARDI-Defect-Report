@@ -787,7 +787,15 @@ export const tasks = sqliteTable(
     priority: text("priority").notNull().default("Normal"),
     /** Mudah / Sedang / Sulit. */
     difficulty: text("difficulty").notNull().default("Sedang"),
-    /** Selesai / Belum — terpisah dari progress sesuai permintaan user. */
+    /** task / bug / feature / subtask — tipe isu gaya Jira. */
+    issueType: text("issueType").notNull().default("task"),
+    /** Label dipisah koma (ditampilkan sebagai chip di kartu papan). */
+    labels: text("labels").notNull().default(""),
+    /** Story point opsional; hanya tampilan, tidak dipakai hitungan KPI. */
+    storyPoints: integer("storyPoints"),
+    /** Urutan kartu di dalam kolom papan (drag & drop). */
+    boardOrder: integer("boardOrder").notNull().default(0),
+    /** Belum / Proses / Selesai — terpisah dari progress sesuai permintaan user. */
     status: text("status").notNull().default("Belum"),
     startDate: text("startDate").notNull(),
     dueDate: text("dueDate").notNull(),
@@ -835,4 +843,29 @@ export const taskActivities = sqliteTable(
     index("task_activities_task_idx").on(t.taskId),
     index("task_activities_created_idx").on(t.createdAt),
   ]
+);
+
+/**
+ * Halaman dokumentasi bebas (tab Docs gaya Jira). Teks polos bertanda
+ * sederhana; tidak ada tabel/relasi supaya tidak perlu editor berat.
+ */
+export const taskDocs = sqliteTable(
+  "task_docs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    /** Pembuat pertama (tidak berubah saat diedit orang lain). */
+    ownerId: text("ownerId").notNull().default(""),
+    ownerName: text("ownerName").notNull().default(""),
+    /** Siapa yang terakhir menyimpan. */
+    updatedByName: text("updatedByName").notNull().default(""),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: integer("updatedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [index("task_docs_updated_idx").on(t.updatedAt)]
 );

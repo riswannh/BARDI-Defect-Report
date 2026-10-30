@@ -3,9 +3,15 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  CalendarDays,
   CircleCheck,
   CircleDashed,
+  FileText,
+  GanttChartSquare,
   History,
+  KanbanSquare,
+  LayoutDashboard,
+  ListTree,
   Pencil,
   Plus,
   Trash2,
@@ -19,6 +25,7 @@ import { formatTaskDate, todayISO } from "@/lib/task-dates";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,12 +48,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskDetailDialog, TaskLogDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
+import { TaskBoardView, TaskSummaryView, TaskTimelineView } from "./task-views";
+import { TaskDocsView } from "./task-docs-view";
 import {
   DIFFICULTIES,
   DIFFICULTY_LABEL_KEYS,
+  ISSUE_TYPE_LABEL_KEYS,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   priorityTone,
+  type TaskActivityRow,
   type TaskRow,
 } from "./task-types";
 
@@ -63,10 +74,17 @@ export default function TasksPage() {
     isAdmin ? "/api/tasks?scope=all" : null
   );
   const { data: calendarData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/calendars");
+  const { data: activityData } = useApi<TaskActivityRow[]>(
+    "/api/tasks/activities?limit=12"
+  );
   const mine = mineData ?? [];
   const everything = allData ?? [];
+  const activities = activityData ?? [];
+  /** Admin melihat semua task di view ringkasan/board/timeline/kalender. */
+  const viewRows = isAdmin ? everything : mine;
 
-  const [tab, setTab] = useState("calendar");
+  const [tab, setTab] = useState("summary");
+  const [scope, setScope] = useState("mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Belum");
   const [priorityFilter, setPriorityFilter] = useState(ALL);
@@ -81,7 +99,7 @@ export default function TasksPage() {
   const [deleteTask, setDeleteTask] = useState<TaskRow | null>(null);
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
 
-  const activeRows = tab === "all" ? everything : mine;
+  const activeRows = scope === "all" && isAdmin ? everything : mine;
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return activeRows.filter((task) => {
@@ -92,7 +110,8 @@ export default function TasksPage() {
       return (
         task.title.toLowerCase().includes(needle) ||
         task.description.toLowerCase().includes(needle) ||
-        task.ownerName.toLowerCase().includes(needle)
+        task.ownerName.toLowerCase().includes(needle) ||
+        task.labels.toLowerCase().includes(needle)
       );
     });
   }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter]);
@@ -107,8 +126,7 @@ export default function TasksPage() {
     reloadAll();
   }
 
-  async function toggleDone(task: TaskRow) {
-    const nextStatus = task.status === "Selesai" ? "Belum" : "Selesai";
+  async function patchStatus(task: TaskRow, nextStatus: string) {
     try {
       await apiPatch(`/api/tasks/${task.id}`, { status: nextStatus });
       toast.success(
@@ -118,6 +136,10 @@ export default function TasksPage() {
     } catch {
       toast.error(t("tasks.saveFailed"));
     }
+  }
+
+  async function toggleDone(task: TaskRow) {
+    await patchStatus(task, task.status === "Selesai" ? "Belum" : "Selesai");
   }
 
   async function handleDelete() {
@@ -133,15 +155,16 @@ export default function TasksPage() {
   }
 
   function renderTable(rows: TaskRow[], showOwner: boolean) {
-    const columnCount = showOwner ? 8 : 7;
+    const columnCount = showOwner ? 9 : 8;
     return (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>{t("tasks.colTitle")}</TableHead>
+            <TableHead>{t("tasks.colType")}</TableHead>
             {showOwner && <TableHead>{t("tasks.colOwner")}</TableHead>}
             <TableHead>{t("tasks.colPriority")}</TableHead>
-            <TableHead>{t("tasks.colDuration")}</TableHead>
+            <TableHead>{t("tasks.colDue")}</TableHead>
             <TableHead>{t("tasks.colProgress")}</TableHead>
             <TableHead>{t("tasks.colStatus")}</TableHead>
             <TableHead className="text-right">{t("tasks.colActions")}</TableHead>
@@ -167,11 +190,27 @@ export default function TasksPage() {
                   >
                     {task.title}
                   </button>
+                  {task.labels && (
+                    <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
+                      {task.labels.split(",").slice(0, 2).map((label) => (
+                        <Badge
+                          key={label}
+                          variant="outline"
+                          className="h-5 bg-primary/10 px-1.5 text-[10px] text-primary"
+                        >
+                          {label.trim()}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
                   {task.description && (
                     <p className="line-clamp-1 text-xs text-muted-foreground">
                       {task.description}
                     </p>
                   )}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-xs">
+                  {t(ISSUE_TYPE_LABEL_KEYS[task.issueType] ?? "tasks.issueTask")}
                 </TableCell>
                 {showOwner && (
                   <TableCell className="text-sm">{task.ownerName || "—"}</TableCell>
@@ -185,10 +224,10 @@ export default function TasksPage() {
                 </TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
                   <span className={overdue ? "font-medium text-red-600 dark:text-red-400" : ""}>
-                    {formatTaskDate(task.startDate, language)} –{" "}
                     {formatTaskDate(task.dueDate, language)}
                   </span>
                   <div className="text-[11px] text-muted-foreground">
+                    {formatTaskDate(task.startDate, language)} ·{" "}
                     {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}
                   </div>
                 </TableCell>
@@ -207,6 +246,10 @@ export default function TasksPage() {
                   {task.status === "Selesai" ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
                       <CircleCheck className="size-3" /> {t("tasks.statusDone")}
+                    </span>
+                  ) : task.status === "Proses" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/12 px-2 py-0.5 text-[11px] text-blue-700 dark:text-blue-300">
+                      <CircleDashed className="size-3" /> {t("tasks.statusProses")}
                     </span>
                   ) : (
                     <span
@@ -283,6 +326,7 @@ export default function TasksPage() {
     const statusOptions = [
       { value: ALL, label: t("tasks.allStatus") },
       { value: "Belum", label: t("tasks.statusOpen") },
+      { value: "Proses", label: t("tasks.statusProses") },
       { value: "Selesai", label: t("tasks.statusDone") },
     ];
     const priorityOptions = [
@@ -299,6 +343,10 @@ export default function TasksPage() {
         label: t(DIFFICULTY_LABEL_KEYS[value]),
       })),
     ];
+    const scopeOptions = [
+      { value: "mine", label: t("tasks.tabMine") },
+      { value: "all", label: t("tasks.tabAll") },
+    ];
 
     return (
       <div className="flex flex-wrap items-center gap-2">
@@ -311,6 +359,27 @@ export default function TasksPage() {
           placeholder={t("tasks.searchPlaceholder")}
           className="h-8 w-full sm:w-56"
         />
+        {isAdmin && (
+          <Select
+            value={scope}
+            onValueChange={(value) => {
+              setScope(String(value));
+              setPage(1);
+            }}
+            items={scopeOptions}
+          >
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {scopeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select
           value={statusFilter}
           onValueChange={(value) => {
@@ -372,6 +441,16 @@ export default function TasksPage() {
     );
   }
 
+  const tabs = [
+    { value: "summary", label: t("tasks.tabSummary"), icon: LayoutDashboard },
+    { value: "list", label: t("tasks.tabList"), icon: ListTree },
+    { value: "board", label: t("tasks.tabBoard"), icon: KanbanSquare },
+    { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
+    { value: "timeline", label: t("tasks.tabTimeline"), icon: GanttChartSquare },
+    { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
+    { value: "log", label: t("tasks.tabLog"), icon: History },
+  ];
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
@@ -393,18 +472,29 @@ export default function TasksPage() {
           setPage(1);
         }}
       >
-        <TabsList>
-          <TabsTrigger value="calendar">{t("tasks.tabCalendar")}</TabsTrigger>
-          <TabsTrigger value="mine">{t("tasks.tabMine")}</TabsTrigger>
-          {isAdmin && <TabsTrigger value="all">{t("tasks.tabAll")}</TabsTrigger>}
-          <TabsTrigger value="log">{t("tasks.tabLog")}</TabsTrigger>
+        <TabsList className="flex-wrap">
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            return (
+              <TabsTrigger key={item.value} value={item.value}>
+                <Icon className="size-3.5" />
+                {item.label}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
-        <TabsContent value="mine" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+        <TabsContent value="summary" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          <TaskSummaryView rows={viewRows} activities={activities} onOpen={setDetailTask} />
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
           {renderFilters()}
           <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
             <CardContent className="flex min-h-0 flex-1 flex-col px-0">
-              <div className="min-h-0 flex-1 overflow-y-auto">{renderTable(paged, false)}</div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {renderTable(paged, scope === "all")}
+              </div>
               {filtered.length > 0 && (
                 <div className="border-t border-border/60 px-4 py-2">
                   <Pagination
@@ -423,39 +513,32 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="all" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
-          {renderFilters()}
-          <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
-            <CardContent className="flex min-h-0 flex-1 flex-col px-0">
-              <div className="min-h-0 flex-1 overflow-y-auto">{renderTable(paged, true)}</div>
-              {filtered.length > 0 && (
-                <div className="border-t border-border/60 px-4 py-2">
-                  <Pagination
-                    totalItems={filtered.length}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(size) => {
-                      setPageSize(size);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="board" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          <TaskBoardView
+            rows={viewRows}
+            onOpen={setDetailTask}
+            onStatusChange={canWrite ? patchStatus : undefined}
+          />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4 flex min-h-0 flex-1 flex-col">
           <Card size="sm" className="flex min-h-0 flex-1 flex-col">
             <CardContent className="flex min-h-0 flex-1 flex-col pt-3">
               <TaskCalendar
-                tasks={isAdmin ? everything : mine}
+                tasks={viewRows}
                 calendars={calendarData ?? []}
                 onSelect={(task) => setDetailTask(task)}
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="timeline" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          <TaskTimelineView rows={viewRows} onOpen={setDetailTask} />
+        </TabsContent>
+
+        <TabsContent value="docs" className="mt-4 flex min-h-0 flex-1 flex-col">
+          <TaskDocsView canWrite={canWrite} />
         </TabsContent>
 
         <TabsContent value="log" className="mt-4 min-h-0 flex-1 overflow-y-auto">
