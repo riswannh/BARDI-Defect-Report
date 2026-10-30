@@ -351,9 +351,10 @@ export async function taskActivitiesGET(req: NextRequest) {
 
 /**
  * Daftar akun untuk panel "kalender" Task Planner. Hanya akun yang role-nya
- * boleh MENULIS di menu `tasks` (plus admin) — grup role yang cuma punya akses
- * baca tidak ikut tampil, jadi kalender bersama hanya berisi tim yang memang
- * mengerjakan task.
+ * boleh MENULIS di menu `tasks` — grup role yang cuma punya akses baca tidak
+ * ikut tampil, jadi kalender bersama hanya berisi tim yang memang mengerjakan
+ * task. Akun Super Admin dikecualikan (permintaan user): admin tidak muncul di
+ * filter walau bypass permission.
  */
 export async function taskCalendarsGET() {
   const guard = await requireMenu("tasks", "read");
@@ -376,7 +377,7 @@ export async function taskCalendarsGET() {
     .orderBy(userTable.username);
 
   const calendars: TaskCalendarUser[] = rows
-    .filter((row) => row.isAdmin || row.canWrite === true)
+    .filter((row) => !row.isAdmin && row.canWrite === true)
     .map((row) => ({ id: row.id, name: row.username || row.name || row.id }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
