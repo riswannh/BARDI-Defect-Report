@@ -3,16 +3,9 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  CalendarDays,
   CircleCheck,
   CircleDashed,
   Download,
-  FileText,
-  GanttChartSquare,
-  History,
-  KanbanSquare,
-  LayoutDashboard,
-  ListTree,
   Pencil,
   Plus,
   RotateCcw,
@@ -457,14 +450,14 @@ export default function TasksPage() {
   }
 
   const tabs = [
-    { value: "summary", label: t("tasks.tabSummary"), icon: LayoutDashboard },
-    { value: "list", label: t("tasks.tabList"), icon: ListTree },
-    { value: "board", label: t("tasks.tabBoard"), icon: KanbanSquare },
-    { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
-    { value: "timeline", label: t("tasks.tabTimeline"), icon: GanttChartSquare },
-    { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
-    { value: "log", label: t("tasks.tabLog"), icon: History },
-    ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings"), icon: Settings }] : []),
+    { value: "summary", label: t("tasks.tabSummary") },
+    { value: "list", label: t("tasks.tabList") },
+    { value: "board", label: t("tasks.tabBoard") },
+    { value: "calendar", label: t("tasks.tabCalendar") },
+    { value: "timeline", label: t("tasks.tabTimeline") },
+    { value: "docs", label: t("tasks.tabDocs") },
+    { value: "log", label: t("tasks.tabLog") },
+    ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings") }] : []),
   ];
 
   return (
@@ -514,15 +507,11 @@ export default function TasksPage() {
         }}
       >
         <TabsList className="flex-wrap">
-          {tabs.map((item) => {
-            const Icon = item.icon;
-            return (
-              <TabsTrigger key={item.value} value={item.value}>
-                <Icon className="size-3.5" />
-                {item.label}
-              </TabsTrigger>
-            );
-          })}
+          {tabs.map((item) => (
+            <TabsTrigger key={item.value} value={item.value}>
+              {item.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
