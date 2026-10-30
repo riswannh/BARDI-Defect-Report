@@ -53,7 +53,7 @@ import {
 const ALL = "all";
 
 export default function TasksPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { can, isAdmin } = useAuth();
   const canWrite = can("tasks", "write");
   const today = todayISO();
@@ -185,7 +185,8 @@ export default function TasksPage() {
                 </TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
                   <span className={overdue ? "font-medium text-red-600 dark:text-red-400" : ""}>
-                    {formatTaskDate(task.startDate)} – {formatTaskDate(task.dueDate)}
+                    {formatTaskDate(task.startDate, language)} –{" "}
+                    {formatTaskDate(task.dueDate, language)}
                   </span>
                   <div className="text-[11px] text-muted-foreground">
                     {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}
@@ -300,7 +301,7 @@ export default function TasksPage() {
     ];
 
     return (
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           value={search}
           onChange={(e) => {
@@ -399,13 +400,13 @@ export default function TasksPage() {
           <TabsTrigger value="log">{t("tasks.tabLog")}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="mine" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="mine" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
           {renderFilters()}
-          <Card size="sm" className="overflow-hidden py-0">
-            <CardContent className="px-0">
-              {renderTable(paged, false)}
+          <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
+            <CardContent className="flex min-h-0 flex-1 flex-col px-0">
+              <div className="min-h-0 flex-1 overflow-y-auto">{renderTable(paged, false)}</div>
               {filtered.length > 0 && (
-                <div className="px-4 pb-4">
+                <div className="border-t border-border/60 px-4 py-2">
                   <Pagination
                     totalItems={filtered.length}
                     page={page}
@@ -422,13 +423,13 @@ export default function TasksPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="all" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+        <TabsContent value="all" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
           {renderFilters()}
-          <Card size="sm" className="overflow-hidden py-0">
-            <CardContent className="px-0">
-              {renderTable(paged, true)}
+          <Card size="sm" className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
+            <CardContent className="flex min-h-0 flex-1 flex-col px-0">
+              <div className="min-h-0 flex-1 overflow-y-auto">{renderTable(paged, true)}</div>
               {filtered.length > 0 && (
-                <div className="px-4 pb-4">
+                <div className="border-t border-border/60 px-4 py-2">
                   <Pagination
                     totalItems={filtered.length}
                     page={page}

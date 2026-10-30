@@ -128,7 +128,7 @@ function renderValue(value: unknown): string {
 
 /** Daftar log aktivitas (dipakai dialog maupun tab Log Aktivitas), dengan paging. */
 export function TaskLogList({ taskId, showTask }: { taskId: number | null; showTask?: boolean }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const url = taskId
@@ -162,7 +162,7 @@ export function TaskLogList({ taskId, showTask }: { taskId: number | null; showT
                   {t(ACTION_LABEL_KEYS[row.action] ?? "tasks.actionUpdate")}
                 </span>
                 <span className="ml-auto text-[11px] text-muted-foreground">
-                  {row.createdAt ? formatStamp(row.createdAt) : "—"}
+                  {row.createdAt ? formatStamp(row.createdAt, language) : "—"}
                 </span>
               </div>
               {showTask && row.taskTitle && (
@@ -200,7 +200,7 @@ export function TaskLogList({ taskId, showTask }: { taskId: number | null; showT
 
 /** Detail satu task (pemilik, tanggal, prioritas, progres) + riwayat aktivitasnya. */
 export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const repeatLabel = t(REPEAT_LABEL_KEYS[task.repeatRule] ?? "tasks.repeatNone");
   const repeatDetail =
     task.repeatRule === "weekly" && task.repeatWeekday
@@ -214,14 +214,14 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
     { label: t("tasks.fieldStatus"), value: t(task.status === "Selesai" ? "tasks.statusDone" : "tasks.statusOpen") },
     { label: t("tasks.fieldPriority"), value: t(PRIORITY_LABEL_KEYS[task.priority] ?? "tasks.priorityNormal") },
     { label: t("tasks.fieldDifficulty"), value: t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium") },
-    { label: t("tasks.fieldStart"), value: formatTaskDate(task.startDate) },
-    { label: t("tasks.fieldDue"), value: formatTaskDate(task.dueDate) },
+    { label: t("tasks.fieldStart"), value: formatTaskDate(task.startDate, language) },
+    { label: t("tasks.fieldDue"), value: formatTaskDate(task.dueDate, language) },
     { label: t("tasks.fieldRepeat"), value: repeatDetail },
-    { label: t("tasks.detailCreated"), value: task.createdAt ? formatStamp(task.createdAt) : "—" },
-    { label: t("tasks.detailUpdated"), value: task.updatedAt ? formatStamp(task.updatedAt) : "—" },
+    { label: t("tasks.detailCreated"), value: task.createdAt ? formatStamp(task.createdAt, language) : "—" },
+    { label: t("tasks.detailUpdated"), value: task.updatedAt ? formatStamp(task.updatedAt, language) : "—" },
   ];
   if (task.completedAt) {
-    fields.push({ label: t("tasks.detailCompleted"), value: formatStamp(task.completedAt) });
+    fields.push({ label: t("tasks.detailCompleted"), value: formatStamp(task.completedAt, language) });
   }
 
   return (

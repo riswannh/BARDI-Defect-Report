@@ -10,7 +10,16 @@ import {
   Users,
 } from "lucide-react";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
-import { addDays, dateToISO, formatTaskDate, isWithin, isoWeekday, monthGrid, todayISO } from "@/lib/task-dates";
+import {
+  addDays,
+  dateToISO,
+  formatTaskDate,
+  isWithin,
+  isoWeekday,
+  monthGrid,
+  monthNames,
+  todayISO,
+} from "@/lib/task-dates";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { WEEKDAY_LABEL_KEYS, type TaskRow } from "./task-types";
@@ -21,21 +30,6 @@ interface CalendarUser {
   id: string;
   name: string;
 }
-
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
 
 /** Warna pembeda per pemilik task, meniru daftar kalender Google Calendar. */
 const OWNER_DOTS = [
@@ -86,7 +80,7 @@ function TaskCard({
   showOwner: boolean;
   onSelect: (task: TaskRow) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const done = task.status === "Selesai";
   const overdue = !done && task.dueDate < today;
 
@@ -95,7 +89,7 @@ function TaskCard({
       type="button"
       data-task-card
       onClick={() => onSelect(task)}
-      title={`${task.title} · ${formatTaskDate(task.dueDate)}`}
+      title={`${task.title} · ${formatTaskDate(task.dueDate, language)}`}
       className={[
         "flex w-full flex-col gap-0.5 rounded-md border border-l-[6px] px-1.5 py-1 text-left shadow-xs transition-colors hover:bg-accent",
         OWNER_EDGES[ownerIndex(task.userId)],
@@ -198,7 +192,7 @@ function WeekStrip({
   onSelect: (task: TaskRow) => void;
   onMore: (iso: string) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { segments, overflow } = layoutWeek(tasks, days, maxLanes);
   const headHeight = large ? 44 : 24;
   const rows = Math.max(maxLanes, 1);
@@ -257,7 +251,7 @@ function WeekStrip({
             type="button"
             data-task-bar
             onClick={() => onSelect(segment.task)}
-            title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate)} – ${formatTaskDate(segment.task.dueDate)}`}
+            title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate, language)} – ${formatTaskDate(segment.task.dueDate, language)}`}
             className={[
               "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-[4px] px-1 text-left text-[10px] leading-none",
               OWNER_EDGES[ownerIndex(segment.task.userId)],
@@ -312,7 +306,7 @@ export function TaskCalendar({
   calendars: CalendarUser[];
   onSelect: (task: TaskRow) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const today = todayISO();
   const [view, setView] = useState<ViewMode>("month");
   const [anchor, setAnchor] = useState(today);
@@ -424,10 +418,10 @@ export function TaskCalendar({
 
   const periodLabel =
     view === "month"
-      ? `${MONTH_NAMES[anchorMonth - 1]} ${anchorYear}`
+      ? `${monthNames(language)[anchorMonth - 1]} ${anchorYear}`
       : view === "week"
-        ? `${formatTaskDate(weekStart)} – ${formatTaskDate(addDays(weekStart, 6))}`
-        : `${t(WEEKDAY_LABEL_KEYS[isoWeekday(anchor) - 1])}, ${formatTaskDate(anchor)}`;
+        ? `${formatTaskDate(weekStart, language)} – ${formatTaskDate(addDays(weekStart, 6), language)}`
+        : `${t(WEEKDAY_LABEL_KEYS[isoWeekday(anchor) - 1])}, ${formatTaskDate(anchor, language)}`;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
@@ -564,7 +558,7 @@ export function TaskCalendar({
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 gap-1">
-                        {MONTH_NAMES.map((name, index) => {
+                        {monthNames(language).map((name, index) => {
                           const value = `${pickerYear}-${String(index + 1).padStart(2, "0")}`;
                           return (
                             <button

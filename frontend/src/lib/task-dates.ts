@@ -116,32 +116,63 @@ export function isWithin(iso: string, start: string, end: string): boolean {
   return iso >= start && iso <= end;
 }
 
-/** Format tampilan ringkas "2026-10-08" → "08 Okt 2026". */
-export function formatTaskDate(iso: string): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  const names = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
+export type DateLanguage = "id" | "en" | "zh";
+
+const MONTH_SHORT: Record<DateLanguage, string[]> = {
+  id: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+  zh: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+};
+
+const MONTH_LONG: Record<DateLanguage, string[]> = {
+  id: [
+    "Januari",
+    "Februari",
+    "Maret",
+    "April",
     "Mei",
-    "Jun",
-    "Jul",
-    "Agu",
-    "Sep",
-    "Okt",
-    "Nov",
-    "Des",
-  ];
+    "Juni",
+    "Juli",
+    "Agustus",
+    "September",
+    "Oktober",
+    "November",
+    "Desember",
+  ],
+  en: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ],
+  zh: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"],
+};
+
+/** Nama bulan panjang sesuai bahasa antarmuka (dipakai label kalender). */
+export function monthNames(language: DateLanguage = "id"): string[] {
+  return MONTH_LONG[language];
+}
+
+/** Format tampilan ringkas "2026-10-08" → "08 Okt 2026" (mengikuti bahasa). */
+export function formatTaskDate(iso: string, language: DateLanguage = "id"): string {
+  const [year, month, day] = iso.split("-").map(Number);
   if (!year || !month || !day) return iso;
-  return `${String(day).padStart(2, "0")} ${names[month - 1]} ${year}`;
+  return `${String(day).padStart(2, "0")} ${MONTH_SHORT[language][month - 1]} ${year}`;
 }
 
 /** Stempel log "2026-10-28T05:17:53.000Z" → "28 Okt 2026 12:17" (jam lokal). */
-export function formatStamp(value: string): string {
+export function formatStamp(value: string, language: DateLanguage = "id"): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const pad = (input: number) => String(input).padStart(2, "0");
   const localISO = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  return `${formatTaskDate(localISO)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${formatTaskDate(localISO, language)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
