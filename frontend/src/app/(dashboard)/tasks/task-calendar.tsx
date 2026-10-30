@@ -587,22 +587,23 @@ export function TaskCalendar({
                 {t(VIEW_LABEL_KEYS[mode])}
               </Button>
             ))}
-            {/* Legenda warna card ikut baris toolbar supaya kalender dapat sisa layar. */}
-            <span className="ml-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-xs bg-red-500/70" aria-hidden />
-                {t("tasks.legendOverdue")}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-xs bg-emerald-500/70" aria-hidden />
-                {t("tasks.legendDone")}
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-2 rounded-xs bg-muted-foreground/40" aria-hidden />
-                {t("tasks.legendProgress")}
-              </span>
-            </span>
           </div>
+        </div>
+
+        {/* Legenda warna kartu: satu baris sendiri supaya tidak berdesakan. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md bg-muted/40 px-3 py-1.5 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-red-500" aria-hidden />
+            {t("tasks.legendOverdue")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-emerald-500" aria-hidden />
+            {t("tasks.legendDone")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-slate-400" aria-hidden />
+            {t("tasks.legendProgress")}
+          </span>
         </div>
 
         <div
