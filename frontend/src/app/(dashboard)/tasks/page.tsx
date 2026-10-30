@@ -19,8 +19,9 @@ import {
   Settings,
   Trash2,
   TrendingUp,
+  X,
 } from "lucide-react";
-import { useLanguage } from "@/lib/i18n";
+import { useLanguage, type TranslationKey } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { apiDelete, apiPatch } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
@@ -56,7 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskDetailDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
-import { TaskBoardView, TaskSummaryView, TaskTimelineView } from "./task-views";
+import { TaskBoardView, TaskSummaryView, TaskTimelineView, matchesQuickFilter, type QuickFilterKey } from "./task-views";
 import { TaskDocsView } from "./task-docs-view";
 import { TaskSettingsView } from "./task-settings-view";
 import {
@@ -72,6 +73,14 @@ import {
 } from "./task-types";
 
 const ALL = "all";
+
+/** Label chip filter cepat di tab Daftar, mengikuti nama kartu KPI Ringkasan. */
+const QUICK_FILTER_LABEL_KEYS: Record<QuickFilterKey, TranslationKey> = {
+  created: "tasks.kpiCreated",
+  updated: "tasks.kpiUpdated",
+  done: "tasks.kpiDone",
+  dueSoon: "tasks.kpiDueSoon",
+};
 
 export default function TasksPage() {
   const { t, language } = useLanguage();
@@ -118,6 +127,8 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [difficultyFilter, setDifficultyFilter] = useState(ALL);
+  /** Filter cepat dari kartu KPI Ringkasan; null = tidak aktif. */
+  const [quickFilter, setQuickFilter] = useState<QuickFilterKey | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -134,6 +145,7 @@ export default function TasksPage() {
       if (statusFilter !== ALL && task.status !== statusFilter) return false;
       if (priorityFilter !== ALL && task.priority !== priorityFilter) return false;
       if (difficultyFilter !== ALL && task.difficulty !== difficultyFilter) return false;
+      if (quickFilter && !matchesQuickFilter(task, quickFilter)) return false;
       if (!needle) return true;
       return (
         task.title.toLowerCase().includes(needle) ||
@@ -141,7 +153,7 @@ export default function TasksPage() {
         task.ownerName.toLowerCase().includes(needle)
       );
     });
-  }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter]);
+  }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter, quickFilter]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -452,6 +464,22 @@ export default function TasksPage() {
             ))}
           </SelectContent>
         </Select>
+        {quickFilter && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-8 gap-1.5"
+            aria-label={`${t(QUICK_FILTER_LABEL_KEYS[quickFilter])} — ${t("tasks.quickFilterClear")}`}
+            onClick={() => {
+              setQuickFilter(null);
+              setPage(1);
+            }}
+          >
+            {t(QUICK_FILTER_LABEL_KEYS[quickFilter])}
+            <X className="size-3.5" aria-hidden />
+            <span className="sr-only">{t("tasks.quickFilterClear")}</span>
+          </Button>
+        )}
       </div>
     );
   }
@@ -526,7 +554,16 @@ export default function TasksPage() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <TaskSummaryView rows={viewRows} activities={activities} types={types} />
+          <TaskSummaryView
+            rows={viewRows}
+            activities={activities}
+            types={types}
+            onQuickFilter={(key) => {
+              setQuickFilter(key);
+              setTab("list");
+              setPage(1);
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4 flex flex-col gap-3">

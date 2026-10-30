@@ -183,6 +183,7 @@ const translations = {
   "tasks.kpiDueSoon": { id: "Jatuh tempo", en: "Due soon", zh: "即将到期" },
   "tasks.kpiWeekHint": { id: "7 hari terakhir", en: "last 7 days", zh: "最近 7 天" },
   "tasks.kpiNextWeek": { id: "7 hari ke depan", en: "next 7 days", zh: "未来 7 天" },
+  "tasks.quickFilterClear": { id: "Hapus filter kartu", en: "Clear card filter", zh: "清除卡片筛选" },
   "tasks.sectionStatus": { id: "Ringkasan status", en: "Status overview", zh: "状态概览" },
   "tasks.sectionPriority": { id: "Sebaran prioritas", en: "Priority breakdown", zh: "优先级分布" },
   "tasks.sectionTypes": { id: "Jenis pekerjaan", en: "Types of work", zh: "工作类型" },

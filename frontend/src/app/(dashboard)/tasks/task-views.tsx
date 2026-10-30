@@ -62,6 +62,16 @@ function Bar({ value, max, tone }: { value: number; max: number; tone: string })
   );
 }
 
+export type QuickFilterKey = "created" | "updated" | "done" | "dueSoon";
+
+/** Predikat kartu KPI Ringkasan — dipakai juga oleh filter cepat tab Daftar. */
+export function matchesQuickFilter(task: TaskRow, key: QuickFilterKey): boolean {
+  if (key === "created") return within(task.createdAt, 7);
+  if (key === "updated") return within(task.updatedAt, 7);
+  if (key === "done") return task.status === "Selesai";
+  return task.status !== "Selesai" && within(task.dueDate, 7);
+}
+
 /** Pager kecil untuk kartu ringkasan: hanya panah + nomor halaman. */
 function MiniPager({
   page,
@@ -109,10 +119,12 @@ export function TaskSummaryView({
   rows,
   activities,
   types,
+  onQuickFilter,
 }: {
   rows: TaskRow[];
   activities: TaskActivityRow[];
   types: TaskTypeRow[];
+  onQuickFilter?: (key: QuickFilterKey) => void;
 }) {
   const { t, language } = useLanguage();
   const [hoverStatus, setHoverStatus] = useState<string | null>(null);
@@ -188,18 +200,29 @@ export function TaskSummaryView({
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: t("tasks.kpiCreated"), value: stats.created, hint: t("tasks.kpiWeekHint") },
-          { label: t("tasks.kpiUpdated"), value: stats.updated, hint: t("tasks.kpiWeekHint") },
-          { label: t("tasks.kpiDone"), value: stats.done, hint: t("tasks.kpiWeekHint") },
-          { label: t("tasks.kpiDueSoon"), value: stats.dueSoon, hint: t("tasks.kpiNextWeek") },
+          { key: "created" as const, label: t("tasks.kpiCreated"), value: stats.created, hint: t("tasks.kpiWeekHint") },
+          { key: "updated" as const, label: t("tasks.kpiUpdated"), value: stats.updated, hint: t("tasks.kpiWeekHint") },
+          { key: "done" as const, label: t("tasks.kpiDone"), value: stats.done, hint: t("tasks.kpiWeekHint") },
+          { key: "dueSoon" as const, label: t("tasks.kpiDueSoon"), value: stats.dueSoon, hint: t("tasks.kpiNextWeek") },
         ].map((item) => (
-          <Card key={item.label} size="sm">
-            <CardContent className="flex flex-col gap-0.5 py-3">
-              <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
-              <span className="text-2xl font-semibold tabular-nums">{item.value}</span>
-              <span className="text-[11px] text-muted-foreground">{item.hint}</span>
-            </CardContent>
-          </Card>
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onQuickFilter?.(item.key)}
+            className="group text-left"
+            aria-label={`${item.label}: ${item.value}`}
+          >
+            <Card
+              size="sm"
+              className="h-full transition-colors group-hover:border-primary/40 group-hover:bg-muted/30"
+            >
+              <CardContent className="flex flex-col gap-0.5 py-3">
+                <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
+                <span className="text-2xl font-semibold tabular-nums">{item.value}</span>
+                <span className="text-[11px] text-muted-foreground">{item.hint}</span>
+              </CardContent>
+            </Card>
+          </button>
         ))}
       </div>
 
