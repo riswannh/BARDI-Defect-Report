@@ -127,6 +127,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [difficultyFilter, setDifficultyFilter] = useState(ALL);
+  const [typeFilter, setTypeFilter] = useState(ALL);
   /** Filter cepat dari kartu KPI Ringkasan; null = tidak aktif. */
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey | null>(null);
   const [page, setPage] = useState(1);
@@ -145,6 +146,7 @@ export default function TasksPage() {
       if (statusFilter !== ALL && task.status !== statusFilter) return false;
       if (priorityFilter !== ALL && task.priority !== priorityFilter) return false;
       if (difficultyFilter !== ALL && task.difficulty !== difficultyFilter) return false;
+      if (typeFilter !== ALL && (task.issueType || "task") !== typeFilter) return false;
       if (quickFilter && !matchesQuickFilter(task, quickFilter)) return false;
       if (!needle) return true;
       return (
@@ -153,7 +155,7 @@ export default function TasksPage() {
         task.ownerName.toLowerCase().includes(needle)
       );
     });
-  }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter, quickFilter]);
+  }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter, typeFilter, quickFilter]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -363,6 +365,10 @@ export default function TasksPage() {
         label: t(PRIORITY_LABEL_KEYS[value]),
       })),
     ];
+    const typeOptions = [
+      { value: ALL, label: t("tasks.allTypes") },
+      ...types.map((item) => ({ value: item.code, label: item.name })),
+    ];
     const difficultyOptions = [
       { value: ALL, label: t("tasks.allDifficulty") },
       ...DIFFICULTIES.map((value) => ({
@@ -420,6 +426,25 @@ export default function TasksPage() {
           </SelectTrigger>
           <SelectContent>
             {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={typeFilter}
+          onValueChange={(value) => {
+            setTypeFilter(String(value));
+            setPage(1);
+          }}
+          items={typeOptions}
+        >
+          <SelectTrigger className="h-8 w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {typeOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
@@ -562,6 +587,28 @@ export default function TasksPage() {
               setQuickFilter(key);
               setTab("list");
               setPage(1);
+            }}
+            onQuickStatus={(status) => {
+              setQuickFilter(null);
+              setStatusFilter(status);
+              setTab("list");
+              setPage(1);
+            }}
+            onQuickPriority={(priority) => {
+              setQuickFilter(null);
+              setPriorityFilter(priority);
+              setTab("list");
+              setPage(1);
+            }}
+            onQuickType={(code) => {
+              setQuickFilter(null);
+              setTypeFilter(code);
+              setTab("list");
+              setPage(1);
+            }}
+            onActivity={(taskId) => {
+              const target = [...everything, ...mine].find((task) => task.id === taskId);
+              if (target) setDetailTask(target);
             }}
           />
         </TabsContent>

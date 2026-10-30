@@ -120,11 +120,19 @@ export function TaskSummaryView({
   activities,
   types,
   onQuickFilter,
+  onQuickStatus,
+  onQuickPriority,
+  onQuickType,
+  onActivity,
 }: {
   rows: TaskRow[];
   activities: TaskActivityRow[];
   types: TaskTypeRow[];
   onQuickFilter?: (key: QuickFilterKey) => void;
+  onQuickStatus?: (status: string) => void;
+  onQuickPriority?: (priority: string) => void;
+  onQuickType?: (code: string) => void;
+  onActivity?: (taskId: number | null) => void;
 }) {
   const { t, language } = useLanguage();
   const [hoverStatus, setHoverStatus] = useState<string | null>(null);
@@ -157,6 +165,8 @@ export function TaskSummaryView({
     }));
     const owners = new Map<string, number>();
     for (const task of rows) {
+      // Beban tim = task yang masih dikerjakan saja (selesai tidak dihitung).
+      if (task.status === "Selesai") continue;
       const key = task.ownerName || t("tasks.colOwner");
       owners.set(key, (owners.get(key) ?? 0) + 1);
     }
@@ -237,11 +247,14 @@ export function TaskSummaryView({
           <CardContent className="flex flex-col gap-3">
             <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
               {segments.map((segment) => (
-                <div
+                <button
                   key={segment.status}
-                  className={cn("h-full transition-all", segment.tone)}
+                  type="button"
+                  aria-label={`${t(STATUS_LABEL_KEYS[segment.status])}: ${segment.count}`}
+                  className={cn("h-full cursor-pointer transition-all hover:opacity-80", segment.tone)}
                   style={{ width: `${(segment.count / total) * 100}%` }}
                   title={`${t(STATUS_LABEL_KEYS[segment.status])}: ${segment.count}`}
+                  onClick={() => onQuickStatus?.(segment.status)}
                   onMouseEnter={() => setHoverStatus(segment.status)}
                   onMouseLeave={() => setHoverStatus(null)}
                 />
@@ -249,17 +262,22 @@ export function TaskSummaryView({
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs">
               {segments.map((segment) => (
-                <span
+                <button
                   key={segment.status}
+                  type="button"
+                  aria-label={`${t(STATUS_LABEL_KEYS[segment.status])}: ${segment.count}`}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2 py-0.5",
+                    "flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-0.5 transition-colors hover:bg-muted",
                     hoverStatus === segment.status ? "bg-muted" : ""
                   )}
+                  onClick={() => onQuickStatus?.(segment.status)}
+                  onMouseEnter={() => setHoverStatus(segment.status)}
+                  onMouseLeave={() => setHoverStatus(null)}
                 >
                   <span className={cn("size-2 rounded-full", segment.tone)} />
                   {t(STATUS_LABEL_KEYS[segment.status])}
                   <span className="font-semibold tabular-nums">{segment.count}</span>
-                </span>
+                </button>
               ))}
               <span className="ml-auto text-muted-foreground">
                 {t("tasks.total")} <span className="font-semibold text-foreground">{rows.length}</span>
@@ -277,13 +295,19 @@ export function TaskSummaryView({
           </CardHeader>
           <CardContent className="flex flex-col gap-2.5">
             {stats.byPriority.map((item) => (
-              <div key={item.priority} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-xs">
+              <button
+                key={item.priority}
+                type="button"
+                aria-label={`${t(PRIORITY_LABEL_KEYS[item.priority])}: ${item.count}`}
+                onClick={() => onQuickPriority?.(item.priority)}
+                className="flex flex-col gap-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/60"
+              >
+                <span className="flex items-center justify-between text-xs">
                   <span>{t(PRIORITY_LABEL_KEYS[item.priority])}</span>
                   <span className="tabular-nums text-muted-foreground">{item.count}</span>
-                </div>
+                </span>
                 <Bar value={item.count} max={stats.maxPriority} tone="bg-amber-400" />
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
@@ -307,15 +331,19 @@ export function TaskSummaryView({
           </CardHeader>
           <CardContent className="flex flex-col gap-2.5">
             {typeRows.map((item) => (
-              <div key={item.type} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    {typeName(types, item.type)}
-                  </span>
+              <button
+                key={item.type}
+                type="button"
+                aria-label={`${typeName(types, item.type)}: ${item.count}`}
+                onClick={() => onQuickType?.(item.type)}
+                className="flex flex-col gap-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/60"
+              >
+                <span className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">{typeName(types, item.type)}</span>
                   <span className="tabular-nums text-muted-foreground">{item.count}</span>
-                </div>
+                </span>
                 <Bar value={item.count} max={stats.maxType} tone="bg-blue-400" />
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
@@ -365,12 +393,18 @@ export function TaskSummaryView({
               <p className="text-xs text-muted-foreground">{t("tasks.logEmpty")}</p>
             )}
             {activityRows.map((activity) => (
-              <div key={activity.id} className="flex flex-col gap-0.5 text-xs">
+              <button
+                key={activity.id}
+                type="button"
+                aria-label={`${t("tasks.activityOpen")}: ${activity.taskTitle || t("tasks.logTitle")}`}
+                onClick={() => onActivity?.(activity.taskId)}
+                className="flex flex-col gap-0.5 rounded-md px-1 py-0.5 text-left text-xs transition-colors hover:bg-muted/60"
+              >
                 <span className="truncate font-medium">{activity.taskTitle || t("tasks.logTitle")}</span>
                 <span className="truncate text-[11px] text-muted-foreground">
                   {activity.actorName} · {formatTaskDate(String(activity.createdAt ?? ""), language)}
                 </span>
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>

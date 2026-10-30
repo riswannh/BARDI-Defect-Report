@@ -242,6 +242,8 @@ const translations = {
   "tasks.allStatus": { id: "Semua status", en: "All statuses", zh: "全部状态" },
   "tasks.allPriority": { id: "Semua prioritas", en: "All priorities", zh: "全部优先级" },
   "tasks.allDifficulty": { id: "Semua kesulitan", en: "All difficulties", zh: "全部难度" },
+  "tasks.allTypes": { id: "Semua tipe", en: "All types", zh: "全部类型" },
+  "tasks.activityOpen": { id: "Buka detail task", en: "Open task detail", zh: "打开任务详情" },
   "tasks.statusOpen": { id: "Belum", en: "Open", zh: "未完成" },
   "tasks.statusDone": { id: "Selesai", en: "Done", zh: "已完成" },
   "tasks.colTitle": { id: "Judul Tugas", en: "Task", zh: "任务" },
