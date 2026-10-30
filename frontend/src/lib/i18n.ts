@@ -156,7 +156,6 @@ const translations = {
   "tasks.fieldIssueType": { id: "Tipe", en: "Type", zh: "类型" },
   "tasks.fieldLabels": { id: "Label", en: "Labels", zh: "标签" },
   "tasks.fieldLabelsHint": { id: "pisahkan dengan koma", en: "separate with commas", zh: "用逗号分隔" },
-  "tasks.fieldStoryPoints": { id: "Poin cerita", en: "Story points", zh: "故事点" },
   "tasks.docsNew": { id: "Dokumen Baru", en: "New Doc", zh: "新建文档" },
   "tasks.docsEmpty": {
     id: "Belum ada dokumen. Buat yang pertama.",

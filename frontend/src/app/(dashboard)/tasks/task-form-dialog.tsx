@@ -52,9 +52,6 @@ export function TaskFormDialog({
   const [description, setDescription] = useState(task?.description ?? "");
   const [issueType, setIssueType] = useState(task?.issueType ?? "task");
   const [labels, setLabels] = useState(task?.labels ?? "");
-  const [storyPoints, setStoryPoints] = useState(
-    task?.storyPoints === null || task?.storyPoints === undefined ? "" : String(task.storyPoints)
-  );
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
   const [difficulty, setDifficulty] = useState(task?.difficulty ?? "Sedang");
@@ -122,7 +119,6 @@ export function TaskFormDialog({
       status,
       issueType,
       labels: labels.trim(),
-      storyPoints: storyPoints.trim() === "" ? null : Number(storyPoints),
       startDate,
       dueDate,
       repeatRule,
@@ -199,18 +195,6 @@ export function TaskFormDialog({
                 value={labels}
                 onChange={(e) => setLabels(e.target.value)}
                 placeholder={t("tasks.fieldLabelsHint")}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldStoryPoints")}</Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={storyPoints}
-                onChange={(e) => setStoryPoints(e.target.value)}
-                placeholder="—"
               />
             </div>
           </div>

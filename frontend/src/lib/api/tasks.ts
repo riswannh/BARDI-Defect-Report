@@ -23,7 +23,6 @@ interface TaskValues {
   difficulty: string;
   issueType: string;
   labels: string;
-  storyPoints: number | null;
   boardOrder: number;
   status: string;
   startDate: string;
@@ -41,7 +40,6 @@ const DIFF_FIELDS = [
   "difficulty",
   "issueType",
   "labels",
-  "storyPoints",
   "boardOrder",
   "status",
   "startDate",
@@ -171,7 +169,6 @@ export async function tasksPOST(req: NextRequest) {
     difficulty: raw.difficulty ?? "Sedang",
     issueType: raw.issueType ?? "task",
     labels: raw.labels ?? "",
-    storyPoints: raw.storyPoints ?? null,
     // Kartu baru masuk paling bawah kolom papan (urutan naik = Date.now()).
     boardOrder:
       Number(raw.boardOrder ?? 0) > 0 ? Number(raw.boardOrder) : Date.now(),
@@ -252,7 +249,6 @@ export async function tasksPATCH(
     difficulty: patch.difficulty ?? current.difficulty,
     issueType: patch.issueType ?? current.issueType,
     labels: patch.labels ?? current.labels,
-    storyPoints: patch.storyPoints !== undefined ? patch.storyPoints : current.storyPoints,
     boardOrder: patch.boardOrder ?? current.boardOrder,
     status: patch.status ?? current.status,
     startDate: patch.startDate ?? current.startDate,
@@ -321,7 +317,6 @@ export async function tasksPATCH(
           difficulty: merged.difficulty,
           issueType: merged.issueType,
           labels: merged.labels,
-          storyPoints: merged.storyPoints,
           boardOrder: Date.now(),
           status: "Belum",
           startDate: nextStartISO,

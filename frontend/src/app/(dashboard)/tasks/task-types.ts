@@ -15,7 +15,6 @@ export interface TaskRow {
   issueType: string;
   /** Label dipisah koma. */
   labels: string;
-  storyPoints: number | null;
   boardOrder: number;
   status: string;
   startDate: string;
