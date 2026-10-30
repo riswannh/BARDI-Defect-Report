@@ -86,7 +86,7 @@ export default function TasksPage() {
   const [tab, setTab] = useState("summary");
   const [scope, setScope] = useState("mine");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Belum");
+  const [statusFilter, setStatusFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [difficultyFilter, setDifficultyFilter] = useState(ALL);
   const [page, setPage] = useState(1);
