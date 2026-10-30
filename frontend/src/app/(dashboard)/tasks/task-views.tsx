@@ -105,15 +105,14 @@ function MiniPager({
   );
 }
 
-export function TaskSummaryView({  rows,
+export function TaskSummaryView({
+  rows,
   activities,
   types,
-  onOpen,
 }: {
   rows: TaskRow[];
   activities: TaskActivityRow[];
   types: TaskTypeRow[];
-  onOpen: (task: TaskRow) => void;
 }) {
   const { t, language } = useLanguage();
   const [hoverStatus, setHoverStatus] = useState<string | null>(null);
@@ -204,7 +203,7 @@ export function TaskSummaryView({  rows,
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-4 lg:grid-cols-3">
         <Card size="sm" className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -243,25 +242,10 @@ export function TaskSummaryView({  rows,
                 {t("tasks.total")} <span className="font-semibold text-foreground">{rows.length}</span>
               </span>
             </div>
-            <div className="flex flex-col divide-y">
-              {rows.slice(0, 6).map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  onClick={() => onOpen(task)}
-                  className="flex items-center gap-2 py-1.5 text-left text-xs hover:text-primary"
-                >
-                  <span className="truncate font-medium">{task.title}</span>
-                  <Badge variant="outline" className={cn("ml-auto shrink-0", statusTone(task.status))}>
-                    {t(STATUS_LABEL_KEYS[task.status] ?? "tasks.statusOpen")}
-                  </Badge>
-                </button>
-              ))}
-            </div>
           </CardContent>
         </Card>
 
-        <Card size="sm" className="self-start">
+        <Card size="sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Clock className="size-4 text-muted-foreground" />
@@ -287,14 +271,16 @@ export function TaskSummaryView({  rows,
               <ListChecks className="size-4 text-muted-foreground" />
               {t("tasks.sectionTypes")}
             </CardTitle>
-            <MiniPager
-              page={typePageSafe}
-              pages={typePages}
-              onPrev={() => setTypePage(Math.max(1, typePageSafe - 1))}
-              onNext={() => setTypePage(Math.min(typePages, typePageSafe + 1))}
-              prevLabel={t("tasks.prevPeriod")}
-              nextLabel={t("tasks.nextPeriod")}
-            />
+            {typePages > 1 && (
+              <MiniPager
+                page={typePageSafe}
+                pages={typePages}
+                onPrev={() => setTypePage(Math.max(1, typePageSafe - 1))}
+                onNext={() => setTypePage(Math.min(typePages, typePageSafe + 1))}
+                prevLabel={t("tasks.prevPeriod")}
+                nextLabel={t("tasks.nextPeriod")}
+              />
+            )}
           </CardHeader>
           <CardContent className="flex flex-col gap-2.5">
             {typeRows.map((item) => (
@@ -318,7 +304,7 @@ export function TaskSummaryView({  rows,
               {t("tasks.sectionWorkload")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2">
+          <CardContent className="flex min-h-[10rem] flex-col gap-2">
             {stats.workload.length === 0 && (
               <p className="text-xs text-muted-foreground">{t("tasks.empty")}</p>
             )}
@@ -340,23 +326,25 @@ export function TaskSummaryView({  rows,
               <FileText className="size-4 text-muted-foreground" />
               {t("tasks.sectionActivity")}
             </CardTitle>
-            <MiniPager
-              page={activityPageSafe}
-              pages={activityPages}
-              onPrev={() => setActivityPage(Math.max(1, activityPageSafe - 1))}
-              onNext={() => setActivityPage(Math.min(activityPages, activityPageSafe + 1))}
-              prevLabel={t("tasks.prevPeriod")}
-              nextLabel={t("tasks.nextPeriod")}
-            />
+            {activityPages > 1 && (
+              <MiniPager
+                page={activityPageSafe}
+                pages={activityPages}
+                onPrev={() => setActivityPage(Math.max(1, activityPageSafe - 1))}
+                onNext={() => setActivityPage(Math.min(activityPages, activityPageSafe + 1))}
+                prevLabel={t("tasks.prevPeriod")}
+                nextLabel={t("tasks.nextPeriod")}
+              />
+            )}
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {activities.length === 0 && (
               <p className="text-xs text-muted-foreground">{t("tasks.logEmpty")}</p>
             )}
             {activityRows.map((activity) => (
-              <div key={activity.id} className="flex flex-col gap-0.5 border-b pb-2 text-xs last:border-0 last:pb-0">
-                <span className="font-medium">{activity.taskTitle || t("tasks.logTitle")}</span>
-                <span className="text-[11px] text-muted-foreground">
+              <div key={activity.id} className="flex flex-col gap-0.5 text-xs">
+                <span className="truncate font-medium">{activity.taskTitle || t("tasks.logTitle")}</span>
+                <span className="truncate text-[11px] text-muted-foreground">
                   {activity.actorName} · {formatTaskDate(String(activity.createdAt ?? ""), language)}
                 </span>
               </div>

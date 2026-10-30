@@ -526,7 +526,7 @@ export default function TasksPage() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4">
-          <TaskSummaryView rows={viewRows} activities={activities} types={types} onOpen={setDetailTask} />
+          <TaskSummaryView rows={viewRows} activities={activities} types={types} />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4 flex flex-col gap-3">
