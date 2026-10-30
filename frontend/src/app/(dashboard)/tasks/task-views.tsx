@@ -30,6 +30,8 @@ import {
 } from "./task-types";
 
 const DAY = 86_400_000;
+/** Jumlah baris per halaman di kartu ringkasan (Jenis pekerjaan & Aktivitas). */
+const SUMMARY_PAGE = 5;
 
 function toDate(iso: string): Date {
   const [year, month, day] = iso.split("-").map(Number);
@@ -52,8 +54,7 @@ function within(iso: string | null, days: number): boolean {
   return Math.abs(diff) <= days;
 }
 
-function Bar({ value, max, tone }: { value: number; max: number; tone: string }) {
-  const width = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 0;
+function Bar({ value, max, tone }: { value: number; max: number; tone: string }) {  const width = max > 0 ? Math.max(4, Math.round((value / max) * 100)) : 0;
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div className={cn("h-full rounded-full", tone)} style={{ width: `${width}%` }} />
@@ -61,8 +62,50 @@ function Bar({ value, max, tone }: { value: number; max: number; tone: string })
   );
 }
 
-export function TaskSummaryView({
-  rows,
+/** Pager kecil untuk kartu ringkasan: hanya panah + nomor halaman. */
+function MiniPager({
+  page,
+  pages,
+  onPrev,
+  onNext,
+  prevLabel,
+  nextLabel,
+}: {
+  page: number;
+  pages: number;
+  onPrev: () => void;
+  onNext: () => void;
+  prevLabel: string;
+  nextLabel: string;
+}) {
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+      <button
+        type="button"
+        aria-label={prevLabel}
+        onClick={onPrev}
+        disabled={page <= 1}
+        className="rounded p-0.5 hover:bg-muted hover:text-foreground disabled:opacity-40"
+      >
+        <ChevronLeft className="size-3.5" />
+      </button>
+      <span className="tabular-nums">
+        {page}/{pages}
+      </span>
+      <button
+        type="button"
+        aria-label={nextLabel}
+        onClick={onNext}
+        disabled={page >= pages}
+        className="rounded p-0.5 hover:bg-muted hover:text-foreground disabled:opacity-40"
+      >
+        <ChevronRight className="size-3.5" />
+      </button>
+    </span>
+  );
+}
+
+export function TaskSummaryView({  rows,
   activities,
   types,
   onOpen,
@@ -74,6 +117,8 @@ export function TaskSummaryView({
 }) {
   const { t, language } = useLanguage();
   const [hoverStatus, setHoverStatus] = useState<string | null>(null);
+  const [typePage, setTypePage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
 
   const stats = useMemo(() => {
     const done = rows.filter((task) => task.status === "Selesai").length;
@@ -126,6 +171,19 @@ export function TaskSummaryView({
     { status: "Proses", count: stats.progress, tone: "bg-blue-500" },
     { status: "Belum", count: stats.open, tone: "bg-slate-400" },
   ];
+
+  const typePages = Math.max(1, Math.ceil(stats.byType.length / SUMMARY_PAGE));
+  const typePageSafe = Math.min(typePage, typePages);
+  const typeRows = stats.byType.slice(
+    (typePageSafe - 1) * SUMMARY_PAGE,
+    typePageSafe * SUMMARY_PAGE
+  );
+  const activityPages = Math.max(1, Math.ceil(activities.length / SUMMARY_PAGE));
+  const activityPageSafe = Math.min(activityPage, activityPages);
+  const activityRows = activities.slice(
+    (activityPageSafe - 1) * SUMMARY_PAGE,
+    activityPageSafe * SUMMARY_PAGE
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -203,7 +261,7 @@ export function TaskSummaryView({
           </CardContent>
         </Card>
 
-        <Card size="sm">
+        <Card size="sm" className="self-start">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Clock className="size-4 text-muted-foreground" />
@@ -224,14 +282,22 @@ export function TaskSummaryView({
         </Card>
 
         <Card size="sm">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <ListChecks className="size-4 text-muted-foreground" />
               {t("tasks.sectionTypes")}
             </CardTitle>
+            <MiniPager
+              page={typePageSafe}
+              pages={typePages}
+              onPrev={() => setTypePage(Math.max(1, typePageSafe - 1))}
+              onNext={() => setTypePage(Math.min(typePages, typePageSafe + 1))}
+              prevLabel={t("tasks.prevPeriod")}
+              nextLabel={t("tasks.nextPeriod")}
+            />
           </CardHeader>
           <CardContent className="flex flex-col gap-2.5">
-            {stats.byType.map((item) => (
+            {typeRows.map((item) => (
               <div key={item.type} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5">
@@ -269,17 +335,25 @@ export function TaskSummaryView({
         </Card>
 
         <Card size="sm">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2 text-sm">
               <FileText className="size-4 text-muted-foreground" />
               {t("tasks.sectionActivity")}
             </CardTitle>
+            <MiniPager
+              page={activityPageSafe}
+              pages={activityPages}
+              onPrev={() => setActivityPage(Math.max(1, activityPageSafe - 1))}
+              onNext={() => setActivityPage(Math.min(activityPages, activityPageSafe + 1))}
+              prevLabel={t("tasks.prevPeriod")}
+              nextLabel={t("tasks.nextPeriod")}
+            />
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {activities.length === 0 && (
               <p className="text-xs text-muted-foreground">{t("tasks.logEmpty")}</p>
             )}
-            {activities.slice(0, 6).map((activity) => (
+            {activityRows.map((activity) => (
               <div key={activity.id} className="flex flex-col gap-0.5 border-b pb-2 text-xs last:border-0 last:pb-0">
                 <span className="font-medium">{activity.taskTitle || t("tasks.logTitle")}</span>
                 <span className="text-[11px] text-muted-foreground">

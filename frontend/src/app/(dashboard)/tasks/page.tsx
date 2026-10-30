@@ -88,7 +88,7 @@ export default function TasksPage() {
   );
   const { data: typeData, reload: reloadTypes } = useApi<TaskTypeRow[]>("/api/task-types");
   const { data: activityData } = useApi<TaskActivityRow[]>(
-    "/api/tasks/activities?limit=12"
+    "/api/tasks/activities?limit=30"
   );
   const mine = mineData ?? [];
   const everything = allData ?? [];
