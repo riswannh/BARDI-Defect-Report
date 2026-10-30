@@ -353,6 +353,7 @@ const translations = {
   "tasks.viewWeek": { id: "Minggu", en: "Week", zh: "周" },
   "tasks.viewMonth": { id: "Bulan", en: "Month", zh: "月" },
   "tasks.calendars": { id: "Kalender", en: "Calendars", zh: "日历" },
+  "tasks.filter": { id: "Filter", en: "Filter", zh: "筛选" },
   "tasks.showAllUsers": { id: "Tampilkan semua pengguna", en: "Show all users", zh: "显示所有用户" },
   "tasks.hideAllUsers": { id: "Sembunyikan semua pengguna", en: "Hide all users", zh: "隐藏所有用户" },
   "tasks.today": { id: "Hari ini", en: "Today", zh: "今天" },

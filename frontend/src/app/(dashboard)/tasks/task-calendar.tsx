@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Funnel,
   Repeat,
   Users,
 } from "lucide-react";
@@ -21,6 +22,11 @@ import {
   todayISO,
 } from "@/lib/task-dates";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ownerColor, WEEKDAY_LABEL_KEYS, type TaskOwner, type TaskRow } from "./task-types";
 
@@ -407,57 +413,7 @@ export function TaskCalendar({
 
   return (
     <OwnerColorContext.Provider value={owners}>
-      <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
-      <aside className="flex w-full shrink-0 flex-col gap-2 rounded-lg border p-2 lg:h-full lg:min-h-0 lg:w-52 lg:overflow-hidden">
-        <p className="px-1 text-xs font-medium text-muted-foreground">
-          {t("tasks.calendars")}{" "}
-          <span className="text-foreground">
-            {visibleOwners.length}/{owners.length}
-          </span>
-        </p>
-        <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto lg:max-h-[340px]">
-          {owners.map((owner) => {
-            const checked = !hidden.has(owner.id);
-            return (
-              <label
-                key={owner.id}
-                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-accent"
-              >
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={checked}
-                  onChange={(event) => toggleOwner(owner.id, event.target.checked)}
-                  aria-label={owner.name}
-                />
-                <span
-                  className={[
-                    "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
-                    checked ? "border-transparent" : "border-muted-foreground/40",
-                  ].join(" ")}
-                  style={checked ? { backgroundColor: ownerColor(owners, owner.id) } : undefined}
-                >
-                  {checked && <Check className="size-3 text-white" aria-hidden />}
-                </span>
-                <span className="truncate">{owner.name}</span>
-              </label>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-1 border-t pt-1">
-          <Button variant="ghost" size="sm" onClick={() => setHidden(new Set())}>
-            {t("tasks.showAllUsers")}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setHidden(new Set(owners.map((owner) => owner.id)))}
-          >
-            {t("tasks.hideAllUsers")}
-          </Button>
-        </div>
-      </aside>
-
+      <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1">
@@ -582,6 +538,68 @@ export function TaskCalendar({
           </div>
 
           <div className="flex flex-wrap items-center gap-0.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="sm" className="mr-1 gap-1.5" />}
+              >
+                <Funnel className="size-3.5" />
+                {t("tasks.filter")}
+                <span className="rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+                  {visibleOwners.length}/{owners.length}
+                </span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 p-2">
+                <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">
+                  {t("tasks.calendars")}{" "}
+                  <span className="text-foreground">
+                    {visibleOwners.length}/{owners.length}
+                  </span>
+                </p>
+                <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
+                  {owners.map((owner) => {
+                    const checked = !hidden.has(owner.id);
+                    return (
+                      <label
+                        key={owner.id}
+                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-accent"
+                      >
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={checked}
+                          onChange={(event) => toggleOwner(owner.id, event.target.checked)}
+                          aria-label={owner.name}
+                        />
+                        <span
+                          className={[
+                            "flex size-4 shrink-0 items-center justify-center rounded-sm border transition-colors",
+                            checked ? "border-transparent" : "border-muted-foreground/40",
+                          ].join(" ")}
+                          style={
+                            checked ? { backgroundColor: ownerColor(owners, owner.id) } : undefined
+                          }
+                        >
+                          {checked && <Check className="size-3 text-white" aria-hidden />}
+                        </span>
+                        <span className="truncate">{owner.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-1 flex items-center gap-1 border-t pt-1">
+                  <Button variant="ghost" size="sm" onClick={() => setHidden(new Set())}>
+                    {t("tasks.showAllUsers")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHidden(new Set(owners.map((owner) => owner.id)))}
+                  >
+                    {t("tasks.hideAllUsers")}
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {(Object.keys(VIEW_LABEL_KEYS) as ViewMode[]).map((mode) => (
               <Button
                 key={mode}
