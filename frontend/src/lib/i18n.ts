@@ -130,9 +130,9 @@ const translations = {
   "tasks.tabSettings": { id: "Pengaturan", en: "Settings", zh: "设置" },
   "tasks.settingsTitle": { id: "Tipe Pekerjaan", en: "Work Types", zh: "工作类型" },
   "tasks.settingsHint": {
-    id: "Tiap akun punya daftar tipe sendiri; warnanya jadi penanda di kalender. Admin bisa mengatur tipe akun lain.",
-    en: "Each account has its own type list; the color becomes a marker in the calendar. Admins can manage other accounts' types.",
-    zh: "每个账号有自己的类型列表，颜色用作日历标记。管理员可管理其他账号的类型。",
+    id: "Tiap akun punya daftar tipe sendiri. Admin bisa mengatur tipe akun lain.",
+    en: "Each account has its own type list. Admins can manage other accounts' types.",
+    zh: "每个账号有自己的类型列表，管理员可管理其他账号的类型。",
   },
   "tasks.settingsAddPlaceholder": { id: "Nama tipe baru", en: "New type name", zh: "新类型名称" },
   "tasks.settingsAdd": { id: "Tambah tipe", en: "Add type", zh: "添加类型" },
@@ -158,10 +158,11 @@ const translations = {
     zh: "该颜色用于标记该账号在日历中的卡片，管理员可设置其他账号。",
   },
   "tasks.settingsColor": { id: "Warna kalender", en: "Calendar color", zh: "日历颜色" },
+  "tasks.settingsColorSave": { id: "Simpan", en: "Save", zh: "保存" },
   "tasks.settingsColorSaved": {
-    id: "Warna tipe diperbarui.",
-    en: "Type color updated.",
-    zh: "类型颜色已更新。",
+    id: "Warna kartu diperbarui.",
+    en: "Card color updated.",
+    zh: "卡片颜色已更新。",
   },
   "tasks.fieldOwner": { id: "Pemilik task", en: "Task owner", zh: "任务负责人" },
   "tasks.fieldOwnerHint": {
@@ -196,8 +197,6 @@ const translations = {
     zh: "此日期范围内没有任务。",
   },
   "tasks.fieldIssueType": { id: "Tipe", en: "Type", zh: "类型" },
-  "tasks.fieldLabels": { id: "Label", en: "Labels", zh: "标签" },
-  "tasks.fieldLabelsHint": { id: "pisahkan dengan koma", en: "separate with commas", zh: "用逗号分隔" },
   "tasks.docsNew": { id: "Dokumen Baru", en: "New Doc", zh: "新建文档" },
   "tasks.docsEmpty": {
     id: "Belum ada dokumen. Buat yang pertama.",

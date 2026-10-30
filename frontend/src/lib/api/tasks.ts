@@ -24,7 +24,6 @@ interface TaskValues {
   priority: string;
   difficulty: string;
   issueType: string;
-  labels: string;
   boardOrder: number;
   status: string;
   startDate: string;
@@ -41,7 +40,6 @@ const DIFF_FIELDS = [
   "priority",
   "difficulty",
   "issueType",
-  "labels",
   "boardOrder",
   "status",
   "startDate",
@@ -170,7 +168,6 @@ export async function tasksPOST(req: NextRequest) {
     priority: raw.priority ?? "Normal",
     difficulty: raw.difficulty ?? "Sedang",
     issueType: raw.issueType ?? "task",
-    labels: raw.labels ?? "",
     // Kartu baru masuk paling bawah kolom papan (urutan naik = Date.now()).
     boardOrder:
       Number(raw.boardOrder ?? 0) > 0 ? Number(raw.boardOrder) : Date.now(),
@@ -263,7 +260,6 @@ export async function tasksPATCH(
     priority: patch.priority ?? current.priority,
     difficulty: patch.difficulty ?? current.difficulty,
     issueType: patch.issueType ?? current.issueType,
-    labels: patch.labels ?? current.labels,
     boardOrder: patch.boardOrder ?? current.boardOrder,
     status: patch.status ?? current.status,
     startDate: patch.startDate ?? current.startDate,
@@ -349,7 +345,6 @@ export async function tasksPATCH(
           priority: merged.priority,
           difficulty: merged.difficulty,
           issueType: merged.issueType,
-          labels: merged.labels,
           boardOrder: Date.now(),
           status: "Belum",
           startDate: nextStartISO,
@@ -444,7 +439,6 @@ export async function taskCalendarsGET() {
       username: userTable.username,
       name: userTable.name,
       isAdmin: userTable.isAdmin,
-      canRead: rolePermissions.canRead,
       canWrite: rolePermissions.canWrite,
       calendarColor: userTable.calendarColor,
     })
@@ -457,9 +451,8 @@ export async function taskCalendarsGET() {
     .orderBy(userTable.username);
 
   const calendars: TaskCalendarUser[] = rows
-    // Kalender menampilkan semua akun yang boleh membuka Rencana Kerja (baca
-    // pun cukup, karena warna kartu hanya penanda visual).
-    .filter((row) => row.isAdmin || row.canRead === true || row.canWrite === true)
+    // Hanya akun yang boleh MENULIS di Rencana Kerja yang punya kartu kalender.
+    .filter((row) => row.isAdmin || row.canWrite === true)
     .map((row) => ({
       id: row.id,
       name: row.username || row.name || row.id,

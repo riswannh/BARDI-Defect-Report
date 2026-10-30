@@ -792,8 +792,6 @@ export const tasks = sqliteTable(
     difficulty: text("difficulty").notNull().default("Sedang"),
     /** task / bug / feature / subtask — tipe isu gaya Jira. */
     issueType: text("issueType").notNull().default("task"),
-    /** Label dipisah koma (ditampilkan sebagai chip di kartu papan). */
-    labels: text("labels").notNull().default(""),
     /** Urutan kartu di dalam kolom papan (drag & drop). */
     boardOrder: integer("boardOrder").notNull().default(0),
     /** Belum / Proses / Selesai — terpisah dari progress sesuai permintaan user. */

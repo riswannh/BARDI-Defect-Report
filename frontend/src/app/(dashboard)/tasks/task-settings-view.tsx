@@ -18,7 +18,7 @@ import { apiDelete, apiPatch, apiPost } from "@/lib/api-client";
 import { useLanguage } from "@/lib/i18n";
 import { ownerColor, typesOfOwner, type TaskOwner, type TaskTypeRow } from "./task-types";
 
-/** Pemilih akun yang dipakai bersama oleh kartu warna & kartu tipe. */
+/** Pemilih akun; tiap kartu memakai state akunnya sendiri. */
 function OwnerPicker({
   ownerId,
   users,
@@ -57,7 +57,8 @@ function OwnerPicker({
 
 /**
  * Tab Pengaturan Rencana Kerja. Dua kartu terpisah: warna kartu kalender per
- * akun, dan daftar tipe pekerjaan per akun.
+ * akun, dan daftar tipe pekerjaan per akun. Warna baru tersimpan setelah
+ * tombol Simpan ditekan supaya geser pemilih warna tidak membanjiri server.
  */
 export function TaskSettingsView({
   types,
@@ -74,20 +75,30 @@ export function TaskSettingsView({
 }) {
   const { t } = useLanguage();
   const [name, setName] = useState("");
-  const [ownerId, setOwnerId] = useState(me.id);
+  const [typeOwnerId, setTypeOwnerId] = useState(me.id);
+  const [colorOwnerId, setColorOwnerId] = useState(me.id);
+  /** Warna yang belum disimpan: { akun, warna }. */
+  const [draft, setDraft] = useState<{ id: string; color: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingColor, setSavingColor] = useState(false);
 
-  const targetId = isAdmin ? ownerId : me.id;
-  const targetName = users.find((item) => item.id === targetId)?.name ?? me.name;
-  const owned = typesOfOwner(types, targetId);
-  const cardColor = ownerColor(users, targetId);
+  const typeTargetId = isAdmin ? typeOwnerId : me.id;
+  const typeTargetName = users.find((item) => item.id === typeTargetId)?.name ?? me.name;
+  const owned = typesOfOwner(types, typeTargetId);
+
+  const colorTargetId = isAdmin ? colorOwnerId : me.id;
+  const colorTargetName = users.find((item) => item.id === colorTargetId)?.name ?? me.name;
+  const storedColor = ownerColor(users, colorTargetId);
+  const shownColor =
+    draft && draft.id === colorTargetId ? draft.color : storedColor;
+  const colorDirty = shownColor.toLowerCase() !== storedColor.toLowerCase();
 
   async function addType() {
     const trimmed = name.trim();
     if (!trimmed) return;
     setSaving(true);
     try {
-      await apiPost("/api/task-types", { name: trimmed, userId: targetId });
+      await apiPost("/api/task-types", { name: trimmed, userId: typeTargetId });
       toast.success(t("tasks.settingsAdded"));
       setName("");
       onChanged();
@@ -98,13 +109,17 @@ export function TaskSettingsView({
     }
   }
 
-  async function saveColor(next: string) {
+  async function saveColor() {
+    setSavingColor(true);
     try {
-      await apiPatch("/api/tasks/calendars", { userId: targetId, color: next });
+      await apiPatch("/api/tasks/calendars", { userId: colorTargetId, color: shownColor });
       toast.success(t("tasks.settingsColorSaved"));
+      setDraft(null);
       onChanged();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("tasks.errorSave"));
+    } finally {
+      setSavingColor(false);
     }
   }
 
@@ -133,22 +148,39 @@ export function TaskSettingsView({
           <p className="text-xs text-muted-foreground">{t("tasks.settingsColorHint")}</p>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
-          <OwnerPicker ownerId={ownerId} users={users} isAdmin={isAdmin} onChange={setOwnerId} />
+          <OwnerPicker
+            ownerId={colorOwnerId}
+            users={users}
+            isAdmin={isAdmin}
+            onChange={(id) => {
+              setColorOwnerId(id);
+              setDraft(null);
+            }}
+          />
           <div className="flex items-center gap-3">
             <span
               className="flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium"
-              style={{ borderLeftWidth: 6, borderLeftColor: cardColor }}
+              style={{ borderLeftWidth: 6, borderLeftColor: shownColor }}
             >
-              {targetName}
+              {colorTargetName}
             </span>
             <input
               type="color"
-              value={cardColor}
-              onChange={(event) => void saveColor(event.target.value)}
+              value={shownColor}
+              onChange={(event) =>
+                setDraft({ id: colorTargetId, color: event.target.value })
+              }
               aria-label={t("tasks.settingsColor")}
               className="h-9 w-14 cursor-pointer rounded-md border bg-background p-0.5"
             />
           </div>
+          <Button
+            size="sm"
+            onClick={() => void saveColor()}
+            disabled={!colorDirty || savingColor}
+          >
+            {t("tasks.settingsColorSave")}
+          </Button>
         </CardContent>
       </Card>
 
@@ -162,10 +194,15 @@ export function TaskSettingsView({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-end gap-2">
-            <OwnerPicker ownerId={ownerId} users={users} isAdmin={isAdmin} onChange={setOwnerId} />
+            <OwnerPicker
+              ownerId={typeOwnerId}
+              users={users}
+              isAdmin={isAdmin}
+              onChange={setTypeOwnerId}
+            />
             <div className="flex min-w-40 flex-1 flex-col gap-1.5">
-              <span className="text-xs text-muted-foreground">
-                {t("tasks.settingsAddPlaceholder")}
+              <span className="truncate text-xs text-muted-foreground">
+                {t("tasks.settingsAddPlaceholder")} · {typeTargetName}
               </span>
               <Input
                 value={name}
@@ -189,7 +226,10 @@ export function TaskSettingsView({
               </p>
             )}
             {owned.map((type) => (
-              <div key={`${type.userId}:${type.id}`} className="flex items-center justify-between gap-2 px-3 py-2">
+              <div
+                key={`${type.userId}:${type.id}`}
+                className="flex items-center justify-between gap-2 px-3 py-2"
+              >
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-sm font-medium">{type.name}</span>
                   <span className="shrink-0 font-mono text-[11px] text-muted-foreground">

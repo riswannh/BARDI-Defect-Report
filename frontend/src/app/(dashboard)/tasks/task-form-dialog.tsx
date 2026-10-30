@@ -69,7 +69,6 @@ export function TaskFormDialog({
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
   const [issueType, setIssueType] = useState(task?.issueType ?? ownerTypes[0]?.code ?? "task");
-  const [labels, setLabels] = useState(task?.labels ?? "");
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
   const [difficulty, setDifficulty] = useState(task?.difficulty ?? "Sedang");
@@ -141,7 +140,6 @@ export function TaskFormDialog({
       difficulty,
       status,
       issueType,
-      labels: labels.trim(),
       startDate,
       dueDate,
       repeatRule,
@@ -237,14 +235,6 @@ export function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldLabels")}</Label>
-              <Input
-                value={labels}
-                onChange={(e) => setLabels(e.target.value)}
-                placeholder={t("tasks.fieldLabelsHint")}
-              />
-            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

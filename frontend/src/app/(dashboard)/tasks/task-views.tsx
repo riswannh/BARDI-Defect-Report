@@ -25,7 +25,6 @@ import {
   PRIORITY_LABEL_KEYS,
   STATUS_LABEL_KEYS,
   TASK_STATUSES,
-  parseLabels,
   priorityTone,
   statusTone,
   type TaskActivityRow,
@@ -309,10 +308,12 @@ export function TaskSummaryView({
 
 export function TaskBoardView({
   rows,
+  types,
   onOpen,
   onStatusChange,
 }: {
   rows: TaskRow[];
+  types: TaskTypeRow[];
   onOpen: (task: TaskRow) => void;
   onStatusChange?: (task: TaskRow, status: string) => void;
 }) {
@@ -369,18 +370,9 @@ export function TaskBoardView({
                 <span className="line-clamp-2 text-sm font-medium">{task.title}</span>
               </button>
 
-              {parseLabels(task.labels).length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {parseLabels(task.labels).map((label) => (
-                    <span
-                      key={label}
-                      className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <span className="inline-flex w-fit items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                {typeName(types, task.issueType, task.userId)}
+              </span>
 
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">

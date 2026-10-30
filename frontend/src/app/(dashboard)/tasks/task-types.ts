@@ -13,8 +13,6 @@ export interface TaskRow {
   difficulty: string;
   /** task / bug / feature / subtask. */
   issueType: string;
-  /** Label dipisah koma. */
-  labels: string;
   boardOrder: number;
   status: string;
   startDate: string;
@@ -113,14 +111,6 @@ export function statusTone(status: string): string {
   if (status === "Selesai") return "bg-emerald-500/10 text-emerald-600 ring-emerald-500/25 dark:text-emerald-400";
   if (status === "Proses") return "bg-blue-500/10 text-blue-600 ring-blue-500/25 dark:text-blue-400";
   return "bg-slate-500/10 text-slate-600 ring-slate-500/20 dark:text-slate-300";
-}
-
-/** Label dipisah koma → array rapi. */
-export function parseLabels(labels: string): string[] {
-  return labels
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 export type RepeatRule = (typeof REPEAT_RULES)[number];

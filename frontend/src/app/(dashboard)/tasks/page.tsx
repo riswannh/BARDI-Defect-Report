@@ -26,7 +26,6 @@ import { formatTaskDate, todayISO } from "@/lib/task-dates";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -117,8 +116,7 @@ export default function TasksPage() {
       return (
         task.title.toLowerCase().includes(needle) ||
         task.description.toLowerCase().includes(needle) ||
-        task.ownerName.toLowerCase().includes(needle) ||
-        task.labels.toLowerCase().includes(needle)
+        task.ownerName.toLowerCase().includes(needle)
       );
     });
   }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter]);
@@ -197,19 +195,6 @@ export default function TasksPage() {
                   >
                     {task.title}
                   </button>
-                  {task.labels && (
-                    <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
-                      {task.labels.split(",").slice(0, 2).map((label) => (
-                        <Badge
-                          key={label}
-                          variant="outline"
-                          className="h-5 bg-primary/10 px-1.5 text-[10px] text-primary"
-                        >
-                          {label.trim()}
-                        </Badge>
-                      ))}
-                    </span>
-                  )}
                   {task.description && (
                     <p className="line-clamp-1 text-xs text-muted-foreground">
                       {task.description}
@@ -524,6 +509,7 @@ export default function TasksPage() {
         <TabsContent value="board" className="mt-4 min-h-0 flex-1 overflow-y-auto">
           <TaskBoardView
             rows={viewRows}
+            types={types}
             onOpen={setDetailTask}
             onStatusChange={canWrite ? patchStatus : undefined}
           />
