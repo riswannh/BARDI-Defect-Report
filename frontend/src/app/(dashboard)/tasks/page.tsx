@@ -14,6 +14,7 @@ import {
   ListTree,
   Pencil,
   Plus,
+  Settings,
   Trash2,
   TrendingUp,
 } from "lucide-react";
@@ -50,15 +51,17 @@ import { TaskDetailDialog, TaskLogDialog, TaskLogList, TaskProgressDialog } from
 import { TaskCalendar } from "./task-calendar";
 import { TaskBoardView, TaskSummaryView, TaskTimelineView } from "./task-views";
 import { TaskDocsView } from "./task-docs-view";
+import { TaskSettingsView } from "./task-settings-view";
 import {
   DIFFICULTIES,
   DIFFICULTY_LABEL_KEYS,
-  ISSUE_TYPE_LABEL_KEYS,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   priorityTone,
+  typeName,
   type TaskActivityRow,
   type TaskRow,
+  type TaskTypeRow,
 } from "./task-types";
 
 const ALL = "all";
@@ -74,12 +77,14 @@ export default function TasksPage() {
     isAdmin ? "/api/tasks?scope=all" : null
   );
   const { data: calendarData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/calendars");
+  const { data: typeData, reload: reloadTypes } = useApi<TaskTypeRow[]>("/api/task-types");
   const { data: activityData } = useApi<TaskActivityRow[]>(
     "/api/tasks/activities?limit=12"
   );
   const mine = mineData ?? [];
   const everything = allData ?? [];
   const activities = activityData ?? [];
+  const types = typeData ?? [];
   /** Admin melihat semua task di view ringkasan/board/timeline/kalender. */
   const viewRows = isAdmin ? everything : mine;
 
@@ -210,7 +215,7 @@ export default function TasksPage() {
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-xs">
-                  {t(ISSUE_TYPE_LABEL_KEYS[task.issueType] ?? "tasks.issueTask")}
+                  {typeName(types, task.issueType)}
                 </TableCell>
                 {showOwner && (
                   <TableCell className="text-sm">{task.ownerName || "—"}</TableCell>
@@ -449,6 +454,7 @@ export default function TasksPage() {
     { value: "timeline", label: t("tasks.tabTimeline"), icon: GanttChartSquare },
     { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
     { value: "log", label: t("tasks.tabLog"), icon: History },
+    ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings"), icon: Settings }] : []),
   ];
 
   return (
@@ -485,7 +491,7 @@ export default function TasksPage() {
         </TabsList>
 
         <TabsContent value="summary" className="mt-4 min-h-0 flex-1 overflow-y-auto">
-          <TaskSummaryView rows={viewRows} activities={activities} onOpen={setDetailTask} />
+          <TaskSummaryView rows={viewRows} activities={activities} types={types} onOpen={setDetailTask} />
         </TabsContent>
 
         <TabsContent value="list" className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
@@ -551,11 +557,16 @@ export default function TasksPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="settings" className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          <TaskSettingsView types={types} canEdit={isAdmin} onChanged={reloadTypes} />
+        </TabsContent>
       </Tabs>
 
       {formTask !== undefined && (
         <TaskFormDialog
           task={formTask}
+          types={types}
           onSaved={() => {
             setFormTask(undefined);
             refreshAll();

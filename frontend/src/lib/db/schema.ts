@@ -867,3 +867,22 @@ export const taskDocs = sqliteTable(
   },
   (t) => [index("task_docs_updated_idx").on(t.updatedAt)]
 );
+
+/**
+ * Daftar tipe isu (dulu enum tetap). `code` yang disimpan di
+ * `tasks.issueType`; `name` bebas diisi admin lewat tab Pengaturan.
+ */
+export const taskTypes = sqliteTable(
+  "task_types",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    /** Urutan tampil di dropdown (kecil dulu). */
+    sortOrder: integer("sortOrder").notNull().default(0),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [index("task_types_sort_idx").on(t.sortOrder)]
+);

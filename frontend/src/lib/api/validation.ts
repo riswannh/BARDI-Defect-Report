@@ -535,14 +535,19 @@ export const roleUpdateSchema = z.object({
 export const TASK_PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
 export const TASK_DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
-export const TASK_ISSUE_TYPES = ["task", "bug", "feature", "subtask"] as const;
+/** Tipe isu kini daftar dinamis di tabel `task_types`; kolom menyimpan `code`. */
+export const TASK_ISSUE_TYPE_MAX = 60;
 export const TASK_REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export type TaskDifficulty = (typeof TASK_DIFFICULTIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
-export type TaskIssueType = (typeof TASK_ISSUE_TYPES)[number];
 export type TaskRepeatRule = (typeof TASK_REPEAT_RULES)[number];
+
+/** Tambah tipe isu: admin cukup mengetik nama, kode dibuat otomatis. */
+export const taskTypeCreateSchema = z.object({
+  name: z.string().trim().min(1, "Nama tipe wajib diisi").max(TASK_ISSUE_TYPE_MAX),
+});
 
 /** Tanggal murni "YYYY-MM-DD" — tanpa jam supaya bebas zona waktu. */
 const isoDateField = z
@@ -561,7 +566,7 @@ const taskFields = {
   progress: z.coerce.number().int().min(0).max(100),
   priority: z.enum(TASK_PRIORITIES),
   difficulty: z.enum(TASK_DIFFICULTIES),
-  issueType: z.enum(TASK_ISSUE_TYPES),
+  issueType: z.string().trim().min(1).max(TASK_ISSUE_TYPE_MAX),
   labels: z.string().trim().max(200),
   boardOrder: z.coerce.number(),
   status: z.enum(TASK_STATUSES),
@@ -579,7 +584,7 @@ export const taskCreateSchema = buildCreate(taskFields, {
   progress: z.coerce.number().int().min(0).max(100).default(0),
   priority: z.enum(TASK_PRIORITIES).default("Normal"),
   difficulty: z.enum(TASK_DIFFICULTIES).default("Sedang"),
-  issueType: z.enum(TASK_ISSUE_TYPES).default("task"),
+  issueType: z.string().trim().min(1).max(TASK_ISSUE_TYPE_MAX).default("task"),
   labels: z.string().trim().max(200).default(""),
   boardOrder: z.coerce.number().default(0),
   status: z.enum(TASK_STATUSES).default("Belum"),

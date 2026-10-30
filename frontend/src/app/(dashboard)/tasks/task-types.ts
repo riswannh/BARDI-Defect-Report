@@ -40,18 +40,24 @@ export interface TaskActivityRow {
   createdAt: string | null;
 }
 
+export interface TaskTypeRow {
+  id: number;
+  code: string;
+  name: string;
+  sortOrder: number;
+  used: number;
+}
+
 export const PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
 export const DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
-export const ISSUE_TYPES = ["task", "bug", "feature", "subtask"] as const;
 
-export const ISSUE_TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
-  task: "tasks.issueTask",
-  bug: "tasks.issueBug",
-  feature: "tasks.issueFeature",
-  subtask: "tasks.issueSubtask",
-};
+/** Nama tipe dari daftar admin; kode tak dikenal tampil apa adanya. */
+export function typeName(types: TaskTypeRow[], code: string): string {
+  const found = types.find((item) => item.code === code);
+  return found ? found.name : code || "—";
+}
 
 export const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
   Belum: "tasks.statusOpen",

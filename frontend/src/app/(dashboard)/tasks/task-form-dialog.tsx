@@ -25,22 +25,24 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   DIFFICULTIES,
-  ISSUE_TYPES,
-  ISSUE_TYPE_LABEL_KEYS,
   PRIORITIES,
   TASK_STATUSES,
   WEEKDAY_LABEL_KEYS,
+  typeName,
   type TaskRow,
+  type TaskTypeRow,
 } from "./task-types";
 
 const NONE = "none";
 
 export function TaskFormDialog({
   task,
+  types,
   onSaved,
   onCancel,
 }: {
   task: TaskRow | null;
+  types: TaskTypeRow[];
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -50,7 +52,7 @@ export function TaskFormDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  const [issueType, setIssueType] = useState(task?.issueType ?? "task");
+  const [issueType, setIssueType] = useState(task?.issueType ?? types[0]?.code ?? "task");
   const [labels, setLabels] = useState(task?.labels ?? "");
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
@@ -76,9 +78,14 @@ export function TaskFormDialog({
       `tasks.difficulty${value === "Mudah" ? "Easy" : value === "Sedang" ? "Medium" : "Hard"}`
     ),
   }));
-  const issueOptions = ISSUE_TYPES.map((value) => ({
+  // Tipe dari master; kalau task lama memakai kode yang sudah dihapus, tetap
+  // ditampilkan supaya tidak berubah tanpa disengaja.
+  const typeCodes = types.some((item) => item.code === issueType)
+    ? types.map((item) => item.code)
+    : [...types.map((item) => item.code), issueType];
+  const issueOptions = typeCodes.map((value) => ({
     value,
-    label: t(ISSUE_TYPE_LABEL_KEYS[value]),
+    label: typeName(types, value),
   }));
   const statusOptions = TASK_STATUSES.map((value) => ({
     value,

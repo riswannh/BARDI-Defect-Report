@@ -20,8 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
-  ISSUE_TYPES,
-  ISSUE_TYPE_LABEL_KEYS,
+  typeName,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   STATUS_LABEL_KEYS,
@@ -31,6 +30,7 @@ import {
   statusTone,
   type TaskActivityRow,
   type TaskRow,
+  type TaskTypeRow,
 } from "./task-types";
 
 const DAY = 86_400_000;
@@ -75,10 +75,12 @@ function Bar({ value, max, tone }: { value: number; max: number; tone: string })
 export function TaskSummaryView({
   rows,
   activities,
+  types,
   onOpen,
 }: {
   rows: TaskRow[];
   activities: TaskActivityRow[];
+  types: TaskTypeRow[];
   onOpen: (task: TaskRow) => void;
 }) {
   const { t, language } = useLanguage();
@@ -97,7 +99,14 @@ export function TaskSummaryView({
       priority,
       count: rows.filter((task) => task.priority === priority).length,
     }));
-    const byType = ISSUE_TYPES.map((type) => ({
+    // Daftar tipe ikut master; kode lama yang sudah tak ada tetap dihitung.
+    const typeCodes = [
+      ...types.map((item) => item.code),
+      ...Array.from(new Set(rows.map((task) => task.issueType || "task"))).filter(
+        (code) => !types.some((item) => item.code === code)
+      ),
+    ];
+    const byType = typeCodes.map((type) => ({
       type,
       count: rows.filter((task) => (task.issueType || "task") === type).length,
     }));
@@ -120,7 +129,7 @@ export function TaskSummaryView({
       maxPriority: Math.max(1, ...byPriority.map((item) => item.count)),
       maxType: Math.max(1, ...byType.map((item) => item.count)),
     };
-  }, [rows, t]);
+  }, [rows, t, types]);
 
   const total = rows.length || 1;
   const segments = [
@@ -239,7 +248,7 @@ export function TaskSummaryView({
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5">
                     {issueIcon(item.type)}
-                    {t(ISSUE_TYPE_LABEL_KEYS[item.type])}
+                    {typeName(types, item.type)}
                   </span>
                   <span className="tabular-nums text-muted-foreground">{item.count}</span>
                 </div>
