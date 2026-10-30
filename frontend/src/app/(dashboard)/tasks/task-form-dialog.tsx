@@ -135,10 +135,8 @@ export function TaskFormDialog({
     const payload = {
       title: title.trim(),
       description: description.trim(),
-      progress: Number(progress) || 0,
       priority,
       difficulty,
-      status,
       issueType,
       startDate,
       dueDate,
@@ -148,13 +146,16 @@ export function TaskFormDialog({
       // Hanya admin yang boleh membuat/memindahkan task ke akun lain.
       ownerId: isAdmin ? ownerId : undefined,
     };
+    // Status & progres hanya diisi saat membuat task. Setelah task ada, dua
+    // field itu diubah lewat tombol Progres / Selesai agar tidak bentrok.
+    const body = task ? payload : { ...payload, progress: Number(progress) || 0, status };
 
     setSaving(true);
     try {
       if (task) {
-        await apiPatch(`/api/tasks/${task.id}`, payload);
+        await apiPatch(`/api/tasks/${task.id}`, body);
       } else {
-        await apiPost("/api/tasks", payload);
+        await apiPost("/api/tasks", body);
       }
       toast.success(t("tasks.saved"));
       onSaved();
@@ -298,6 +299,8 @@ export function TaskFormDialog({
               />
             </div>
 
+            {!task && (
+              <>
             <div className="flex flex-col gap-1.5">
               <Label>{t("tasks.fieldStatus")}</Label>
               <Select
@@ -328,6 +331,8 @@ export function TaskFormDialog({
                 onChange={(e) => setProgress(e.target.value)}
               />
             </div>
+              </>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

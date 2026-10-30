@@ -14,6 +14,7 @@ import {
   ListTree,
   Pencil,
   Plus,
+  RotateCcw,
   Settings,
   Trash2,
   TrendingUp,
@@ -46,7 +47,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
-import { TaskDetailDialog, TaskLogDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
+import { TaskDetailDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
 import { TaskBoardView, TaskSummaryView, TaskTimelineView } from "./task-views";
 import { TaskDocsView } from "./task-docs-view";
@@ -101,7 +102,6 @@ export default function TasksPage() {
   /** undefined = dialog tertutup, null = task baru. */
   const [formTask, setFormTask] = useState<TaskRow | null | undefined>(undefined);
   const [progressTask, setProgressTask] = useState<TaskRow | null>(null);
-  const [logTask, setLogTask] = useState<TaskRow | null>(null);
   const [deleteTask, setDeleteTask] = useState<TaskRow | null>(null);
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
 
@@ -266,14 +266,6 @@ export default function TasksPage() {
                     >
                       <TrendingUp className="size-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t("tasks.logTitle")}
-                      onClick={() => setLogTask(task)}
-                    >
-                      <History className="size-3.5" />
-                    </Button>
                     {canWrite && (
                       <>
                         <Button
@@ -290,9 +282,18 @@ export default function TasksPage() {
                           aria-label={
                             task.status === "Selesai" ? t("tasks.markOpen") : t("tasks.markDone")
                           }
+                          className={
+                            task.status === "Selesai"
+                              ? "text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400"
+                              : "text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+                          }
                           onClick={() => toggleDone(task)}
                         >
-                          <CircleCheck className="size-3.5" />
+                          {task.status === "Selesai" ? (
+                            <RotateCcw className="size-4" />
+                          ) : (
+                            <CircleCheck className="size-4" />
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
@@ -585,8 +586,6 @@ export default function TasksPage() {
           onCancel={() => setProgressTask(null)}
         />
       )}
-
-      {logTask && <TaskLogDialog task={logTask} onClose={() => setLogTask(null)} />}
 
       {detailTask && (
         <TaskDetailDialog task={detailTask} onClose={() => setDetailTask(null)} />
