@@ -464,6 +464,47 @@ export async function taskCalendarsGET() {
 }
 
 /**
+ * Daftar akun untuk filter pemilik task: semua akun yang boleh memakai menu
+ * Rencana Kerja (baca atau tulis). Akun biasa hanya menerima dirinya sendiri
+ * karena datanya memang dibatasi ke task miliknya (scope=mine).
+ */
+export async function taskOwnersGET() {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const rows = await db
+    .select({
+      id: userTable.id,
+      username: userTable.username,
+      name: userTable.name,
+      isAdmin: userTable.isAdmin,
+      canRead: rolePermissions.canRead,
+      canWrite: rolePermissions.canWrite,
+    })
+    .from(userTable)
+    .leftJoin(roles, eq(userTable.roleId, roles.id))
+    .leftJoin(
+      rolePermissions,
+      and(eq(rolePermissions.roleId, roles.id), eq(rolePermissions.menu, "tasks"))
+    )
+    .orderBy(userTable.username);
+
+  const owners: TaskCalendarUser[] = rows
+    .filter((row) => row.isAdmin || row.canRead === true || row.canWrite === true)
+    // Akun non-admin tidak bisa membaca task orang lain, jadi filternya pun
+    // hanya berisi dirinya sendiri.
+    .filter((row) => guard.user.isAdmin || row.id === guard.user.id)
+    .map((row) => ({
+      id: row.id,
+      name: row.username || row.name || row.id,
+      color: null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return jsonOk(owners);
+}
+
+/**
  * Atur warna kartu sebuah akun di kalender. Pemilik boleh mengatur warnanya
  * sendiri; admin boleh mengatur akun lain.
  */

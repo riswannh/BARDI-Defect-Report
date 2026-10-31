@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
-import { addDays, dateToISO, formatTaskDate, todayISO } from "@/lib/task-dates";
+import { formatTaskDate, todayISO } from "@/lib/task-dates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,12 +47,6 @@ const SUMMARY_PAGE = 5;
 function toDate(iso: string): Date {
   const [year, month, day] = iso.split("-").map(Number);
   return new Date(year, (month || 1) - 1, day || 1);
-}
-
-function startOfWeek(date: Date): Date {
-  const copy = new Date(date);
-  copy.setDate(copy.getDate() - ((copy.getDay() + 6) % 7));
-  return copy;
 }
 
 function daysBetween(from: Date, to: Date): number {
@@ -615,128 +609,6 @@ export function TaskBoardView({
           })}
         </div>
       ))}
-    </div>
-  );
-}
-
-export function TaskTimelineView({
-  rows,
-  onOpen,
-}: {
-  rows: TaskRow[];
-  onOpen: (task: TaskRow) => void;
-}) {
-  const { t } = useLanguage();
-  const [offset, setOffset] = useState(0);
-  const rangeStart = useMemo(() => addDays(dateToISO(startOfWeek(toDate(todayISO()))), offset * 7), [offset]);
-  const rangeDays = 56;
-  const startDate = toDate(rangeStart);
-  const endDate = addDays(rangeStart, rangeDays - 1);
-  const todayOffset = daysBetween(startDate, toDate(todayISO()));
-
-  const visible = rows
-    .map((task) => {
-      const from = daysBetween(startDate, toDate(task.startDate));
-      const to = daysBetween(startDate, toDate(task.dueDate));
-      return { task, from, to };
-    })
-    .filter((item) => item.to >= 0 && item.from <= rangeDays - 1)
-    .sort((a, b) => a.from - b.from);
-
-  const weeks = Array.from({ length: rangeDays / 7 }, (_, index) => addDays(rangeStart, index * 7));
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => setOffset(offset - 1)}>
-          <ChevronLeft className="size-4" />
-          {t("tasks.prevMonth")}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setOffset(0)}
-          disabled={offset === 0}
-        >
-          {t("tasks.today")}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setOffset(offset + 1)}>
-          {t("tasks.nextMonth")}
-          <ChevronRight className="size-4" />
-        </Button>
-        <span className="ml-2 text-xs text-muted-foreground">
-          {formatTaskDate(rangeStart)} – {formatTaskDate(endDate)}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border">
-        <div className="min-w-[720px]">
-          <div className="grid grid-cols-[200px_1fr] border-b bg-muted/40 text-[11px] font-medium text-muted-foreground">
-            <div className="px-3 py-1.5">{t("tasks.colWork")}</div>
-            <div className="grid" style={{ gridTemplateColumns: `repeat(${rangeDays / 7}, minmax(0, 1fr))` }}>
-              {weeks.map((week) => (
-                <div key={week} className="border-l px-2 py-1.5">
-                  {formatTaskDate(week)}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {visible.length === 0 && (
-            <p className="px-3 py-8 text-center text-xs text-muted-foreground">{t("tasks.timelineEmpty")}</p>
-          )}
-
-          {visible.map(({ task, from, to }) => {
-            const left = Math.max(0, from) / rangeDays;
-            const width = (Math.min(rangeDays - 1, to) - Math.max(0, from) + 1) / rangeDays;
-            return (
-              <div key={task.id} className="grid grid-cols-[200px_1fr] border-b text-xs last:border-0">
-                <button
-                  type="button"
-                  onClick={() => onOpen(task)}
-                  className="flex min-w-0 items-center gap-1.5 px-3 py-2 text-left hover:text-primary"
-                >
-                  <span className="truncate font-medium">{task.title}</span>
-                </button>
-                <div className="relative py-2">
-                  <div
-                    className="pointer-events-none absolute inset-0 grid"
-                    style={{ gridTemplateColumns: `repeat(${rangeDays / 7}, minmax(0, 1fr))` }}
-                  >
-                    {weeks.map((week) => (
-                      <span key={week} className="border-l" />
-                    ))}
-                  </div>
-                  {todayOffset >= 0 && todayOffset < rangeDays && (
-                    <span
-                      className="pointer-events-none absolute inset-y-0 w-px bg-primary/60"
-                      style={{ left: `${(todayOffset / rangeDays) * 100}%` }}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onOpen(task)}
-                    className={cn(
-                      "absolute inset-y-1.5 flex items-center overflow-hidden rounded-full px-2 text-[10px] font-medium text-white",
-                      task.status === "Selesai"
-                        ? "bg-emerald-500"
-                        : task.status === "Proses"
-                          ? "bg-blue-500"
-                          : "bg-slate-400"
-                    )}
-                    style={{ left: `${left * 100}%`, width: `${Math.max(width * 100, 3)}%` }}
-                    title={`${task.title} · ${formatTaskDate(task.startDate)} – ${formatTaskDate(task.dueDate)}`}
-                  >
-                    <span className="truncate">
-                      {task.progress > 0 ? `${task.progress}%` : t(STATUS_LABEL_KEYS[task.status] ?? "tasks.statusOpen")}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

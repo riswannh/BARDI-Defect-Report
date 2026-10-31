@@ -8,7 +8,6 @@ import {
   CircleDashed,
   Download,
   FileText,
-  GanttChartSquare,
   History,
   KanbanSquare,
   LayoutDashboard,
@@ -39,13 +38,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -57,7 +49,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
 import { TaskDetailDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
-import { TaskBoardView, TaskSummaryView, TaskTimelineView, matchesQuickFilter, type QuickFilterKey } from "./task-views";
+import { MultiFilter } from "./task-multi-filter";
+import { TaskBoardView, TaskSummaryView, matchesQuickFilter, type QuickFilterKey } from "./task-views";
 import { TaskDocsView } from "./task-docs-view";
 import { TaskSettingsView } from "./task-settings-view";
 import {
@@ -72,8 +65,6 @@ import {
   type TaskTypeRow,
   type TaskView,
 } from "./task-types";
-
-const ALL = "all";
 
 /** Label chip filter cepat di tab Daftar, mengikuti nama kartu KPI Ringkasan. */
 const QUICK_FILTER_LABEL_KEYS: Record<QuickFilterKey, TranslationKey> = {
@@ -96,6 +87,7 @@ export default function TasksPage() {
   const { data: calendarData, reload: reloadCalendars } = useApi<Array<{ id: string; name: string }>>(
     "/api/tasks/calendars"
   );
+  const { data: ownerData } = useApi<Array<{ id: string; name: string }>>("/api/tasks/owners");
   const { data: typeData, reload: reloadTypes } = useApi<TaskTypeRow[]>("/api/task-types");
   const { data: viewData, reload: reloadView } = useApi<{ view: TaskView | null }>(
     "/api/tasks/view"
@@ -107,6 +99,7 @@ export default function TasksPage() {
   const everything = allData ?? [];
   const activities = activityData ?? [];
   const types = typeData ?? [];
+  const owners = ownerData ?? [];
   /** Tampilan tersimpan akun; null di server berarti daftar. */
   const storedView: TaskView = viewData?.view === "board" ? "board" : "list";
   /** Admin melihat semua task di view ringkasan/board/timeline/kalender. */
@@ -131,12 +124,13 @@ export default function TasksPage() {
   /** Paksaan tampilan sesi ini (jalan pintas Ringkasan); null = ikut tersimpan. */
   const [overrideView, setOverrideView] = useState<TaskView | null>(null);
   const view: TaskView = overrideView ?? storedView;
-  const [scope, setScope] = useState("mine");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(ALL);
-  const [priorityFilter, setPriorityFilter] = useState(ALL);
-  const [difficultyFilter, setDifficultyFilter] = useState(ALL);
-  const [typeFilter, setTypeFilter] = useState(ALL);
+  /** Filter multi-pilih; array kosong berarti "semua". */
+  const [ownerFilter, setOwnerFilter] = useState<string[] | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [difficultyFilter, setDifficultyFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   /** Filter cepat dari kartu KPI Ringkasan; null = tidak aktif. */
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey | null>(null);
   const [page, setPage] = useState(1);
@@ -148,14 +142,31 @@ export default function TasksPage() {
   const [deleteTask, setDeleteTask] = useState<TaskRow | null>(null);
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
 
-  const activeRows = scope === "all" && isAdmin ? everything : mine;
+  /** Admin membaca semua task; akun biasa hanya task miliknya (scope=mine). */
+  const activeRows = isAdmin ? everything : mine;
+  /**
+   * Bawaan filter akun = diri sendiri ("Tugas Saya"); mengosongkan filter
+   * berarti semua akun. Kolom pembuat hanya perlu saat tidak lagi satu akun.
+   */
+  const activeOwnerFilter = useMemo(
+    () => ownerFilter ?? (user ? [user.id] : []),
+    [ownerFilter, user],
+  );
+  const showOwnerColumn = !(
+    activeOwnerFilter.length === 1 && activeOwnerFilter[0] === user?.id
+  );
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return activeRows.filter((task) => {
-      if (statusFilter !== ALL && task.status !== statusFilter) return false;
-      if (priorityFilter !== ALL && task.priority !== priorityFilter) return false;
-      if (difficultyFilter !== ALL && task.difficulty !== difficultyFilter) return false;
-      if (typeFilter !== ALL && (task.issueType || "task") !== typeFilter) return false;
+      if (activeOwnerFilter.length > 0 && !activeOwnerFilter.includes(task.userId)) {
+        return false;
+      }
+      if (statusFilter.length > 0 && !statusFilter.includes(task.status)) return false;
+      if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) return false;
+      if (difficultyFilter.length > 0 && !difficultyFilter.includes(task.difficulty)) {
+        return false;
+      }
+      if (typeFilter.length > 0 && !typeFilter.includes(task.issueType || "task")) return false;
       if (quickFilter && !matchesQuickFilter(task, quickFilter)) return false;
       if (!needle) return true;
       return (
@@ -164,7 +175,16 @@ export default function TasksPage() {
         task.ownerName.toLowerCase().includes(needle)
       );
     });
-  }, [activeRows, search, statusFilter, priorityFilter, difficultyFilter, typeFilter, quickFilter]);
+  }, [
+    activeOwnerFilter,
+    activeRows,
+    difficultyFilter,
+    priorityFilter,
+    quickFilter,
+    search,
+    statusFilter,
+    typeFilter,
+  ]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -203,6 +223,27 @@ export default function TasksPage() {
       setOverrideView(null);
       toast.error(t("tasks.viewSaveFailed"));
     }
+  }
+
+  /**
+   * Jalan pintas Ringkasan: filter lama direset dulu supaya hasil klik tidak
+   * menumpuk dengan filter yang sedang aktif, lalu pindah ke tab Tugas.
+   */
+  function applyQuick(patch: {
+    quick?: QuickFilterKey;
+    status?: string;
+    priority?: string;
+    type?: string;
+  }) {
+    setSearch("");
+    setOwnerFilter(null);
+    setStatusFilter(patch.status ? [patch.status] : []);
+    setPriorityFilter(patch.priority ? [patch.priority] : []);
+    setDifficultyFilter([]);
+    setTypeFilter(patch.type ? [patch.type] : []);
+    setQuickFilter(patch.quick ?? null);
+    setPage(1);
+    setTab("tasks");
   }
 
   async function handleDelete() {
@@ -374,35 +415,6 @@ export default function TasksPage() {
   }
 
   function renderFilters() {
-    const statusOptions = [
-      { value: ALL, label: t("tasks.allStatus") },
-      { value: "Belum", label: t("tasks.statusOpen") },
-      { value: "Proses", label: t("tasks.statusProses") },
-      { value: "Selesai", label: t("tasks.statusDone") },
-    ];
-    const priorityOptions = [
-      { value: ALL, label: t("tasks.allPriority") },
-      ...PRIORITIES.map((value) => ({
-        value,
-        label: t(PRIORITY_LABEL_KEYS[value]),
-      })),
-    ];
-    const typeOptions = [
-      { value: ALL, label: t("tasks.allTypes") },
-      ...types.map((item) => ({ value: item.code, label: item.name })),
-    ];
-    const difficultyOptions = [
-      { value: ALL, label: t("tasks.allDifficulty") },
-      ...DIFFICULTIES.map((value) => ({
-        value,
-        label: t(DIFFICULTY_LABEL_KEYS[value]),
-      })),
-    ];
-    const scopeOptions = [
-      { value: "mine", label: t("tasks.tabMine") },
-      { value: "all", label: t("tasks.tabAll") },
-    ];
-
     return (
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -415,102 +427,67 @@ export default function TasksPage() {
           className="h-8 w-full sm:w-56"
         />
         {isAdmin && (
-          <Select
-            value={scope}
-            onValueChange={(value) => {
-              setScope(String(value));
+          <MultiFilter
+            label={t("tasks.colOwner")}
+            emptyLabel={t("tasks.exportAll")}
+            options={owners.map((owner) => ({ value: owner.id, label: owner.name }))}
+            selected={activeOwnerFilter}
+            onChange={(next) => {
+              setOwnerFilter(next);
               setPage(1);
             }}
-            items={scopeOptions}
-          >
-            <SelectTrigger className="h-8 w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {scopeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         )}
-        <Select
-          value={statusFilter}
-          onValueChange={(value) => {
-            setStatusFilter(String(value));
+        <MultiFilter
+          label={t("tasks.colStatus")}
+          emptyLabel={t("tasks.allStatus")}
+          options={[
+            { value: "Belum", label: t("tasks.statusOpen") },
+            { value: "Proses", label: t("tasks.statusProses") },
+            { value: "Selesai", label: t("tasks.statusDone") },
+          ]}
+          selected={statusFilter}
+          onChange={(next) => {
+            setStatusFilter(next);
             setPage(1);
           }}
-          items={statusOptions}
-        >
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={typeFilter}
-          onValueChange={(value) => {
-            setTypeFilter(String(value));
+        />
+        <MultiFilter
+          label={t("tasks.colType")}
+          emptyLabel={t("tasks.allTypes")}
+          options={types.map((item) => ({ value: item.code, label: item.name }))}
+          selected={typeFilter}
+          onChange={(next) => {
+            setTypeFilter(next);
             setPage(1);
           }}
-          items={typeOptions}
-        >
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {typeOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={priorityFilter}
-          onValueChange={(value) => {
-            setPriorityFilter(String(value));
+        />
+        <MultiFilter
+          label={t("tasks.colPriority")}
+          emptyLabel={t("tasks.allPriority")}
+          options={PRIORITIES.map((value) => ({
+            value,
+            label: t(PRIORITY_LABEL_KEYS[value]),
+          }))}
+          selected={priorityFilter}
+          onChange={(next) => {
+            setPriorityFilter(next);
             setPage(1);
           }}
-          items={priorityOptions}
-        >
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {priorityOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={difficultyFilter}
-          onValueChange={(value) => {
-            setDifficultyFilter(String(value));
+        />
+        <MultiFilter
+          label={t("tasks.fieldDifficulty")}
+          emptyLabel={t("tasks.allDifficulty")}
+          options={DIFFICULTIES.map((value) => ({
+            value,
+            label: t(DIFFICULTY_LABEL_KEYS[value]),
+          }))}
+          selected={difficultyFilter}
+          onChange={(next) => {
+            setDifficultyFilter(next);
             setPage(1);
           }}
-          items={difficultyOptions}
-        >
-          <SelectTrigger className="h-8 w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {difficultyOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         {quickFilter && (
           <Button
             variant="secondary"
@@ -535,7 +512,6 @@ export default function TasksPage() {
     { value: "summary", label: t("tasks.tabSummary"), icon: LayoutDashboard },
     { value: "tasks", label: t("tasks.tabTasks"), icon: ListTree },
     { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
-    { value: "timeline", label: t("tasks.tabTimeline"), icon: GanttChartSquare },
     { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
     { value: "log", label: t("tasks.tabLog"), icon: History },
     ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings"), icon: Settings }] : []),
@@ -587,7 +563,7 @@ export default function TasksPage() {
           setPage(1);
         }}
       >
-        <TabsList className="flex-wrap">
+        <TabsList className="h-auto w-full max-w-full flex-wrap justify-start gap-1">
           {tabs.map((item) => {
             const Icon = item.icon;
             return (
@@ -604,29 +580,10 @@ export default function TasksPage() {
             rows={viewRows}
             activities={activities}
             types={types}
-            onQuickFilter={(key) => {
-              setQuickFilter(key);
-              setTab("tasks");
-              setPage(1);
-            }}
-            onQuickStatus={(status) => {
-              setQuickFilter(null);
-              setStatusFilter(status);
-              setTab("tasks");
-              setPage(1);
-            }}
-            onQuickPriority={(priority) => {
-              setQuickFilter(null);
-              setPriorityFilter(priority);
-              setTab("tasks");
-              setPage(1);
-            }}
-            onQuickType={(code) => {
-              setQuickFilter(null);
-              setTypeFilter(code);
-              setTab("tasks");
-              setPage(1);
-            }}
+            onQuickFilter={(key) => applyQuick({ quick: key })}
+            onQuickStatus={(status) => applyQuick({ status })}
+            onQuickPriority={(priority) => applyQuick({ priority })}
+            onQuickType={(code) => applyQuick({ type: code })}
             onActivity={(taskId) => {
               const target = [...everything, ...mine].find((task) => task.id === taskId);
               if (target) setDetailTask(target);
@@ -667,7 +624,7 @@ export default function TasksPage() {
             <Card size="sm" className="overflow-hidden py-0">
               <CardContent className="px-0">
                 <div>
-                  {renderTable(paged, scope === "all")}
+                  {renderTable(paged, showOwnerColumn)}
                 </div>
                 {filtered.length > 0 && (
                   <div className="border-t border-border/60 px-4 py-2">
@@ -708,10 +665,6 @@ export default function TasksPage() {
               />
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-4">
-          <TaskTimelineView rows={viewRows} onOpen={setDetailTask} />
         </TabsContent>
 
         <TabsContent value="docs" className="mt-4 flex flex-col">
