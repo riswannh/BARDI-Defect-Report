@@ -55,6 +55,9 @@ export interface TaskOwner {
   color?: string | null;
 }
 
+/** Tampilan tab Tugas: tabel daftar atau papan kanban. */
+export type TaskView = "list" | "board";
+
 export const PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
 export const DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;

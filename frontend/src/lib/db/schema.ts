@@ -54,6 +54,8 @@ export const user = sqliteTable("user", {
   }),
   /** Warna kartu akun ini di kalender Rencana Kerja (#rrggbb), NULL = warna bawaan. */
   calendarColor: text("calendarColor"),
+  /** Tampilan default Rencana Kerja akun ini: "list" | "board", NULL = daftar. */
+  taskViewDefault: text("taskViewDefault"),
 });
 
 export const session = sqliteTable(

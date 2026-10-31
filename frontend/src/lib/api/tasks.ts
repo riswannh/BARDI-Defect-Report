@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { rolePermissions, roles, taskActivities, tasks, user as userTable } from "@/lib/db/schema";
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
-import { calendarColorSchema, taskCreateSchema, taskUpdateSchema } from "@/lib/api/validation";
+import { calendarColorSchema, taskCreateSchema, taskUpdateSchema, taskViewSchema } from "@/lib/api/validation";
 import { nextOccurrence } from "@/lib/task-dates";
 
 type TaskRow = typeof tasks.$inferSelect;
@@ -490,4 +490,42 @@ export async function taskCalendarsPATCH(req: NextRequest) {
   if (!row) return jsonError("Akun tidak ditemukan.", 404);
 
   return jsonOk({ id: row.id, color: row.calendarColor });
+}
+
+/** Tampilan default Rencana Kerja milik akun yang sedang login. */
+export async function taskViewGET() {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const [row] = await db
+    .select({ view: userTable.taskViewDefault })
+    .from(userTable)
+    .where(eq(userTable.id, guard.user.id));
+  if (!row) return jsonError("Akun tidak ditemukan.", 404);
+
+  return jsonOk({ view: row.view === "board" || row.view === "list" ? row.view : null });
+}
+
+/**
+ * Simpan pilihan tampilan akun sendiri. Tombol switch List/Board menulis ke
+ * sini, jadi pilihan terakhir otomatis jadi tampilan awal di kunjungan berikut.
+ */
+export async function taskViewPATCH(req: NextRequest) {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const body = await req.json().catch(() => null);
+  const parsed = taskViewSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(parsed.error.issues[0]?.message ?? "Data tidak valid", 400);
+  }
+
+  const [row] = await db
+    .update(userTable)
+    .set({ taskViewDefault: parsed.data.view })
+    .where(eq(userTable.id, guard.user.id))
+    .returning({ view: userTable.taskViewDefault });
+  if (!row) return jsonError("Akun tidak ditemukan.", 404);
+
+  return jsonOk({ view: row.view === "board" || row.view === "list" ? row.view : null });
 }

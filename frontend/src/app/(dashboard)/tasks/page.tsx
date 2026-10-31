@@ -70,6 +70,7 @@ import {
   type TaskActivityRow,
   type TaskRow,
   type TaskTypeRow,
+  type TaskView,
 } from "./task-types";
 
 const ALL = "all";
@@ -96,6 +97,9 @@ export default function TasksPage() {
     "/api/tasks/calendars"
   );
   const { data: typeData, reload: reloadTypes } = useApi<TaskTypeRow[]>("/api/task-types");
+  const { data: viewData, reload: reloadView } = useApi<{ view: TaskView | null }>(
+    "/api/tasks/view"
+  );
   const { data: activityData } = useApi<TaskActivityRow[]>(
     "/api/tasks/activities?limit=30"
   );
@@ -103,6 +107,8 @@ export default function TasksPage() {
   const everything = allData ?? [];
   const activities = activityData ?? [];
   const types = typeData ?? [];
+  /** Tampilan tersimpan akun; null di server berarti daftar. */
+  const storedView: TaskView = viewData?.view === "board" ? "board" : "list";
   /** Admin melihat semua task di view ringkasan/board/timeline/kalender. */
   const viewRows = isAdmin ? everything : mine;
   const exportOwners =
@@ -122,6 +128,9 @@ export default function TasksPage() {
   };
 
   const [tab, setTab] = useState("summary");
+  /** Paksaan tampilan sesi ini (jalan pintas Ringkasan); null = ikut tersimpan. */
+  const [overrideView, setOverrideView] = useState<TaskView | null>(null);
+  const view: TaskView = overrideView ?? storedView;
   const [scope, setScope] = useState("mine");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL);
@@ -181,6 +190,19 @@ export default function TasksPage() {
 
   async function toggleDone(task: TaskRow) {
     await patchStatus(task, task.status === "Selesai" ? "Belum" : "Selesai");
+  }
+
+  /** Ganti tampilan Daftar/Papan; pilihan langsung disimpan sebagai bawaan akun. */
+  async function changeView(next: TaskView) {
+    if (next === view) return;
+    setOverrideView(next);
+    try {
+      await apiPatch("/api/tasks/view", { view: next });
+      reloadView();
+    } catch {
+      setOverrideView(null);
+      toast.error(t("tasks.viewSaveFailed"));
+    }
   }
 
   async function handleDelete() {
@@ -511,8 +533,7 @@ export default function TasksPage() {
 
   const tabs = [
     { value: "summary", label: t("tasks.tabSummary"), icon: LayoutDashboard },
-    { value: "list", label: t("tasks.tabList"), icon: ListTree },
-    { value: "board", label: t("tasks.tabBoard"), icon: KanbanSquare },
+    { value: "tasks", label: t("tasks.tabTasks"), icon: ListTree },
     { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
     { value: "timeline", label: t("tasks.tabTimeline"), icon: GanttChartSquare },
     { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
@@ -585,25 +606,29 @@ export default function TasksPage() {
             types={types}
             onQuickFilter={(key) => {
               setQuickFilter(key);
-              setTab("list");
+              setTab("tasks");
+              setOverrideView("list");
               setPage(1);
             }}
             onQuickStatus={(status) => {
               setQuickFilter(null);
               setStatusFilter(status);
-              setTab("list");
+              setTab("tasks");
+              setOverrideView("list");
               setPage(1);
             }}
             onQuickPriority={(priority) => {
               setQuickFilter(null);
               setPriorityFilter(priority);
-              setTab("list");
+              setTab("tasks");
+              setOverrideView("list");
               setPage(1);
             }}
             onQuickType={(code) => {
               setQuickFilter(null);
               setTypeFilter(code);
-              setTab("list");
+              setTab("tasks");
+              setOverrideView("list");
               setPage(1);
             }}
             onActivity={(taskId) => {
@@ -613,41 +638,68 @@ export default function TasksPage() {
           />
         </TabsContent>
 
-        <TabsContent value="list" className="mt-4 flex flex-col gap-3">
-          {renderFilters()}
-          <Card size="sm" className="overflow-hidden py-0">
-            <CardContent className="px-0">
-              <div>
-                {renderTable(paged, scope === "all")}
-              </div>
-              {filtered.length > 0 && (
-                <div className="border-t border-border/60 px-4 py-2">
-                  <Pagination
-                    totalItems={filtered.length}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(size) => {
-                      setPageSize(size);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="tasks" className="mt-4 flex flex-col gap-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              {renderFilters()}
+            </div>
+            <div
+              role="group"
+              aria-label={t("tasks.viewSwitch")}
+              className="ml-auto flex shrink-0 items-center gap-1"
+            >
+              {(["list", "board"] as TaskView[]).map((option) => {
+                const Icon = option === "list" ? ListTree : KanbanSquare;
+                return (
+                  <Button
+                    key={option}
+                    size="sm"
+                    variant={view === option ? "secondary" : "ghost"}
+                    aria-pressed={view === option}
+                    className="gap-1.5"
+                    onClick={() => void changeView(option)}
+                  >
+                    <Icon className="size-4" />
+                    {t(option === "list" ? "tasks.tabList" : "tasks.tabBoard")}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
 
-        <TabsContent value="board" className="mt-4">
-          <TaskBoardView
-            rows={viewRows}
-            types={types}
-            onOpen={setDetailTask}
-            onStatusChange={canWrite ? patchStatus : undefined}
-            onProgress={canWrite ? setProgressTask : undefined}
-            onEdit={canWrite ? setFormTask : undefined}
-            onDelete={canWrite ? setDeleteTask : undefined}
-          />
+          {view === "list" ? (
+            <Card size="sm" className="overflow-hidden py-0">
+              <CardContent className="px-0">
+                <div>
+                  {renderTable(paged, scope === "all")}
+                </div>
+                {filtered.length > 0 && (
+                  <div className="border-t border-border/60 px-4 py-2">
+                    <Pagination
+                      totalItems={filtered.length}
+                      page={page}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                      }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <TaskBoardView
+              rows={filtered}
+              types={types}
+              onOpen={setDetailTask}
+              onStatusChange={canWrite ? patchStatus : undefined}
+              onProgress={canWrite ? setProgressTask : undefined}
+              onEdit={canWrite ? setFormTask : undefined}
+              onDelete={canWrite ? setDeleteTask : undefined}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">

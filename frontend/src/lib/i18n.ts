@@ -125,6 +125,13 @@ const translations = {
   "tasks.tabCalendar": { id: "Kalender", en: "Calendar", zh: "日历" },
   "tasks.tabLog": { id: "Riwayat Aktivitas", en: "Activity Log", zh: "活动日志" },
   "tasks.tabSummary": { id: "Ringkasan", en: "Summary", zh: "概览" },
+  "tasks.tabTasks": { id: "Tugas", en: "Tasks", zh: "任务" },
+  "tasks.viewSwitch": { id: "Pilih tampilan", en: "Switch view", zh: "切换视图" },
+  "tasks.viewSaveFailed": {
+    id: "Gagal menyimpan pilihan tampilan.",
+    en: "Failed to save the view choice.",
+    zh: "保存视图选择失败。",
+  },
   "tasks.tabList": { id: "Daftar", en: "List", zh: "列表" },
   "tasks.tabBoard": { id: "Papan", en: "Board", zh: "看板" },
   "tasks.tabSettings": { id: "Pengaturan", en: "Settings", zh: "设置" },

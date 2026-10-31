@@ -569,6 +569,16 @@ export const calendarColorSchema = z.object({
   color: z.string().trim().regex(CALENDAR_COLOR, "Warna harus format #rrggbb").nullable(),
 });
 
+/** Tampilan Rencana Kerja yang bisa dipilih akun: daftar tabel atau papan kanban. */
+export const TASK_VIEWS = ["list", "board"] as const;
+
+export type TaskView = (typeof TASK_VIEWS)[number];
+
+/** Pilihan tampilan default akun; `null` = kembali ke daftar. */
+export const taskViewSchema = z.object({
+  view: z.enum(TASK_VIEWS).nullable(),
+});
+
 /** Tanggal murni "YYYY-MM-DD" — tanpa jam supaya bebas zona waktu. */
 const isoDateField = z
   .string()
