@@ -464,9 +464,10 @@ export async function taskCalendarsGET() {
 }
 
 /**
- * Daftar akun untuk filter pemilik task: semua akun yang boleh memakai menu
- * Rencana Kerja (baca atau tulis). Akun biasa hanya menerima dirinya sendiri
- * karena datanya memang dibatasi ke task miliknya (scope=mine).
+ * Daftar akun untuk filter pemilik task: sama dengan panel kalender, yaitu
+ * akun yang punya izin TULIS di menu Rencana Kerja (admin selalu ikut). Akun
+ * biasa hanya menerima dirinya sendiri karena datanya dibatasi ke task miliknya
+ * (scope=mine).
  */
 export async function taskOwnersGET() {
   const guard = await requireMenu("tasks", "read");
@@ -478,7 +479,6 @@ export async function taskOwnersGET() {
       username: userTable.username,
       name: userTable.name,
       isAdmin: userTable.isAdmin,
-      canRead: rolePermissions.canRead,
       canWrite: rolePermissions.canWrite,
     })
     .from(userTable)
@@ -490,7 +490,7 @@ export async function taskOwnersGET() {
     .orderBy(userTable.username);
 
   const owners: TaskCalendarUser[] = rows
-    .filter((row) => row.isAdmin || row.canRead === true || row.canWrite === true)
+    .filter((row) => row.isAdmin || row.canWrite === true)
     // Akun non-admin tidak bisa membaca task orang lain, jadi filternya pun
     // hanya berisi dirinya sendiri.
     .filter((row) => guard.user.isAdmin || row.id === guard.user.id)
