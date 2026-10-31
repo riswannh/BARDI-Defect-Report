@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  Archive,
   CalendarDays,
   CircleCheck,
   CircleDashed,
@@ -56,6 +57,7 @@ import { TaskSettingsView } from "./task-settings-view";
 import {
   DIFFICULTIES,
   DIFFICULTY_LABEL_KEYS,
+  isTaskArchived,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   priorityTone,
@@ -133,6 +135,8 @@ export default function TasksPage() {
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   /** Filter cepat dari kartu KPI Ringkasan; null = tidak aktif. */
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey | null>(null);
+  /** true = tab Tugas hanya menampilkan task arsip (selesai > 7 hari). */
+  const [showArchived, setShowArchived] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -168,6 +172,8 @@ export default function TasksPage() {
       }
       if (typeFilter.length > 0 && !typeFilter.includes(task.issueType || "task")) return false;
       if (quickFilter && !matchesQuickFilter(task, quickFilter)) return false;
+      // Arsip hanya memengaruhi tab Tugas; Kalender & Ringkasan tetap memuatnya.
+      if (isTaskArchived(task) !== showArchived) return false;
       if (!needle) return true;
       return (
         task.title.toLowerCase().includes(needle) ||
@@ -182,6 +188,7 @@ export default function TasksPage() {
     priorityFilter,
     quickFilter,
     search,
+    showArchived,
     statusFilter,
     typeFilter,
   ]);
@@ -242,6 +249,7 @@ export default function TasksPage() {
     setDifficultyFilter([]);
     setTypeFilter(patch.type ? [patch.type] : []);
     setQuickFilter(patch.quick ?? null);
+    setShowArchived(false);
     setPage(1);
     setTab("tasks");
   }
@@ -294,6 +302,11 @@ export default function TasksPage() {
                   >
                     {task.title}
                   </button>
+                  {isTaskArchived(task) && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-slate-500/12 px-1.5 py-0.5 align-middle text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                      {t("tasks.archiveBadge")}
+                    </span>
+                  )}
                   {task.description && (
                     <p className="line-clamp-1 text-xs text-muted-foreground">
                       {task.description}
@@ -488,6 +501,22 @@ export default function TasksPage() {
             setPage(1);
           }}
         />
+        <Button
+          variant={showArchived ? "secondary" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5"
+          aria-pressed={showArchived}
+          aria-label={`${t("tasks.filterArchive")}: ${
+            showArchived ? t("tasks.filterArchiveOn") : t("tasks.filterArchiveOff")
+          }`}
+          onClick={() => {
+            setShowArchived((prev) => !prev);
+            setPage(1);
+          }}
+        >
+          <Archive className="size-3.5" aria-hidden />
+          {t("tasks.filterArchive")}
+        </Button>
         {quickFilter && (
           <Button
             variant="secondary"

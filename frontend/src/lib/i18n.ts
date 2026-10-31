@@ -354,6 +354,10 @@ const translations = {
   "tasks.calendars": { id: "Kalender", en: "Calendars", zh: "日历" },
   "tasks.filter": { id: "Filter", en: "Filter", zh: "筛选" },
   "tasks.filterClear": { id: "Hapus filter", en: "Clear filter", zh: "清除筛选" },
+  "tasks.filterArchive": { id: "Arsip", en: "Archive", zh: "归档" },
+  "tasks.filterArchiveOn": { id: "Hanya arsip", en: "Archived only", zh: "仅归档" },
+  "tasks.filterArchiveOff": { id: "Sembunyikan arsip", en: "Hide archived", zh: "隐藏归档" },
+  "tasks.archiveBadge": { id: "Arsip", en: "Archived", zh: "已归档" },
   "tasks.export": { id: "Ekspor", en: "Export", zh: "导出" },
   "tasks.exportAll": { id: "Semua akun", en: "All accounts", zh: "所有账号" },
   "tasks.exportHint": {

@@ -38,6 +38,7 @@ import {
   type TaskActivityRow,
   type TaskRow,
   type TaskTypeRow,
+  isTaskArchived,
 } from "./task-types";
 
 const DAY = 86_400_000;
@@ -471,6 +472,7 @@ export function TaskBoardView({
 
           {column.items.map((task) => {
             const overdue = task.status === "Belum" && task.dueDate < today;
+            const archived = isTaskArchived(task);
             const progress = Math.min(100, Math.max(0, task.progress || 0));
             const startText = formatTaskDate(task.startDate, language);
             const dueText = formatTaskDate(task.dueDate, language);
@@ -480,7 +482,26 @@ export function TaskBoardView({
               <div
                 key={task.id}
                 data-board-card="1"
-                className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs"
+                role="button"
+                tabIndex={0}
+                aria-label={task.title}
+                onClick={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (
+                    target.closest(
+                      "button, a, input, [role='menu'], [role='menuitem'], [data-no-open]",
+                    )
+                  ) {
+                    return;
+                  }
+                  onOpen(task);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  onOpen(task);
+                }}
+                className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-col gap-1">
@@ -497,14 +518,13 @@ export function TaskBoardView({
                           {t("tasks.overdue")}
                         </span>
                       )}
+                      {archived && (
+                        <span className="rounded-full bg-slate-500/12 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                          {t("tasks.archiveBadge")}
+                        </span>
+                      )}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => onOpen(task)}
-                      className="text-left text-sm font-medium"
-                    >
-                      <span className="line-clamp-2">{task.title}</span>
-                    </button>
+                    <span className="line-clamp-2 text-sm font-medium">{task.title}</span>
                     <span className="truncate text-[11px] text-muted-foreground">
                       {typeName(types, task.issueType, task.userId)} ·{" "}
                       {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}

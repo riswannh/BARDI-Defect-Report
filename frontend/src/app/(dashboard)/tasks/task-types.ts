@@ -1,6 +1,25 @@
 /** Tipe data + konstanta bersama untuk halaman Task Planner. */
 
 import type { TranslationKey } from "@/lib/i18n";
+import { isoToDate, todayISO } from "@/lib/task-dates";
+
+/** Umur maksimal task selesai sebelum dianggap arsip (hari). */
+export const ARCHIVE_AFTER_DAYS = 7;
+
+/**
+ * Task selesai lebih dari ARCHIVE_AFTER_DAYS hari dianggap arsip: hanya
+ * disembunyikan dari tab Tugas (Daftar/Papan), sementara Kalender dan kartu
+ * Ringkasan tetap memuatnya.
+ */
+export function isTaskArchived(task: TaskRow): boolean {
+  if (task.status !== "Selesai") return false;
+  const stamp = task.completedAt ?? task.updatedAt;
+  if (!stamp) return false;
+  const done = isoToDate(stamp.slice(0, 10));
+  const today = isoToDate(todayISO());
+  if (Number.isNaN(done.getTime()) || Number.isNaN(today.getTime())) return false;
+  return Math.round((today.getTime() - done.getTime()) / 86_400_000) > ARCHIVE_AFTER_DAYS;
+}
 
 export interface TaskRow {
   id: number;
