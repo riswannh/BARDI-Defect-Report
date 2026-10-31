@@ -644,6 +644,9 @@ export default function TasksPage() {
             types={types}
             onOpen={setDetailTask}
             onStatusChange={canWrite ? patchStatus : undefined}
+            onProgress={canWrite ? setProgressTask : undefined}
+            onEdit={canWrite ? setFormTask : undefined}
+            onDelete={canWrite ? setDeleteTask : undefined}
           />
         </TabsContent>
 

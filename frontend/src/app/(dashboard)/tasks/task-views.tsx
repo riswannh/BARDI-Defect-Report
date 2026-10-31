@@ -2,12 +2,17 @@
 
 import { useMemo, useState } from "react";
 import {
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleDashed,
   Clock,
   FileText,
   ListChecks,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
@@ -15,15 +20,21 @@ import { addDays, dateToISO, formatTaskDate, todayISO } from "@/lib/task-dates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   typeName,
+  DIFFICULTY_LABEL_KEYS,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   STATUS_LABEL_KEYS,
   TASK_STATUSES,
   priorityTone,
-  statusTone,
   type TaskActivityRow,
   type TaskRow,
   type TaskTypeRow,
@@ -418,13 +429,20 @@ export function TaskBoardView({
   types,
   onOpen,
   onStatusChange,
+  onProgress,
+  onEdit,
+  onDelete,
 }: {
   rows: TaskRow[];
   types: TaskTypeRow[];
   onOpen: (task: TaskRow) => void;
   onStatusChange?: (task: TaskRow, status: string) => void;
+  onProgress?: (task: TaskRow) => void;
+  onEdit?: (task: TaskRow) => void;
+  onDelete?: (task: TaskRow) => void;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const today = todayISO();
   const columns = TASK_STATUSES.map((status) => ({
     status,
     items: rows
@@ -457,64 +475,144 @@ export function TaskBoardView({
             <p className="px-1 py-6 text-center text-xs text-muted-foreground">{t("tasks.noTasks")}</p>
           )}
 
-          {column.items.map((task) => (
-            <div
-              key={task.id}
-              className="group flex flex-col gap-1.5 rounded-lg border bg-card p-2.5 shadow-xs"
-            >
-              <button
-                type="button"
-                onClick={() => onOpen(task)}
-                className="flex flex-col items-start gap-1 text-left"
+          {column.items.map((task) => {
+            const overdue = task.status === "Belum" && task.dueDate < today;
+            const progress = Math.min(100, Math.max(0, task.progress || 0));
+            const startText = formatTaskDate(task.startDate, language);
+            const dueText = formatTaskDate(task.dueDate, language);
+            const dateRange = startText ? `${startText} → ${dueText}` : dueText;
+
+            return (
+              <div
+                key={task.id}
+                data-board-card="1"
+                className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs"
               >
-                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  #{task.id}
-                  <Badge variant="outline" className={cn("h-5 px-1.5 text-[10px]", priorityTone(task.priority))}>
-                    {t(PRIORITY_LABEL_KEYS[task.priority] ?? "tasks.priorityNormal")}
-                  </Badge>
-                </span>
-                <span className="line-clamp-2 text-sm font-medium">{task.title}</span>
-              </button>
-
-              <span className="inline-flex w-fit items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                {typeName(types, task.issueType, task.userId)}
-              </span>
-
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
-                  {(task.ownerName || "?").slice(0, 2)}
-                </span>
-                <span className="truncate">{task.ownerName || "—"}</span>
-                <span className="ml-auto flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {formatTaskDate(task.dueDate)}
-                </span>
-              </div>
-
-              {onStatusChange && (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={t("tasks.movePrev")}
-                    disabled={index === 0}
-                    onClick={() => onStatusChange(task, TASK_STATUSES[index - 1])}
-                  >
-                    <ChevronLeft className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={t("tasks.moveNext")}
-                    disabled={index === TASK_STATUSES.length - 1}
-                    onClick={() => onStatusChange(task, TASK_STATUSES[index + 1])}
-                  >
-                    <ChevronRight className="size-3.5" />
-                  </Button>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                      #{task.id}
+                      <Badge
+                        variant="outline"
+                        className={cn("h-5 px-1.5 text-[10px]", priorityTone(task.priority))}
+                      >
+                        {t(PRIORITY_LABEL_KEYS[task.priority] ?? "tasks.priorityNormal")}
+                      </Badge>
+                      {overdue && (
+                        <span className="rounded-full bg-red-500/12 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300">
+                          {t("tasks.overdue")}
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(task)}
+                      className="text-left text-sm font-medium"
+                    >
+                      <span className="line-clamp-2">{task.title}</span>
+                    </button>
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {typeName(types, task.issueType, task.userId)} ·{" "}
+                      {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}
+                    </span>
+                  </div>
+                  {(onEdit || onDelete) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t("tasks.colActions")}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                        }
+                      >
+                        <MoreVertical className="size-3.5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-36 p-1">
+                        {onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(task)}>
+                            <Pencil className="size-3.5" />
+                            {t("common.edit")}
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
+                            <Trash2 className="size-3.5" />
+                            {t("common.delete")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+
+                <div className="flex items-center gap-2">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                    {progress}%
+                  </span>
+                  {onProgress && (
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={t("tasks.updateProgress")}
+                      onClick={() => onProgress(task)}
+                      className="-mr-1 shrink-0 text-muted-foreground"
+                    >
+                      <TrendingUp className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <CalendarDays className="size-3 shrink-0" />
+                  <span className={cn("truncate", overdue && "text-red-600 dark:text-red-400")}>
+                    {dateRange}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t pt-2">
+                  <div className="flex min-w-0 items-center gap-1">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-semibold uppercase">
+                      {(task.ownerName || "?").slice(0, 2)}
+                    </span>
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {task.ownerName || "—"}
+                    </span>
+                  </div>
+                  {onStatusChange && (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t("tasks.movePrev")}
+                        disabled={index === 0}
+                        onClick={() => onStatusChange(task, TASK_STATUSES[index - 1])}
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t("tasks.moveNext")}
+                        disabled={index === TASK_STATUSES.length - 1}
+                        onClick={() => onStatusChange(task, TASK_STATUSES[index + 1])}
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
