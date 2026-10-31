@@ -44,6 +44,8 @@ export const user = sqliteTable("user", {
   username: text("username").unique(),
   displayUsername: text("displayUsername"),
   // app fields
+  /** Jabatan/posisi akun, teks bebas; tidak dipakai untuk login. */
+  jabatan: text("jabatan").notNull().default(""),
   isAdmin: integer("isAdmin", { mode: "boolean" }).notNull().default(false),
   factoryId: integer("factoryId").references(() => factories.id, {
     onDelete: "set null",

@@ -52,8 +52,13 @@ import { Download, FileDown, History, Pencil, Plus, Trash2, Upload } from "lucid
 
 interface UserRow {
   id: string;
-  username: string | null;
+  /** Nama tampilan (boleh spasi) — yang muncul di UI. */
   name: string;
+  /** Kunci login, selalu lowercase. */
+  username: string | null;
+  /** Ejaan username asli seperti diketik. */
+  displayUsername: string | null;
+  jabatan: string;
   isAdmin: boolean;
   factoryId: number | null;
   factoryName: string | null;
@@ -63,7 +68,9 @@ interface UserRow {
 }
 
 interface UserForm {
+  name: string;
   username: string;
+  jabatan: string;
   password: string;
   factoryId: string;
   /** "admin" atau "role:<id>". */
@@ -71,7 +78,9 @@ interface UserForm {
 }
 
 const emptyUserForm: UserForm = {
+  name: "",
   username: "",
+  jabatan: "",
   password: "",
   factoryId: "",
   role: "admin",
@@ -145,7 +154,9 @@ export default function UsersPage() {
   function openEdit(u: UserRow) {
     setEditingId(u.id);
     setForm({
-      username: u.username ?? u.name,
+      name: u.name,
+      username: u.displayUsername ?? u.username ?? "",
+      jabatan: u.jabatan ?? "",
       password: "",
       factoryId: u.factoryId ? String(u.factoryId) : "",
       role: u.isAdmin ? "admin" : u.roleId ? `role:${u.roleId}` : "none",
@@ -161,12 +172,20 @@ export default function UsersPage() {
       isAdmin || form.role === "none"
         ? null
         : Number(form.role.replace("role:", ""));
-    if (!form.username.trim()) return;
+    if (!form.name.trim() || !form.username.trim()) return;
+
+    // Nama dan username dua hal terpisah: nama tampilan boleh spasi, username
+    // kunci login (server menormalkan jadi lowercase & menyimpan ejaan asli).
+    const name = form.name.trim();
+    const username = form.username.trim();
+    const jabatan = form.jabatan.trim();
 
     try {
       if (editingId === null) {
         await apiPost("/api/users", {
-          username: form.username.trim(),
+          name,
+          username,
+          jabatan,
           password: form.password,
           factoryId,
           isAdmin,
@@ -174,7 +193,9 @@ export default function UsersPage() {
         });
       } else {
         await apiPatch(`/api/users/${editingId}`, {
-          username: form.username.trim(),
+          name,
+          username,
+          jabatan,
           ...(form.password ? { password: form.password } : {}),
           factoryId,
           isAdmin,
@@ -334,7 +355,9 @@ export default function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>{t("common.name")}</TableHead>
                     <TableHead>{t("common.username")}</TableHead>
+                    <TableHead>{t("common.jabatan")}</TableHead>
                     <TableHead>{t("common.factory")}</TableHead>
                     <TableHead>{t("common.role")}</TableHead>
                     <TableHead className="w-24"></TableHead>
@@ -344,6 +367,12 @@ export default function UsersPage() {
                   {pagedUsers.map((u) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.name}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {u.username ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {u.jabatan || "-"}
+                      </TableCell>
                       <TableCell>
                         {u.isAdmin ? "-" : u.factoryName ?? "-"}
                       </TableCell>
@@ -453,6 +482,15 @@ export default function UsersPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
+              <Label>{t("common.name")}</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder={t("users.namePlaceholder")}
+              />
+              <p className="text-xs text-muted-foreground">{t("users.nameHint")}</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
               <Label>{t("common.username")}</Label>
               <Input
                 value={form.username}
@@ -460,6 +498,19 @@ export default function UsersPage() {
                   setForm((f) => ({ ...f, username: e.target.value }))
                 }
                 placeholder="username"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("users.usernameHint")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>{t("common.jabatan")}</Label>
+              <Input
+                value={form.jabatan}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, jabatan: e.target.value }))
+                }
+                placeholder={t("profile.jabatanPlaceholder")}
               />
             </div>
             <div className="flex flex-col gap-1.5">

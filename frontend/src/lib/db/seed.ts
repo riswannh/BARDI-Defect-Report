@@ -212,24 +212,28 @@ async function main() {
 
   console.log("Seeding users...");
   await createUserAccount({
+    name: "Administrator",
     username: "admin",
     password: "admin123",
     isAdmin: true,
     factoryId: null,
   });
   await createUserAccount({
+    name: "Pabrik Jakarta",
     username: "pabrik_jkt",
     password: "pabrik123",
     isAdmin: false,
     factoryId: factoryId(0),
   });
   await createUserAccount({
+    name: "Pabrik Surabaya",
     username: "pabrik_sby",
     password: "pabrik123",
     isAdmin: false,
     factoryId: factoryId(1),
   });
   await createUserAccount({
+    name: "Pabrik Bandung",
     username: "pabrik_bdg",
     password: "pabrik123",
     isAdmin: false,

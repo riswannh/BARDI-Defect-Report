@@ -57,6 +57,8 @@ const translations = {
   },
   "common.template": { id: "Template", en: "Template", zh: "模板" },
   "common.username": { id: "Username", en: "Username", zh: "用户名" },
+  "common.name": { id: "Nama", en: "Name", zh: "姓名" },
+  "common.jabatan": { id: "Jabatan", en: "Position", zh: "职位" },
   "common.password": { id: "Password", en: "Password", zh: "密码" },
   "common.role": { id: "Peran", en: "Role", zh: "角色" },
   "common.admin": { id: "Admin", en: "Admin", zh: "管理员" },
@@ -436,7 +438,83 @@ const translations = {
     zh: "工厂 · {name}",
   },
   "header.logout": { id: "Keluar", en: "Log out", zh: "退出" },
+  "header.profile": { id: "Profil saya", en: "My profile", zh: "我的资料" },
   "header.language": { id: "Bahasa", en: "Language", zh: "语言" },
+
+  // Profil (halaman milik user sendiri)
+  "profile.title": { id: "Profil Saya", en: "My Profile", zh: "我的资料" },
+  "profile.description": {
+    id: "Kelola nama, username, jabatan, dan password akun Anda sendiri.",
+    en: "Manage your own name, username, position, and password.",
+    zh: "管理您自己的姓名、用户名、职位和密码。",
+  },
+  "profile.identityTitle": {
+    id: "Data Diri",
+    en: "Personal Data",
+    zh: "个人资料",
+  },
+  "profile.identityDescription": {
+    id: "Nama dan jabatan tampil di aplikasi. Username dipakai untuk login.",
+    en: "Name and position appear in the app. Username is used to sign in.",
+    zh: "姓名和职位会显示在应用中。用户名用于登录。",
+  },
+  "profile.passwordTitle": {
+    id: "Ubah Password",
+    en: "Change Password",
+    zh: "修改密码",
+  },
+  "profile.passwordDescription": {
+    id: "Masukkan password saat ini untuk membuat password baru.",
+    en: "Enter your current password to set a new one.",
+    zh: "请输入当前密码以设置新密码。",
+  },
+  "profile.currentPassword": {
+    id: "Password saat ini",
+    en: "Current password",
+    zh: "当前密码",
+  },
+  "profile.newPassword": {
+    id: "Password baru",
+    en: "New password",
+    zh: "新密码",
+  },
+  "profile.confirmPassword": {
+    id: "Ulangi password baru",
+    en: "Repeat new password",
+    zh: "重复新密码",
+  },
+  "profile.passwordMismatch": {
+    id: "Password baru dan ulangannya tidak sama.",
+    en: "The new password and its confirmation do not match.",
+    zh: "新密码与确认密码不一致。",
+  },
+  "profile.passwordMinLength": {
+    id: "Password baru minimal 6 karakter.",
+    en: "The new password must be at least 6 characters.",
+    zh: "新密码至少需要 6 个字符。",
+  },
+  "profile.identitySaved": {
+    id: "Data diri tersimpan.",
+    en: "Personal data saved.",
+    zh: "个人资料已保存。",
+  },
+  "profile.passwordSaved": {
+    id: "Password berhasil diubah.",
+    en: "Password changed successfully.",
+    zh: "密码修改成功。",
+  },
+  "profile.usernameHint": {
+    id: "Username dipakai untuk login (huruf kecil, tanpa spasi di awal/akhir).",
+    en: "The username is used to sign in (lowercase, no leading/trailing spaces).",
+    zh: "用户名用于登录（小写，首尾无空格）。",
+  },
+  "profile.jabatanPlaceholder": {
+    id: "Contoh: Operator Produksi",
+    en: "e.g. Production Operator",
+    zh: "例如：生产操作员",
+  },
+  "profile.roleLabel": { id: "Peran", en: "Role", zh: "角色" },
+  "profile.factoryLabel": { id: "Pabrik", en: "Factory", zh: "工厂" },
 
   // Login
   "login.title": {
@@ -1997,6 +2075,21 @@ const translations = {
   },
   "users.addUser": { id: "Tambah User", en: "Add User", zh: "添加用户" },
   "users.editUser": { id: "Ubah User", en: "Edit User", zh: "编辑用户" },
+  "users.namePlaceholder": {
+    id: "Contoh: Budi Santoso",
+    en: "e.g. Budi Santoso",
+    zh: "例如：Budi Santoso",
+  },
+  "users.nameHint": {
+    id: "Nama tampilan di aplikasi, boleh spasi dan huruf besar.",
+    en: "Display name in the app; spaces and capitals allowed.",
+    zh: "应用中的显示名称，可包含空格和大写字母。",
+  },
+  "users.usernameHint": {
+    id: "Kunci login, unik, tanpa spasi di awal/akhir.",
+    en: "Sign-in key, unique, no leading/trailing spaces.",
+    zh: "登录凭据，唯一，首尾无空格。",
+  },
   "users.passwordHint": {
     id: "Password (kosongkan jika tidak diubah)",
     en: "Password (leave blank to keep unchanged)",

@@ -87,7 +87,7 @@ async function logActivity(input: {
     taskId: input.taskId,
     taskTitle: input.taskTitle,
     actorId: input.user.id,
-    actorName: input.user.username,
+    actorName: input.user.name || input.user.username,
     action: input.action,
     changes: input.changes?.length ? JSON.stringify(input.changes) : "",
     note: input.note ?? "",
@@ -191,14 +191,14 @@ export async function tasksPOST(req: NextRequest) {
   // Admin boleh membuat task untuk akun lain (pilih pemilik di form); akun
   // biasa selalu membuat task untuk dirinya sendiri.
   const ownerId = guard.user.isAdmin && raw.ownerId ? raw.ownerId : guard.user.id;
-  let ownerName = guard.user.username;
+  let ownerName = guard.user.name;
   if (ownerId !== guard.user.id) {
     const [owner] = await db
-      .select({ username: userTable.username })
+      .select({ name: userTable.name, username: userTable.username })
       .from(userTable)
       .where(eq(userTable.id, ownerId));
     if (!owner) return jsonError("Akun pemilik task tidak ditemukan.", 400);
-    ownerName = owner.username ?? guard.user.username;
+    ownerName = owner.name || owner.username || guard.user.name;
   }
 
   const now = new Date();
@@ -281,12 +281,12 @@ export async function tasksPATCH(
       return jsonError("Hanya admin yang bisa memindahkan task ke akun lain.", 403);
     }
     const [owner] = await db
-      .select({ username: userTable.username })
+      .select({ name: userTable.name, username: userTable.username })
       .from(userTable)
       .where(eq(userTable.id, patch.ownerId));
     if (!owner) return jsonError("Akun pemilik task tidak ditemukan.", 400);
     nextOwnerId = patch.ownerId;
-    nextOwnerName = owner.username ?? current.ownerName;
+    nextOwnerName = owner.name || owner.username || current.ownerName;
   }
 
   const now = new Date();
@@ -455,7 +455,7 @@ export async function taskCalendarsGET() {
     .filter((row) => row.isAdmin || row.canWrite === true)
     .map((row) => ({
       id: row.id,
-      name: row.username || row.name || row.id,
+      name: row.name || row.username || row.id,
       color: row.calendarColor ?? null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -496,7 +496,7 @@ export async function taskOwnersGET() {
     .filter((row) => guard.user.isAdmin || row.id === guard.user.id)
     .map((row) => ({
       id: row.id,
-      name: row.username || row.name || row.id,
+      name: row.name || row.username || row.id,
       color: null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

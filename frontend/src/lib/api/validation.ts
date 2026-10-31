@@ -490,20 +490,55 @@ export const currencyRatesSchema = z.object({
   rmb: z.coerce.number().min(0),
 });
 
+/**
+ * Username = kunci login, terpisah dari Nama. Aturan karakternya sama dengan
+ * plugin username better-auth (`usernameValidator` di src/lib/auth.ts) supaya
+ * form, API, dan impor Excel menolak masukan yang sama.
+ */
+export const USERNAME_PATTERN = /^[a-zA-Z0-9 _.-]+$/;
+
+const usernameField = z
+  .string()
+  .trim()
+  .min(3)
+  .max(64)
+  .regex(USERNAME_PATTERN, "Username hanya boleh huruf, angka, spasi, titik, garis bawah, dan strip.");
+
+/** Nama tampilan; boleh spasi dan huruf besar, tidak harus unik. */
+const namaField = z.string().trim().min(1).max(80);
+/** Jabatan/posisi, teks bebas. */
+const jabatanField = z.string().trim().max(80);
+
 export const userCreateSchema = z.object({
-  username: z.string().trim().min(3),
+  name: namaField,
+  username: usernameField,
   password: z.string().min(6),
+  jabatan: jabatanField.default(""),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().default(false),
   roleId: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export const userUpdateSchema = z.object({
-  username: z.string().trim().min(3).optional(),
+  name: namaField.optional(),
+  username: usernameField.optional(),
   password: z.string().min(6).optional(),
+  jabatan: jabatanField.optional(),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().optional(),
   roleId: z.coerce.number().int().positive().nullable().optional(),
+});
+
+/**
+ * Profil sendiri. Nama dan username sengaja dua field terpisah — mengubah salah
+ * satu tidak pernah menyentuh yang lain.
+ */
+export const profileUpdateSchema = z.object({
+  name: namaField.optional(),
+  username: usernameField.optional(),
+  jabatan: jabatanField.optional(),
+  currentPassword: z.string().max(200).optional(),
+  newPassword: z.string().min(6).max(200).optional(),
 });
 
 /**

@@ -214,7 +214,7 @@ const DEFECT_HEADERS = [
 
 const SALES_HEADERS = ["Produk", "Pabrik", "Bulan", "Quantity", "Value"];
 
-const USER_HEADERS = ["Username", "Password", "Pabrik", "Admin"];
+const USER_HEADERS = ["Nama", "Username", "Password", "Jabatan", "Pabrik", "Admin"];
 
 /** Kolom PO; PPN, Price/pcs, Currency, dan Total hanya ikut untuk admin. */
 const PO_HEADERS = [
@@ -523,7 +523,9 @@ export async function excelExport(moduleName: string, req: NextRequest) {
     if (!admin.ok) return admin.response;
     const rows = await db
       .select({
+        name: user.name,
         username: user.username,
+        jabatan: user.jabatan,
         factoryName: factories.name,
         isAdmin: user.isAdmin,
       })
@@ -531,12 +533,14 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       .leftJoin(factories, eq(user.factoryId, factories.id))
       .orderBy(user.createdAt);
     const data = rows.map((row) => ({
+      Nama: row.name,
       Username: row.username ?? "",
+      Jabatan: row.jabatan,
       Pabrik: row.factoryName ?? "",
       Admin: row.isAdmin ? "true" : "false",
     }));
     return downloadResponse(
-      sheetBuffer(data, ["Username", "Pabrik", "Admin"]),
+      sheetBuffer(data, ["Nama", "Username", "Jabatan", "Pabrik", "Admin"]),
       "users.xlsx"
     );
   }
@@ -1313,7 +1317,14 @@ async function importUsers(sheet: SheetRow[]) {
     }
 
     try {
-      await createUserAccount({ username, password, isAdmin, factoryId });
+      await createUserAccount({
+        name: cellString(row.Nama) || username,
+        username,
+        password,
+        jabatan: cellString(row.Jabatan),
+        isAdmin,
+        factoryId,
+      });
       existing.add(username.toLowerCase());
       result.inserted++;
     } catch (err) {
@@ -1642,8 +1653,10 @@ export async function excelTemplate(moduleName: string) {
   }
   if (moduleName === "users") {
     const example: SheetRow = {
+      Nama: "Budi Santoso",
       Username: "pabrik_jkt",
       Password: "rahasia123",
+      Jabatan: "Operator Produksi",
       Pabrik: "Pabrik Jakarta",
       Admin: "false",
     };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n";
 import { useApi } from "@/lib/use-api";
@@ -15,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Menu, ShieldCheck, ShieldAlert, User } from "lucide-react";
+import { LogOut, Menu, ShieldCheck, ShieldAlert, User, UserRound } from "lucide-react";
 
 export function Header({
   mobileNavOpen,
@@ -24,8 +25,9 @@ export function Header({
   mobileNavOpen: boolean;
   onMobileNavOpenChange: (open: boolean) => void;
 }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, profile, logout, isAdmin } = useAuth();
   const { t } = useLanguage();
+  const router = useRouter();
   const { data: factories } = useApi<Factory[]>("/api/factories");
 
   if (!user) return null;
@@ -33,6 +35,9 @@ export function Header({
   const factoryName = user.factoryId
     ? factories?.find((f) => f.id === user.factoryId)?.name ?? "-"
     : t("header.allFactories");
+  // Pojok kanan menampilkan NAMA (bukan username); username hanya untuk login.
+  const displayName = profile?.name || user.name || "";
+  const jabatan = profile?.jabatan ?? "";
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 shadow-[0_1px_0_0_oklch(0.731_0.104_203.2/0.06)] backdrop-blur-md sm:px-6">
@@ -74,15 +79,28 @@ export function Header({
             <span className="flex size-5 items-center justify-center rounded-full bg-primary/12 text-primary">
               <User className="size-3.5" />
             </span>
-            {user.username}
+            <span className="max-w-40 truncate">{displayName}</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-xl">
+          <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuGroup>
               <DropdownMenuLabel>
-                {isAdmin
-                  ? t("header.administrator")
-                  : t("header.factoryLabel", { name: factoryName })}
+                <span className="block truncate text-sm font-medium">{displayName}</span>
+                {jabatan && (
+                  <span className="block truncate text-xs font-normal text-muted-foreground">
+                    {jabatan}
+                  </span>
+                )}
+                <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
+                  {isAdmin
+                    ? t("header.administrator")
+                    : t("header.factoryLabel", { name: factoryName })}
+                </span>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                <UserRound className="size-4" />
+                {t("header.profile")}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={logout}>
                 <LogOut className="size-4" />

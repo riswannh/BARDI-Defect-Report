@@ -18,6 +18,9 @@ import {
 
 export interface SessionUser {
   id: string;
+  /** Nama tampilan (boleh spasi/huruf besar) — yang ditampilkan di UI. */
+  name: string;
+  /** Kunci login, selalu lowercase. */
   username: string;
   isAdmin: boolean;
   factoryId: number | null;
@@ -73,7 +76,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   return {
     id: u.id,
-    username: u.username ?? u.name,
+    name: u.name,
+    username: u.username ?? "",
     isAdmin,
     factoryId: u.factoryId ?? null,
     roleId,

@@ -182,7 +182,7 @@ export async function taskExportGET(req: NextRequest) {
   prependSheet(workbook, detail, DETAIL_HEADERS, "Detail Task");
 
   const label = ownerId
-    ? slug(rows[0]?.ownerName ?? guard.user.username ?? "akun")
+    ? slug(rows[0]?.ownerName || guard.user.name || guard.user.username || "akun")
     : "semua-akun";
   return downloadResponse(workbook, `task-planner-${label}-${today.replace(/-/g, "")}.xlsx`);
 }

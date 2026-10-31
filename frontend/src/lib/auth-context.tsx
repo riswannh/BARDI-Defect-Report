@@ -13,13 +13,23 @@ import {
 
 export interface AppUser {
   id: string;
+  /** Nama tampilan dari sesi (sumber cepat sebelum `/api/me` menjawab). */
+  name: string;
   username: string;
   isAdmin: boolean;
   factoryId: number | null;
 }
 
-/** Ringkasan hak akses dari `/api/me`. */
+/** Ringkasan akun + hak akses dari `/api/me`. */
 export interface MeProfile {
+  /** Nama tampilan (boleh spasi/huruf besar) — yang dipakai di UI. */
+  name: string;
+  /** Kunci login, selalu lowercase. */
+  username: string;
+  /** Ejaan username asli seperti diketik user. */
+  displayUsername: string;
+  /** Jabatan/posisi, teks bebas (boleh kosong). */
+  jabatan: string;
   roleId: number | null;
   roleCode: string | null;
   roleName: string | null;
@@ -37,6 +47,8 @@ interface AuthContextValue {
   roleName: string | null;
   hideFinance: boolean;
   can: (menu: MenuKey, mode?: AccessMode) => boolean;
+  /** Muat ulang `/api/me` setelah profil sendiri disimpan. */
+  reloadProfile: () => void;
   logout: () => Promise<void>;
 }
 
@@ -49,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // `?u=` membuat useApi memuat ulang saat akun berganti tanpa reload penuh
   // (sign-out lalu sign-in di tab yang sama) — tanpa itu menu sempat memakai
   // hak akses akun sebelumnya.
-  const { data: profile } = useApi<MeProfile>(
+  const { data: profile, reload: reloadProfile } = useApi<MeProfile>(
     session?.user ? `/api/me?u=${session.user.id}` : null
   );
 
@@ -57,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user: AppUser | null = sessionUser
     ? {
         id: sessionUser.id,
-        username: sessionUser.username ?? sessionUser.name ?? "",
+        name: sessionUser.name ?? "",
+        username: sessionUser.username ?? "",
         isAdmin: Boolean(sessionUser.isAdmin),
         factoryId: sessionUser.factoryId ?? null,
       }
@@ -80,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roleName: profile?.roleName ?? null,
         hideFinance: profile?.hideFinance ?? false,
         can: (menu, mode = "read") => hasAccess(permissions, menu, mode),
+        reloadProfile,
         logout,
       }}
     >

@@ -76,7 +76,7 @@ const ARCHIVE_FILTER = "__arsip";
 
 export default function TasksPage() {
   const { t, language } = useLanguage();
-  const { can, isAdmin, user } = useAuth();
+  const { can, isAdmin, user, profile } = useAuth();
   const canWrite = can("tasks", "write");
   const today = todayISO();
 
@@ -664,7 +664,7 @@ export default function TasksPage() {
         <TabsContent value="settings" className="mt-4">
           <TaskSettingsView
             types={types}
-            me={{ id: user?.id ?? "", name: user?.username ?? "" }}
+            me={{ id: user?.id ?? "", name: profile?.name || user?.name || "" }}
             users={calendarData ?? []}
             isAdmin={isAdmin}
             onChanged={() => {
@@ -679,7 +679,7 @@ export default function TasksPage() {
         <TaskFormDialog
           task={formTask}
           types={types}
-          me={{ id: user?.id ?? "", name: user?.username ?? "" }}
+          me={{ id: user?.id ?? "", name: profile?.name || user?.name || "" }}
           users={calendarData ?? []}
           isAdmin={isAdmin}
           onSaved={() => {

@@ -314,7 +314,7 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
     nominalnya.
 - **Tracing import**: respons import berisi `errors[]` & `skippedDetails[]` (baris, data, alasan) → ditampilkan di dialog `ImportResultDialog`, bisa diunduh CSV, dan dicatat di log server dengan prefix `[import:{module}]`
 - **Hapus semua data**: `DELETE /api/{module}` (admin only) — backup otomatis `backup-{module}-{timestamp}.db` dibuat dulu di folder data; master data gagal dihapus (409) jika masih dipakai defect/sales; hapus semua users mengecualikan akun sendiri
-- **Import users**: pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`
+- **Import users**: kolom `Nama` (wajib, jatuh ke username bila kosong) dan `Jabatan` (opsional) ada di template; pabrik yang belum ada otomatis dibuat; username boleh berisi spasi (validator custom), email disintesis `<username>@pabrik.local`
 
 ## Konvensi Aplikasi
 
@@ -324,6 +324,10 @@ Jika `git` atau `gh` tidak dikenali di PATH, pakai path lengkap:
 - Value (IDR) hanya tampil untuk role admin (dihapus dari respons API untuk role pabrik)
 - Data defect pakai timestamp lengkap (tanggal + jam); data sales per bulan (avg per hari untuk chart harian/mingguan/rentang)
 - Halaman Report mengambil data dari `GET /api/report` (recap + buckets + totals dihitung di server)
+- **Identitas akun — Nama ≠ Username** (koreksi user, JANGAN disamakan lagi): `user.name` adalah Nama tampilan (teks bebas, mudah berubah), `user.username` adalah kunci login (selalu lowercase, validasi `/^[a-zA-Z0-9 _.-]+$/`). Jangan menyalin salah satu ke yang lain saat buat/edit akun, dan jangan memakai pola `name || username` untuk identitas. `displayUsername` menyimpan ejaan asli username untuk ditampilkan di form.
+- **Semua label orang di UI memakai Nama**: header pojok kanan, dropdown header, Filter Pembuat dan Filter Kalender di halaman Tugas (`taskOwnersGET`/`taskCalendarsGET`), snapshot `ownerName`/`actorName` di task & log aktivitas, `updatedByName` dokumen, dan ekspor. Yang butuh kunci login (login, impor, diagnosa) tetap memakai username.
+- **Jabatan**: kolom teks bebas `user.jabatan` (`notNull().default("")`), murni tampilan — TIDAK dipakai untuk otorisasi maupun pemetaan role.
+- **Profil sendiri**: `GET`/`PATCH /api/profile` (`src/lib/api/profile.ts`, route `src/app/api/profile/route.ts`) untuk Nama, Username, Jabatan. Ganti password lewat endpoint yang sama dan WAJIB menyertakan `currentPassword` — diverifikasi server lewat `auth.api.changePassword({revokeOtherSessions:false})`. Admin mengganti data user lain lewat `PATCH /api/users/[id]`; reset password di sana tidak butuh password lama. Sesi berjalan tidak diputus setelah ganti username/password. Setelah simpan dari halaman `/profile`, panggil `reloadProfile()` dari `useAuth()` supaya header langsung berubah.
 
 ## Frontend (Base UI) — JEBAKAN YANG SUDAH TERJADI
 

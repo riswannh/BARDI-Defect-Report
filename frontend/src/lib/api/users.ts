@@ -9,12 +9,30 @@ import { backupDatabase } from "@/lib/api/bulk";
 import { userCreateSchema, userUpdateSchema } from "@/lib/api/validation";
 import { PABRIK_ROLE_CODE } from "@/lib/permissions";
 
-function syntheticEmail(username: string) {
+export function syntheticEmail(username: string) {
   const local = username
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, ".")
     .replace(/^[._-]+|[._-]+$/g, "");
   return `${local || "user"}@pabrik.local`;
+}
+
+/** Username disimpan lowercase (kunci login), ejaan asli masuk ke displayUsername. */
+export function normalizeUsername(username: string) {
+  return username.trim().toLowerCase();
+}
+
+/** Cek username sudah dipakai akun lain (case-insensitive). */
+export async function usernameTaken(username: string, exceptId?: string) {
+  const rows = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(
+      exceptId
+        ? and(eq(user.username, normalizeUsername(username)), ne(user.id, exceptId))
+        : eq(user.username, normalizeUsername(username))
+    );
+  return rows.length > 0;
 }
 
 /** Jumlah super admin — dipakai supaya admin terakhir tidak bisa dicabut. */
@@ -27,8 +45,11 @@ async function adminCount() {
 }
 
 export async function createUserAccount(input: {
+  /** Nama tampilan (boleh spasi/huruf besar); TIDAK dipakai untuk login. */
+  name: string;
   username: string;
   password: string;
+  jabatan?: string;
   isAdmin: boolean;
   factoryId: number | null;
   roleId?: number | null;
@@ -37,7 +58,7 @@ export async function createUserAccount(input: {
     body: {
       email: syntheticEmail(input.username),
       password: input.password,
-      name: input.username,
+      name: input.name,
       username: input.username,
     },
   });
@@ -48,6 +69,7 @@ export async function createUserAccount(input: {
       isAdmin: input.isAdmin,
       factoryId: input.factoryId,
       roleId: input.roleId ?? null,
+      jabatan: input.jabatan ?? "",
     })
     .where(eq(user.id, result.user.id));
 
@@ -62,7 +84,9 @@ export async function usersGET() {
     .select({
       id: user.id,
       username: user.username,
+      displayUsername: user.displayUsername,
       name: user.name,
+      jabatan: user.jabatan,
       isAdmin: user.isAdmin,
       factoryId: user.factoryId,
       factoryName: factories.name,
@@ -84,10 +108,10 @@ export async function usersPOST(req: NextRequest) {
 
   const parsed = userCreateSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return jsonError("Data user tidak valid (password minimal 6 karakter).", 422);
+    return jsonError("Data user tidak valid (nama wajib, password minimal 6 karakter).", 422);
   }
 
-  const { username, password, isAdmin } = parsed.data;
+  const { username, password, isAdmin, name, jabatan } = parsed.data;
   const factoryId = isAdmin ? null : parsed.data.factoryId ?? null;
   let roleId = isAdmin ? null : parsed.data.roleId ?? null;
   if (!isAdmin && roleId === null) {
@@ -100,21 +124,22 @@ export async function usersPOST(req: NextRequest) {
     roleId = fallback?.id ?? null;
   }
 
-  const existing = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.username, username));
-  if (existing.length > 0) return jsonError("Username sudah ada.", 409);
+  if (await usernameTaken(username)) return jsonError("Username sudah ada.", 409);
 
   try {
     const id = await createUserAccount({
+      name,
       username,
       password,
+      jabatan,
       isAdmin,
       factoryId,
       roleId,
     });
-    return jsonOk({ id, username, isAdmin, factoryId, roleId }, 201);
+    return jsonOk(
+      { id, name, username: normalizeUsername(username), jabatan, isAdmin, factoryId, roleId },
+      201
+    );
   } catch (err) {
     return jsonError(
       err instanceof Error ? err.message : "Gagal membuat user.",
@@ -133,14 +158,21 @@ export async function usersPATCH(
   const { id } = await ctx.params;
   const parsed = userUpdateSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return jsonError("Data user tidak valid (password minimal 6 karakter).", 422);
+    return jsonError("Data user tidak valid (nama wajib, password minimal 6 karakter).", 422);
   }
 
   const rows = await db.select().from(user).where(eq(user.id, id));
   if (rows.length === 0) return jsonError("User tidak ditemukan.", 404);
   const current = rows[0];
 
-  const username = parsed.data.username ?? current.username ?? "";
+  // Nama tampilan dan username terpisah: mengubah salah satu tidak menyentuh
+  // yang lain. Username tetap disimpan lowercase, ejaan asli ke displayUsername.
+  const name = parsed.data.name ?? current.name;
+  const jabatan = parsed.data.jabatan ?? current.jabatan;
+  const username = parsed.data.username
+    ? normalizeUsername(parsed.data.username)
+    : current.username ?? "";
+  const usernameChanged = Boolean(current.username) && username !== current.username;
   const isAdmin = parsed.data.isAdmin ?? current.isAdmin;
   const factoryId = isAdmin
     ? null
@@ -157,22 +189,22 @@ export async function usersPATCH(
     return jsonError("Minimal harus ada satu admin.", 400);
   }
 
-  if (parsed.data.username && parsed.data.username !== current.username) {
-    const duplicate = await db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.username, parsed.data.username));
-    if (duplicate.some((row) => row.id !== id)) {
-      return jsonError("Username sudah ada.", 409);
-    }
+  if (usernameChanged && (await usernameTaken(username, id))) {
+    return jsonError("Username sudah ada.", 409);
   }
 
   await db
     .update(user)
     .set({
-      username,
-      name: username,
-      email: syntheticEmail(username),
+      name,
+      jabatan,
+      ...(usernameChanged
+        ? {
+            username,
+            displayUsername: parsed.data.username?.trim() ?? username,
+            email: syntheticEmail(username),
+          }
+        : {}),
       isAdmin,
       factoryId,
       roleId,
@@ -191,7 +223,7 @@ export async function usersPATCH(
       );
   }
 
-  return jsonOk({ id, username, isAdmin, factoryId, roleId });
+  return jsonOk({ id, name, username, jabatan, isAdmin, factoryId, roleId });
 }
 
 export async function usersDELETE(

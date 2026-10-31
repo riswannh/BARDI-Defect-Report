@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+﻿import { desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { taskDocs } from "@/lib/db/schema";
@@ -30,8 +30,8 @@ export async function taskDocsPOST(req: NextRequest) {
     .values({
       ...parsed.data,
       ownerId: guard.user.id,
-      ownerName: guard.user.username,
-      updatedByName: guard.user.username,
+      ownerName: guard.user.name || guard.user.username,
+      updatedByName: guard.user.name || guard.user.username,
       createdAt: now,
       updatedAt: now,
     })
@@ -62,7 +62,7 @@ export async function taskDocsPATCH(req: NextRequest, ctx: { params: Promise<{ i
     .update(taskDocs)
     .set({
       ...parsed.data,
-      updatedByName: guard.user.username,
+      updatedByName: guard.user.name || guard.user.username,
       updatedAt: new Date(),
     })
     .where(eq(taskDocs.id, docId))
