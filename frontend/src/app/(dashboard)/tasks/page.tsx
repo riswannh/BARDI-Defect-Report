@@ -607,28 +607,24 @@ export default function TasksPage() {
             onQuickFilter={(key) => {
               setQuickFilter(key);
               setTab("tasks");
-              setOverrideView("list");
               setPage(1);
             }}
             onQuickStatus={(status) => {
               setQuickFilter(null);
               setStatusFilter(status);
               setTab("tasks");
-              setOverrideView("list");
               setPage(1);
             }}
             onQuickPriority={(priority) => {
               setQuickFilter(null);
               setPriorityFilter(priority);
               setTab("tasks");
-              setOverrideView("list");
               setPage(1);
             }}
             onQuickType={(code) => {
               setQuickFilter(null);
               setTypeFilter(code);
               setTab("tasks");
-              setOverrideView("list");
               setPage(1);
             }}
             onActivity={(taskId) => {
