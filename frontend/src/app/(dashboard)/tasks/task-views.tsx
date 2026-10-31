@@ -158,13 +158,15 @@ export function TaskSummaryView({
       priority,
       count: rows.filter((task) => task.priority === priority).length,
     }));
-    // Daftar tipe ikut master; kode lama yang sudah tak ada tetap dihitung.
-    const typeCodes = [
-      ...types.map((item) => item.code),
-      ...Array.from(new Set(rows.map((task) => task.issueType || "task"))).filter(
-        (code) => !types.some((item) => item.code === code)
-      ),
-    ];
+    // Daftar tipe ikut master; kode ganda antar-user digabung supaya tidak
+    // muncul baris kembar (dan key React bentrok), kode lama yang sudah tak
+    // ada di master tetap dihitung.
+    const typeCodes = Array.from(
+      new Set([
+        ...types.map((item) => item.code),
+        ...rows.map((task) => task.issueType || "task"),
+      ])
+    );
     const byType = typeCodes.map((type) => ({
       type,
       count: rows.filter((task) => (task.issueType || "task") === type).length,

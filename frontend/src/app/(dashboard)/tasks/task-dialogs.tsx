@@ -1,7 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { ArrowLeft, History } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { apiPatch } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
@@ -19,7 +20,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ACTION_LABEL_KEYS,
   DIFFICULTY_LABEL_KEYS,
@@ -217,13 +217,11 @@ export function TaskLogList({
   );
 }
 
-/** Detail satu task (pemilik, tanggal, prioritas, progres) + riwayat aktivitasnya. */
+/** Detail satu task (pemilik, tanggal, prioritas, progres); riwayat aktivitas dibuka lewat ikon. */
 export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
   const { t, language } = useLanguage();
-  const [tab, setTab] = useState("info");
-  /** Tinggi isi tab Informasi; tab Log memakai tinggi yang sama supaya dialog tidak melompat. */
-  const [panelHeight, setPanelHeight] = useState<number | null>(null);
-  const infoContentRef = useRef<HTMLDivElement | null>(null);
+  /** info = rincian task, log = riwayat aktivitas; keduanya tampil di dialog yang sama. */
+  const [view, setView] = useState<"info" | "log">("info");
   const { data: activityData } = useApi<TaskActivityRow[]>(
     `/api/tasks/activities?taskId=${task.id}&limit=50`
   );
@@ -252,21 +250,6 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
     fields.push({ label: t("tasks.detailCompleted"), value: formatStamp(task.completedAt, language) });
   }
 
-  // Tinggi panel mengikuti isi tab Informasi, lalu dipakai bersama oleh kedua tab:
-  // tab Log jadi setinggi rincian dan daftar log-nya sendiri yang menggulir.
-  useLayoutEffect(() => {
-    const node = infoContentRef.current;
-    if (!node) return;
-    const sync = () => {
-      const next = node.offsetHeight;
-      if (next > 0) setPanelHeight((prev) => (prev === next ? prev : next));
-    };
-    sync();
-    const observer = new ResizeObserver(sync);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [tab]);
-
   return (
     <Dialog
       open
@@ -275,119 +258,85 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
       }}
     >
       <DialogContent className="flex max-h-[85vh] flex-col gap-4 overflow-hidden sm:max-w-2xl">
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="text-lg font-semibold leading-snug break-words">{task.title}</DialogTitle>
-          <DialogDescription className="text-[11px] font-medium uppercase tracking-wide">
-            {t("tasks.detailTitle")}
+        <DialogHeader className="shrink-0 pr-20">
+          <DialogTitle className="text-lg font-semibold leading-snug break-words">
+            {view === "log" ? t("tasks.logTitle") : task.title}
+          </DialogTitle>
+          <DialogDescription
+            className={
+              view === "log" ? "line-clamp-1" : "text-[11px] font-medium uppercase tracking-wide"
+            }
+          >
+            {view === "log" ? task.title : t("tasks.detailTitle")}
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-3">
-          <TabsList className="w-full shrink-0">
-            <TabsTrigger value="info" className="flex-1">
-              {t("tasks.detailTabInfo")}
-            </TabsTrigger>
-            <TabsTrigger value="log" className="flex-1">
-              {t("tasks.detailTabLog")}
-            </TabsTrigger>
-          </TabsList>
+        {/* Riwayat aktivitas: ikon di kanan atas, tepat di kiri tombol X bawaan dialog. */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-2 right-12"
+          aria-label={view === "log" ? t("tasks.detailBack") : t("tasks.detailActivity")}
+          onClick={() => setView((prev) => (prev === "info" ? "log" : "info"))}
+        >
+          {view === "log" ? (
+            <ArrowLeft className="size-4" aria-hidden />
+          ) : (
+            <History className="size-4" aria-hidden />
+          )}
+        </Button>
 
-          <div
-            data-detail-panels="1"
-            className="flex min-h-[15rem] flex-col overflow-hidden"
-            style={panelHeight ? { height: panelHeight } : undefined}
-          >
-            <TabsContent value="info" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div ref={infoContentRef} className="flex flex-col gap-3">
-                  {task.description && (
-                    <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {t("tasks.fieldDescription")}
-                      </span>
-                      <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
-                        {task.description}
-                      </p>
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{t("tasks.fieldProgress")}</span>
-                      <span className="font-medium text-foreground">{task.progress}%</span>
-                    </div>
-                    <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
-                        style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
-                      />
-                    </div>
-                  </div>
-                  {latestNote && (
-                    <div data-latest-note="1" className="rounded-lg border border-border/70 bg-muted/30 p-3">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {t("tasks.detailLatestNote")}
-                      </span>
-                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
-                    </div>
-                  )}
-                  <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    {fields.map((field) => (
-                      <div key={field.label} className="flex flex-col">
-                        <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
-                        <dd className="font-medium">{field.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
+        {view === "info" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-3">
+              {task.description && (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("tasks.fieldDescription")}
+                  </span>
+                  <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
+                    {task.description}
+                  </p>
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{t("tasks.fieldProgress")}</span>
+                  <span className="font-medium text-foreground">{task.progress}%</span>
+                </div>
+                <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
+                    style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
+                  />
                 </div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="log" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
-              <TaskLogList taskId={task.id} scrollable />
-            </TabsContent>
+              {latestNote && (
+                <div data-latest-note="1" className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("tasks.detailLatestNote")}
+                  </span>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
+                </div>
+              )}
+              <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                {fields.map((field) => (
+                  <div key={field.label} className="flex flex-col">
+                    <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
+                    <dd className="font-medium">{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </div>
-        </Tabs>
+        ) : (
+          <div data-log-panel="1" className="flex h-[min(60vh,28rem)] flex-col overflow-hidden">
+            <TaskLogList taskId={task.id} scrollable />
+          </div>
+        )}
 
         <DialogFooter className="shrink-0">
-          <Button variant="outline" onClick={onClose}>
-            {t("common.close")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Log aktivitas satu task, atau seluruh task bila `task` null. */
-export function TaskLogDialog({
-  task,
-  onClose,
-}: {
-  task: TaskRow | null;
-  onClose: () => void;
-}) {
-  const { t } = useLanguage();
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {task ? t("tasks.logTitle") : t("tasks.logAllTitle")}
-          </DialogTitle>
-          <DialogDescription className="line-clamp-2">
-            {task ? task.title : t("tasks.logAllHint")}
-          </DialogDescription>
-        </DialogHeader>
-
-        <TaskLogList taskId={task?.id ?? null} showTask={!task} />
-
-        <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             {t("common.close")}
           </Button>

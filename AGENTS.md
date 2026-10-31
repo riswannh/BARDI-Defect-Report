@@ -398,15 +398,22 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   berikutnya alih-alih menutup. Pindah antrean hanya untuk SETELAH SIMPAN berhasil.
   (Halaman Defects memakai pola serupa tapi aman karena antrean editnya berisi satu
   baris; perilaku "X lanjut ke data berikutnya" di sana memang disengaja.)
-- **Dialog dua tab: tinggi panel disamakan dengan MENGUKUR isi tab pertama, dan pembungkusnya
-  tidak boleh `flex-1`.** `TaskDetailDialog` di `src/app/(dashboard)/tasks/task-dialogs.tsx`
-  mengukur tinggi isi tab Informasi lewat `ResizeObserver` (`panelHeight`), lalu angka itu dipakai
-  sebagai `height` pembungkus `[data-detail-panels]` yang dipakai bersama kedua tab; daftar log
-  menggulir di dalam panelnya sendiri. Jangan menambahkan `flex-1` pada pembungkus itu: `flex-1`
-  memasang `flex-basis: 0%` yang MENGALAHKAN `height` inline, sehingga tab Log melebar mengikuti
-  isinya (641px) dan dialog mentok `max-h-[85vh]` (850px) — persis keluhan "tinggi card tidak sama".
-  Keterangan task di tab Informasi tetap dipangkas `line-clamp-3` (perilaku lama), jadi tingginya
-  terbatas dan dialog tidak pernah memaksa menggulir seluruh isi.
+- **Dialog Rincian Tugas tidak lagi memakai tab.** Riwayat aktivitas dibuka lewat ikon
+  `History` di header dialog (`absolute top-2 right-12`, tepat di kiri tombol X); isi dialog
+  berganti di tempat. Mode rincian dan mode riwayat berbagi satu `DialogHeader`: judulnya
+  `task.title` untuk rincian dan `tasks.logTitle` untuk riwayat, sedangkan deskripsi kecilnya
+  berganti dari label "RINCIAN TUGAS" ke judul task (`line-clamp-1`). Panel riwayat bertinggi
+  tetap `h-[min(60vh,28rem)]` (`[data-log-panel]`) dan daftar log menggulir sendiri
+  (`[data-log-scroll]`, paging 10 baris tetap ada), jadi dialog tidak pernah memaksa menggulir
+  seluruh isi. JANGAN mengembalikan `Tabs`, `panelHeight`, `ResizeObserver`, atau
+  `[data-detail-panels]` — pola ukur-tinggi itu rapuh (pembungkus `flex-1` sempat mengalahkan
+  `height` inline, tab Log melebar 641px dan dialog mentok `max-h-[85vh]` 850px). Keterangan
+  task di mode rincian tetap dipangkas `line-clamp-3`.
+- **Kumpulan kode jenis task WAJIB di-dedupe.** Tabel `task_types` menyimpan baris default
+  per user, jadi `task`/`bug`/`feature`/`subtask` muncul berkali-kali. `TaskSummary` di
+  `src/app/(dashboard)/tasks/task-views.tsx` membangun `typeCodes` lewat `new Set([...])`
+  (master dulu, lalu kode lama dari data); tanpa dedupe kartu "Jenis pekerjaan" menampilkan
+  baris kembar dan React melempar "Encountered two children with the same key".
 - **Halaman dilindungi `AuthGuard` DAN `src/proxy.ts`.** `proxy.ts` (pengganti
   `middleware.ts` di Next.js 16) memeriksa keberadaan cookie sesi **sebelum halaman
   dirender**; tanpa itu pengguna melihat kedipan halaman Report dulu, baru dilempar ke
