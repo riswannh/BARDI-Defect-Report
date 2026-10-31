@@ -389,11 +389,7 @@ const translations = {
   "tasks.detailUpdated": { id: "Diperbarui", en: "Updated", zh: "更新于" },
   "tasks.detailCompleted": { id: "Selesai pada", en: "Completed at", zh: "完成于" },
   "tasks.detailActivity": { id: "Riwayat aktivitas", en: "Activity history", zh: "活动记录" },
-  "tasks.logLimited": {
-    id: "Menampilkan {count} aktivitas terakhir dari {total}.",
-    en: "Showing the latest {count} of {total} activities.",
-    zh: "显示最近 {count} 条活动，共 {total} 条。",
-  },
+  "tasks.detailLatestNote": { id: "Catatan terbaru", en: "Latest note", zh: "最新备注" },
   "tasks.logTitle": { id: "Riwayat Aktivitas Tugas", en: "Task Activity Log", zh: "任务活动日志" },
   "tasks.logAllTitle": { id: "Riwayat Semua Tugas", en: "All Task Activity", zh: "全部任务活动" },
   "tasks.logAllHint": {

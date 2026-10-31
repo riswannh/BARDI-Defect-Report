@@ -130,12 +130,12 @@ function renderValue(value: unknown): string {
 export function TaskLogList({
   taskId,
   showTask,
-  limit,
+  scrollable,
 }: {
   taskId: number | null;
   showTask?: boolean;
-  /** Batas jumlah log yang ditampilkan (tanpa paging), mis. 5 di dialog detail. */
-  limit?: number;
+  /** true = hanya daftar log yang menggulir; paging tetap di bawah, tidak ikut bergulir. */
+  scrollable?: boolean;
 }) {
   const { t, language } = useLanguage();
   const [page, setPage] = useState(1);
@@ -144,8 +144,7 @@ export function TaskLogList({
     ? `/api/tasks/activities?taskId=${taskId}&limit=500`
     : "/api/tasks/activities?limit=500";
   const { data } = useApi<TaskActivityRow[]>(url);
-  const allRows = data ?? [];
-  const rows = limit ? allRows.slice(0, limit) : allRows;
+  const rows = data ?? [];
 
   if (rows.length === 0) {
     return (
@@ -160,8 +159,15 @@ export function TaskLogList({
   const pageRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <div className="flex flex-col gap-2">
-      <ol className="flex flex-col gap-3">
+    <div className={scrollable ? "flex min-h-0 flex-1 flex-col gap-2" : "flex flex-col gap-2"}>
+      <ol
+        data-log-scroll={scrollable ? "1" : undefined}
+        className={
+          scrollable
+            ? "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+            : "flex flex-col gap-3"
+        }
+      >
         {pageRows.map((row) => {
           const changes = describeChanges(row.changes);
           return (
@@ -194,12 +200,7 @@ export function TaskLogList({
           );
         })}
       </ol>
-      {limit && allRows.length > limit ? (
-        <p className="text-[11px] text-muted-foreground">
-          {t("tasks.logLimited", { count: rows.length, total: allRows.length })}
-        </p>
-      ) : null}
-      {!limit && (
+      <div className="shrink-0">
         <Pagination
           totalItems={rows.length}
           page={safePage}
@@ -210,7 +211,7 @@ export function TaskLogList({
             setPage(1);
           }}
         />
-      )}
+      </div>
     </div>
   );
 }
@@ -218,6 +219,11 @@ export function TaskLogList({
 /** Detail satu task (pemilik, tanggal, prioritas, progres) + riwayat aktivitasnya. */
 export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
   const { t, language } = useLanguage();
+  const { data: activityData } = useApi<TaskActivityRow[]>(
+    `/api/tasks/activities?taskId=${task.id}&limit=50`
+  );
+  const latestNote =
+    (activityData ?? []).find((row) => (row.note ?? "").trim().length > 0)?.note?.trim() ?? "";
   const repeatLabel = t(REPEAT_LABEL_KEYS[task.repeatRule] ?? "tasks.repeatNone");
   const repeatDetail =
     task.repeatRule === "weekly" && task.repeatWeekday
@@ -248,36 +254,46 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-4 overflow-hidden sm:max-w-2xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-lg font-semibold leading-snug break-words">{task.title}</DialogTitle>
           <DialogDescription className="text-[11px] font-medium uppercase tracking-wide">
             {t("tasks.detailTitle")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
           {task.description && (
-            <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-muted/30 p-3">
+            <div className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
               <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {t("tasks.fieldDescription")}
               </span>
-              <p className="whitespace-pre-line text-sm leading-relaxed">{task.description}</p>
+              <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
+                {task.description}
+              </p>
             </div>
           )}
-          <div className="flex flex-col gap-1">
+          <div className="flex shrink-0 flex-col gap-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{t("tasks.fieldProgress")}</span>
               <span className="font-medium text-foreground">{task.progress}%</span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
                 style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
               />
             </div>
           </div>
-          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+          {latestNote && (
+            <div data-latest-note="1" className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("tasks.detailLatestNote")}
+              </span>
+              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
+            </div>
+          )}
+          <dl className="grid shrink-0 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {fields.map((field) => (
               <div key={field.label} className="flex flex-col">
                 <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
@@ -285,13 +301,13 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
               </div>
             ))}
           </dl>
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium text-muted-foreground">{t("tasks.detailActivity")}</p>
-            <TaskLogList taskId={task.id} limit={5} />
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
+            <p className="shrink-0 text-xs font-medium text-muted-foreground">{t("tasks.detailActivity")}</p>
+            <TaskLogList taskId={task.id} scrollable />
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={onClose}>
             {t("common.close")}
           </Button>
