@@ -1,4 +1,4 @@
-﻿import { desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { taskDocs } from "@/lib/db/schema";
@@ -10,7 +10,11 @@ export async function taskDocsGET() {
   const guard = await requireMenu("tasks", "read");
   if (!guard.ok) return guard.response;
 
-  const rows = await db.select().from(taskDocs).orderBy(desc(taskDocs.updatedAt), desc(taskDocs.id));
+  // Yang disematkan selalu di atas, sisanya menurut penyimpanan terakhir.
+  const rows = await db
+    .select()
+    .from(taskDocs)
+    .orderBy(desc(taskDocs.pinned), desc(taskDocs.updatedAt), desc(taskDocs.id));
   return jsonOk(rows);
 }
 

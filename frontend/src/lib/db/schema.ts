@@ -849,15 +849,22 @@ export const taskActivities = sqliteTable(
 );
 
 /**
- * Halaman dokumentasi bebas (tab Docs gaya Jira). Teks polos bertanda
- * sederhana; tidak ada tabel/relasi supaya tidak perlu editor berat.
+ * Mading dokumentasi tim (tab Docs). Isi kaya disimpan sebagai HTML dari
+ * editor Tiptap; `body` tetap diisi versi teks polos untuk potongan kartu dan
+ * pencarian. Dokumen lama yang hanya punya `body` masih bisa dibuka.
  */
 export const taskDocs = sqliteTable(
   "task_docs",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     title: text("title").notNull(),
+    /** Isi kaya (HTML hasil editor). Kosong untuk dokumen lama. */
+    bodyHtml: text("bodyHtml").notNull().default(""),
     body: text("body").notNull().default(""),
+    /** Label bebas di kartu papan: "MOM", "TODO", "Info", dst. */
+    label: text("label").notNull().default(""),
+    /** Disematkan ke atas papan. */
+    pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
     /** Pembuat pertama (tidak berubah saat diedit orang lain). */
     ownerId: text("ownerId").notNull().default(""),
     ownerName: text("ownerName").notNull().default(""),

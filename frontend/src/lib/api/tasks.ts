@@ -147,6 +147,25 @@ export async function tasksGET(req: NextRequest) {
   return jsonOk(rows);
 }
 
+/**
+ * Satu task untuk dialog detail (dipakai chip mention di Mading Dokumentasi).
+ * Boleh dibaca siapa pun yang punya akses baca menu Tasks: dialognya read-only
+ * dan chip tugas milik rekan kerja harus bisa dibuka.
+ */
+export async function tasksGET_ONE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireMenu("tasks", "read");
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+  const taskId = Number(id);
+  if (!Number.isFinite(taskId)) return jsonError("ID task tidak valid", 400);
+
+  const [row] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+  if (!row) return jsonError("Task tidak ditemukan.", 404);
+
+  return jsonOk(row);
+}
+
 export async function tasksPOST(req: NextRequest) {
   const guard = await requireMenu("tasks", "write");
   if (!guard.ok) return guard.response;

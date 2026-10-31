@@ -1,75 +1,85 @@
 "use client";
 
 import { useState } from "react";
+import { FileText, Pencil, Pin, PinOff, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { FilePlus2, FileText, Pencil, Save, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
-import { apiDelete, apiPatch, apiPost } from "@/lib/api-client";
+import { apiDelete, apiPatch } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import { formatStamp } from "@/lib/task-dates";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RichTextContent } from "@/components/rich-text/rich-text-content";
+import { htmlPreview, plainToHtml } from "@/components/rich-text/plain";
+import { TaskDocsEditor } from "./task-docs-editor";
 
-interface TaskDocRow {
+export interface TaskDocRow {
   id: number;
   title: string;
+  bodyHtml: string;
   body: string;
+  label: string;
+  pinned: boolean;
   ownerName: string;
   updatedByName: string;
   createdAt: string | null;
   updatedAt: string | null;
 }
 
-/** Tab Docs: dokumen bebas per tim, sejajar dengan "Docs" di Jira. */
-export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
+type SortMode = "newest" | "title";
+
+/**
+ * Tab Dokumentasi sebagai majalah dinding tim: kartu catatan (MOM, todo,
+ * info) yang bisa dibaca sekilas, dengan penyematan, pencarian, dan label.
+ */
+export function TaskDocsView({
+  canWrite,
+  onOpenTask,
+}: {
+  canWrite: boolean;
+  onOpenTask: (id: string) => void;
+}) {
   const { t, language } = useLanguage();
   const { data, reload } = useApi<TaskDocRow[]>("/api/task-docs");
   const docs = data ?? [];
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [draftTitle, setDraftTitle] = useState("");
-  const [draftBody, setDraftBody] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [label, setLabel] = useState("all");
+  const [sort, setSort] = useState<SortMode>("newest");
+  const [readerId, setReaderId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<{ open: boolean; doc: TaskDocRow | null }>({ open: false, doc: null });
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  // Dokumen pertama otomatis tampil supaya panel kanan tidak kosong (tanpa
-  // setState di effect — dilarang oleh react-hooks/set-state-in-effect).
-  const selected = docs.find((doc) => doc.id === selectedId) ?? docs[0] ?? null;
+  const labelOptions = Array.from(new Set(docs.map((doc) => doc.label).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b)
+  );
 
-  function startEdit(doc: TaskDocRow | null) {
-    setDraftTitle(doc?.title ?? "");
-    setDraftBody(doc?.body ?? "");
-    setEditing(true);
-    if (doc) setSelectedId(doc.id);
-  }
+  const needle = query.trim().toLowerCase();
+  const visible = docs
+    .filter((doc) => (label === "all" ? true : doc.label === label))
+    .filter((doc) => {
+      if (!needle) return true;
+      return `${doc.title} ${doc.body} ${doc.label}`.toLowerCase().includes(needle);
+    })
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (sort === "title") return a.title.localeCompare(b.title);
+      return (b.updatedAt ?? b.createdAt ?? "").localeCompare(a.updatedAt ?? a.createdAt ?? "");
+    });
 
-  async function handleSave() {
-    if (!draftTitle.trim()) {
-      toast.error(t("tasks.docsTitleRequired"));
-      return;
-    }
-    setSaving(true);
+  const selected = docs.find((doc) => doc.id === readerId) ?? null;
+
+  async function togglePinned(doc: TaskDocRow) {
     try {
-      if (selected && editing) {
-        await apiPatch(`/api/task-docs/${selected.id}`, {
-          title: draftTitle.trim(),
-          body: draftBody,
-        });
-      } else {
-        await apiPost("/api/task-docs", { title: draftTitle.trim(), body: draftBody });
-      }
-      toast.success(t("tasks.docsSaved"));
-      setEditing(false);
+      await apiPatch(`/api/task-docs/${doc.id}`, { pinned: !doc.pinned });
       reload();
     } catch {
-      toast.error(t("tasks.saveFailed"));
-    } finally {
-      setSaving(false);
+      toast.error(t("docs.saveFailed"));
     }
   }
 
@@ -77,128 +87,233 @@ export function TaskDocsView({ canWrite }: { canWrite: boolean }) {
     if (deleteId === null) return;
     try {
       await apiDelete(`/api/task-docs/${deleteId}`);
-      toast.success(t("tasks.docsDeleted"));
-      if (selectedId === deleteId) setSelectedId(null);
+      toast.success(t("docs.deleted"));
+      if (readerId === deleteId) setReaderId(null);
       setDeleteId(null);
-      setEditing(false);
       reload();
     } catch {
-      toast.error(t("tasks.deleteFailed"));
+      toast.error(t("docs.deleteFailed"));
     }
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[260px_1fr]">
-      <Card size="sm" className="flex flex-col">
-        <CardContent className="flex flex-col gap-2 pt-3">
-          {canWrite && (
-            <Button size="sm" variant="outline" onClick={() => startEdit(null)}>
-              <FilePlus2 className="size-4" /> {t("tasks.docsNew")}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("docs.search")}
+            aria-label={t("docs.search")}
+            className="h-8 w-56 pl-7 text-xs"
+            data-field="docs-search"
+          />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          <Button
+            type="button"
+            size="xs"
+            variant={label === "all" ? "secondary" : "ghost"}
+            onClick={() => setLabel("all")}
+          >
+            {t("docs.allLabels")}
+          </Button>
+          {labelOptions.map((option) => (
+            <Button
+              key={option}
+              type="button"
+              size="xs"
+              variant={label === option ? "secondary" : "ghost"}
+              onClick={() => setLabel(option)}
+              data-label-chip={option}
+            >
+              {option}
             </Button>
-          )}
-          <div className="flex max-h-[420px] flex-col gap-1 overflow-y-auto">
-            {docs.length === 0 && (
-              <p className="px-1 py-6 text-center text-xs text-muted-foreground">
-                {t("tasks.docsEmpty")}
-              </p>
+          ))}
+        </div>
+
+        <Select
+          value={sort}
+          onValueChange={(value) => setSort(value === "title" ? "title" : "newest")}
+          items={[
+            { value: "newest", label: t("docs.sortNewest") },
+            { value: "title", label: t("docs.sortTitle") },
+          ]}
+        >
+          <SelectTrigger className="h-8 w-32 text-xs" aria-label={t("docs.sort")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">{t("docs.sortNewest")}</SelectItem>
+            <SelectItem value="title">{t("docs.sortTitle")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {canWrite && (
+          <Button size="sm" onClick={() => setEditing({ open: true, doc: null })}>
+            <Plus className="size-4" /> {t("docs.new")}
+          </Button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        {t("docs.count", { count: visible.length })}
+      </p>
+
+      {visible.length === 0 ? (
+        <Card size="sm">
+          <div className="flex flex-col items-center gap-1 px-4 py-10 text-center">
+            <FileText className="size-6 text-muted-foreground" />
+            <p className="text-sm font-medium">{t("docs.emptyTitle")}</p>
+            <p className="max-w-sm text-xs text-muted-foreground">{t("docs.emptyHint")}</p>
+            {canWrite && (
+              <Button size="sm" className="mt-2" onClick={() => setEditing({ open: true, doc: null })}>
+                <Plus className="size-4" /> {t("docs.new")}
+              </Button>
             )}
-            {docs.map((doc) => (
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((doc) => {
+            const preview = htmlPreview(doc.bodyHtml ?? "", doc.body || t("docs.bodyEmpty"));
+            return (
               <button
                 key={doc.id}
                 type="button"
-                onClick={() => {
-                  setSelectedId(doc.id);
-                  setEditing(false);
-                }}
+                data-doc-card={doc.id}
+                onClick={() => setReaderId(doc.id)}
                 className={cn(
-                  "flex flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted",
-                  selectedId === doc.id && "bg-muted font-medium"
+                  "flex h-full flex-col gap-2 rounded-xl border bg-card p-3 text-left transition hover:border-primary/30 hover:bg-accent/40",
+                  doc.pinned && "ring-1 ring-primary/25"
                 )}
               >
-                <span className="flex w-full items-center gap-1.5">
-                  <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{doc.title}</span>
-                </span>
-                <span className="pl-5 text-[11px] text-muted-foreground">
-                  {formatStamp(doc.updatedAt ?? doc.createdAt ?? "", language)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {doc.label && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary uppercase">
+                      {doc.label}
+                    </span>
+                  )}
+                  {doc.pinned && <Pin className="size-3 text-primary" aria-label={t("docs.pinned")} />}
+                  <span className="ml-auto text-[10px] text-muted-foreground">
+                    {formatStamp(doc.updatedAt ?? doc.createdAt ?? "", language)}
+                  </span>
+                </div>
+                <p className="line-clamp-2 text-sm font-medium">{doc.title}</p>
+                <p className="line-clamp-3 text-xs text-muted-foreground">{preview}</p>
+                <p className="mt-auto truncate text-[10px] text-muted-foreground">
+                  {t("docs.updatedBy", { name: doc.updatedByName || doc.ownerName })}
+                </p>
               </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            );
+          })}
+        </div>
+      )}
 
-      <Card size="sm" className="flex flex-col">
-        <CardContent className="flex flex-col gap-2 pt-3">
-          {editing ? (
-            <>
-              <Input
-                value={draftTitle}
-                onChange={(event) => setDraftTitle(event.target.value)}
-                placeholder={t("tasks.docsTitlePlaceholder")}
-              />
-              <Textarea
-                value={draftBody}
-                onChange={(event) => setDraftBody(event.target.value)}
-                placeholder={t("tasks.docsBodyPlaceholder")}
-                className="min-h-[380px] resize-y font-mono text-xs"
-              />
-              <div className="flex items-center justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                  {t("common.cancel")}
-                </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  <Save className="size-4" /> {t("common.save")}
-                </Button>
-              </div>
-            </>
-          ) : selected ? (
-            <>
-              <div className="flex flex-wrap items-start gap-2 border-b pb-2">
-                <h3 className="text-base font-semibold">{selected.title}</h3>
-                <span className="text-[11px] text-muted-foreground">
-                  {t("tasks.docsUpdatedBy", { name: selected.updatedByName })}
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) setReaderId(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-3xl">
+          <DialogHeader className="shrink-0 pr-16">
+            <DialogTitle className="text-base">{selected?.title}</DialogTitle>
+            <DialogDescription className="flex flex-wrap items-center gap-2 text-xs">
+              {selected?.label && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary uppercase">
+                  {selected.label}
                 </span>
-                {canWrite && (
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t("common.edit")}
-                      onClick={() => startEdit(selected)}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t("common.delete")}
-                      onClick={() => setDeleteId(selected.id)}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              <div className="min-h-[380px] whitespace-pre-wrap text-sm">
-                {selected.body || t("tasks.docsBodyEmpty")}
-              </div>
-            </>
-          ) : (
-            <p className="py-10 text-center text-xs text-muted-foreground">
-              {t("tasks.docsSelect")}
-            </p>
+              )}
+              <span>
+                {selected
+                  ? t("docs.updatedBy", {
+                      name: selected.updatedByName || selected.ownerName,
+                    })
+                  : ""}
+              </span>
+              <span>·</span>
+              <span>{selected ? formatStamp(selected.updatedAt ?? selected.createdAt ?? "", language) : ""}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {canWrite && selected && (
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={selected.pinned ? t("docs.unpin") : t("docs.pin")}
+                title={selected.pinned ? t("docs.unpin") : t("docs.pin")}
+                onClick={() => togglePinned(selected)}
+                data-action="pin"
+              >
+                {selected.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={t("docs.edit")}
+                title={t("docs.edit")}
+                onClick={() => setEditing({ open: true, doc: selected })}
+                data-action="edit"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label={t("common.delete")}
+                title={t("common.delete")}
+                onClick={() => setDeleteId(selected.id)}
+                data-action="delete"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
           )}
-        </CardContent>
-      </Card>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {selected && (
+              <RichTextContent
+                html={selected.bodyHtml || plainToHtml(selected.body)}
+                emptyText={t("docs.bodyEmpty")}
+                onOpenTask={onOpenTask}
+              />
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" size="sm" onClick={() => setReaderId(null)}>
+              {t("common.close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <TaskDocsEditor
+        open={editing.open}
+        doc={editing.doc}
+        labelOptions={labelOptions}
+        onOpenTask={onOpenTask}
+        onClose={() => setEditing({ open: false, doc: null })}
+        onSaved={() => {
+          setEditing({ open: false, doc: null });
+          reload();
+        }}
+      />
 
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => {
           if (!open) setDeleteId(null);
         }}
-        title={t("tasks.docsDeleteTitle")}
-        description={t("tasks.docsDeleteDescription")}
+        title={t("docs.deleteTitle")}
+        description={t("docs.deleteDescription")}
         confirmLabel={t("common.delete")}
         cancelLabel={t("common.cancel")}
         destructive

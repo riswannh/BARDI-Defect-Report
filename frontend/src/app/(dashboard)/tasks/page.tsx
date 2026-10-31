@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useLanguage, type TranslationKey } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
-import { apiDelete, apiPatch } from "@/lib/api-client";
+import { apiDelete, apiGet, apiPatch } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import { formatTaskDate, todayISO } from "@/lib/task-dates";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -215,6 +215,27 @@ export default function TasksPage() {
 
   async function toggleDone(task: TaskRow) {
     await patchStatus(task, task.status === "Selesai" ? "Belum" : "Selesai");
+  }
+
+  /**
+   * Buka Rincian Tugas dari chip mention di tab Dokumentasi. Tugas yang sudah
+   * dimuat dipakai langsung supaya dialog terbuka tanpa menunggu jaringan;
+   * kalau tidak ada di daftar (mis. arsip atau milik akun lain), minta API.
+   */
+  async function openTaskById(id: string) {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) return;
+    const loaded = [...everything, ...mine].find((task) => task.id === numericId);
+    if (loaded) {
+      setDetailTask(loaded);
+      return;
+    }
+    try {
+      const task = await apiGet<TaskRow>(`/api/tasks/${numericId}`);
+      setDetailTask(task);
+    } catch {
+      toast.error(t("docs.taskMissing"));
+    }
   }
 
   /** Ganti tampilan Daftar/Papan; pilihan langsung disimpan sebagai bawaan akun. */
@@ -665,7 +686,7 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="docs" className="mt-4 flex flex-col">
-          <TaskDocsView canWrite={canWrite} />
+          <TaskDocsView canWrite={canWrite} onOpenTask={openTaskById} />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-4">

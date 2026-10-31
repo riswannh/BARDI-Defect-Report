@@ -435,6 +435,41 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
 - `useApi` mengosongkan data saat URL berubah (loading) — untuk daftar yang harus
   stabil (mis. pabrik di Report), fetch terpisah dari endpoint master.
 
+### Mading Dokumentasi (tab Docs Tasks, 1 Nov 2026)
+
+Tab `Dokumentasi` di halaman Tasks bukan lagi textarea polos: papan kartu catatan tim
+(MOM, TODO, info) dengan editor kaya Tiptap dan mention `@` untuk orang maupun task.
+
+- Komponen: `src/app/(dashboard)/tasks/task-docs-view.tsx` (papan, dialog baca, hapus),
+  `task-docs-editor.tsx` (dialog tulis/edit), dan `src/components/rich-text/`
+  (`rich-text-editor.tsx`, `rich-text-toolbar.tsx`, `rich-text-content.tsx`, `plain.ts`,
+  `sanitize.ts`, `mention.ts`, `mention-list.tsx`, `mention-popup.tsx`).
+- Simpan ke `task_docs`: `body` = teks polos (cadangan/pencarian) dan `bodyHtml` = HTML
+  editor. Kolom `label` (maks 24) dan `pinned` (sematan) ditambahkan bersamaan; urutan
+  daftar `pinned desc, updatedAt desc`.
+- Pustaka editor: `@tiptap/*` **3.32.2** + `dompurify` 3.4.17. `@tiptap/starter-kit@3`
+  sudah memuat link, underline, strike, blockquote, dan daftar, jadi jangan menambah
+  paket extension untuk itu. Ukuran & warna huruf memakai `TextStyleKit` dari
+  `@tiptap/extension-text-style` (punya `FontSize`/`Color`/`FontFamily`) — paket
+  `@tiptap/extension-font-family` dan `@tiptap/extension-color` sengaja TIDAK dipakai.
+- Popup mention WAJIB di-mount lewat `props.mount(container)` milik `@tiptap/suggestion`
+  (bukan render di dalam dialog): dialog Base UI memakai portal + focus trap, jadi popup
+  di dalamnya tidak bisa diposisikan/terfokus dengan benar. Batas tinggi daftar `max-h-72`
+  supaya tidak keluar layar saat user banyak.
+- Di `mention-popup.tsx` tombol Escape harus `event.stopPropagation()` sebelum
+  mengembalikan `false`: plugin suggestion sudah menutup popup sendiri, dan tanpa
+  stopPropagation event merambat ke dialog sehingga dialog catatan ikut tertutup dan
+  draf hilang.
+- HTML pembaca disaring `sanitizeRichText()` (DOMPurify) yang hanya berjalan di klien
+  (`typeof window === "undefined"` → `""`), karena isi dokumen baru dirender setelah
+  dialog dibuka; jangan memindahkannya ke server tanpa memikirkan hydration.
+- Chip mention task menyimpan `data-id`; klik chip di editor MAUPUN pembaca memanggil
+  `onOpenTask(id)` → dialog Rincian Tugas terbuka di atasnya. Karena itu
+  `GET /api/tasks/{id}` ditambahkan (`tasksGET_ONE`) dan boleh dibaca siapa pun yang
+  punya akses baca menu Tasks.
+- Endpoint pendukung: `GET /api/task-docs`, `POST /api/task-docs`,
+  `PATCH|DELETE /api/task-docs/{id}`, `GET /api/tasks/mentions?q=` (maks 8 orang + 8 task).
+
 ### Struktur halaman Defect
 
 `src/app/(dashboard)/defects/` sengaja dipecah; jangan dikembalikan jadi satu file:

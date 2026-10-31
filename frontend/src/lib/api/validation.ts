@@ -662,15 +662,25 @@ export const taskCreateSchema = buildCreate(taskFields, {
 
 export const taskUpdateSchema = buildUpdate(taskFields);
 
-/* ---- Dokumentasi Task Planner (tab Docs) ---- */
+/* ---- Mading dokumentasi tim (tab Docs) ---- */
 
 const taskDocFields = {
   title: z.string().trim().min(3).max(160),
+  /** Teks polos: potongan kartu + pencarian. */
   body: z.string().max(20_000),
+  /** HTML dari editor kaya. Server menyimpan apa adanya (disanitasi saat render). */
+  bodyHtml: z.string().max(60_000),
+  /** Label bebas di kartu papan: "MOM", "TODO", "Info", dst. */
+  label: z.string().trim().max(24),
+  /** Disematkan ke atas papan. */
+  pinned: z.boolean(),
 };
 
 export const taskDocCreateSchema = buildCreate(taskDocFields, {
   body: z.string().max(20_000).default(""),
+  bodyHtml: z.string().max(60_000).default(""),
+  label: z.string().trim().max(24).default(""),
+  pinned: z.boolean().default(false),
 });
 
 export const taskDocUpdateSchema = buildUpdate(taskDocFields);
