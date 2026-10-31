@@ -394,6 +394,15 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   berikutnya alih-alih menutup. Pindah antrean hanya untuk SETELAH SIMPAN berhasil.
   (Halaman Defects memakai pola serupa tapi aman karena antrean editnya berisi satu
   baris; perilaku "X lanjut ke data berikutnya" di sana memang disengaja.)
+- **Dialog dua tab: tinggi panel disamakan dengan MENGUKUR isi tab pertama, dan pembungkusnya
+  tidak boleh `flex-1`.** `TaskDetailDialog` di `src/app/(dashboard)/tasks/task-dialogs.tsx`
+  mengukur tinggi isi tab Informasi lewat `ResizeObserver` (`panelHeight`), lalu angka itu dipakai
+  sebagai `height` pembungkus `[data-detail-panels]` yang dipakai bersama kedua tab; daftar log
+  menggulir di dalam panelnya sendiri. Jangan menambahkan `flex-1` pada pembungkus itu: `flex-1`
+  memasang `flex-basis: 0%` yang MENGALAHKAN `height` inline, sehingga tab Log melebar mengikuti
+  isinya (641px) dan dialog mentok `max-h-[85vh]` (850px) — persis keluhan "tinggi card tidak sama".
+  Keterangan task di tab Informasi tetap dipangkas `line-clamp-3` (perilaku lama), jadi tingginya
+  terbatas dan dialog tidak pernah memaksa menggulir seluruh isi.
 - **Halaman dilindungi `AuthGuard` DAN `src/proxy.ts`.** `proxy.ts` (pengganti
   `middleware.ts` di Next.js 16) memeriksa keberadaan cookie sesi **sebelum halaman
   dirender**; tanpa itu pengguna melihat kedipan halaman Report dulu, baru dilempar ke
