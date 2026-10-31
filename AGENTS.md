@@ -398,17 +398,25 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   berikutnya alih-alih menutup. Pindah antrean hanya untuk SETELAH SIMPAN berhasil.
   (Halaman Defects memakai pola serupa tapi aman karena antrean editnya berisi satu
   baris; perilaku "X lanjut ke data berikutnya" di sana memang disengaja.)
-- **Dialog Rincian Tugas tidak lagi memakai tab.** Riwayat aktivitas dibuka lewat ikon
-  `History` di header dialog (`absolute top-2 right-12`, tepat di kiri tombol X); isi dialog
-  berganti di tempat. Mode rincian dan mode riwayat berbagi satu `DialogHeader`: judulnya
-  `task.title` untuk rincian dan `tasks.logTitle` untuk riwayat, sedangkan deskripsi kecilnya
-  berganti dari label "RINCIAN TUGAS" ke judul task (`line-clamp-1`). Panel riwayat bertinggi
-  tetap `h-[min(60vh,28rem)]` (`[data-log-panel]`) dan daftar log menggulir sendiri
-  (`[data-log-scroll]`, paging 10 baris tetap ada), jadi dialog tidak pernah memaksa menggulir
-  seluruh isi. JANGAN mengembalikan `Tabs`, `panelHeight`, `ResizeObserver`, atau
-  `[data-detail-panels]` — pola ukur-tinggi itu rapuh (pembungkus `flex-1` sempat mengalahkan
-  `height` inline, tab Log melebar 641px dan dialog mentok `max-h-[85vh]` 850px). Keterangan
-  task di mode rincian tetap dipangkas `line-clamp-3`.
+- **Dialog dua tab: tinggi panel disamakan dengan MENGUKUR isi tab pertama, dan pembungkusnya
+  tidak boleh `flex-1`.** `TaskDetailDialog` di `src/app/(dashboard)/tasks/task-dialogs.tsx`
+  mengukur tinggi isi tab Informasi lewat `ResizeObserver` (`panelHeight`), lalu angka itu dipakai
+  sebagai `height` pembungkus `[data-detail-panels]` yang dipakai bersama kedua tab; daftar log
+  menggulir di dalam panelnya sendiri. Jangan menambahkan `flex-1` pada pembungkus itu: `flex-1`
+  memasang `flex-basis: 0%` yang MENGALAHKAN `height` inline, sehingga tab Log melebar mengikuti
+  isinya (641px) dan dialog mentok `max-h-[85vh]` (850px) — persis keluhan "tinggi card tidak sama".
+  Keterangan task di tab Informasi tetap dipangkas `line-clamp-3` (perilaku lama), jadi tingginya
+  terbatas dan dialog tidak pernah memaksa menggulir seluruh isi.
+- **Halaman Tasks: "Riwayat Aktivitas" bukan tab halaman lagi (1 Nov 2026).** Tab `value="log"`
+  sudah dihapus dari array `tabs` di `src/app/(dashboard)/tasks/page.tsx`; aksesnya sekarang
+  lewat ikon `History` di UJUNG KANAN baris tab (`<TabsList>` dibungkus `div.flex` dengan
+  `TabsList` `min-w-0 flex-1` + `Button` `variant="outline" size="icon-sm"`, `aria-label` =
+  `tasks.tabLog`) yang membuka `Dialog` berisi `<TaskLogList taskId={null} showTask scrollable />`.
+  Jangan menambahkan kembali tab `log`: isinya duplikat dengan dialog ini.
+  Penting: `TaskLogList` harus jadi ANAK LANGSUNG `DialogContent` (`flex max-h-[85vh] flex-col`,
+  `sm:max-w-2xl`) — kalau dibungkus `div` ber-`overflow-y-auto` lagi, gulirnya pindah ke pembungkus
+  dan `[data-log-scroll]` (satu-satunya elemen yang boleh menggulir, diukur skrip uji) berhenti
+  jadi scroller.
 - **Kumpulan kode jenis task WAJIB di-dedupe.** Tabel `task_types` menyimpan baris default
   per user, jadi `task`/`bug`/`feature`/`subtask` muncul berkali-kali. `TaskSummary` di
   `src/app/(dashboard)/tasks/task-views.tsx` membangun `typeCodes` lewat `new Set([...])`

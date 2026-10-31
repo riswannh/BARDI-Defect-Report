@@ -28,7 +28,14 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -126,6 +133,8 @@ export default function TasksPage() {
   const [progressTask, setProgressTask] = useState<TaskRow | null>(null);
   const [deleteTask, setDeleteTask] = useState<TaskRow | null>(null);
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
+  /** Riwayat aktivitas semua tugas: dulu tab halaman, kini dialog dari ikon di baris tab. */
+  const [activityOpen, setActivityOpen] = useState(false);
 
   /** Admin membaca semua task; akun biasa hanya task miliknya (scope=mine). */
   const activeRows = isAdmin ? everything : mine;
@@ -515,7 +524,6 @@ export default function TasksPage() {
     { value: "tasks", label: t("tasks.tabTasks"), icon: ListTree },
     { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
     { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
-    { value: "log", label: t("tasks.tabLog"), icon: History },
     ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings"), icon: Settings }] : []),
   ];
 
@@ -542,17 +550,30 @@ export default function TasksPage() {
           setPage(1);
         }}
       >
-        <TabsList className="h-auto w-full max-w-full flex-wrap justify-start gap-1">
-          {tabs.map((item) => {
-            const Icon = item.icon;
-            return (
-              <TabsTrigger key={item.value} value={item.value}>
-                <Icon className="size-3.5" />
-                {item.label}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        <div className="flex w-full items-start gap-2">
+          <TabsList className="h-auto min-w-0 flex-1 flex-wrap justify-start gap-1">
+            {tabs.map((item) => {
+              const Icon = item.icon;
+              return (
+                <TabsTrigger key={item.value} value={item.value}>
+                  <Icon className="size-3.5" />
+                  {item.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            className="shrink-0"
+            aria-label={t("tasks.tabLog")}
+            title={t("tasks.tabLog")}
+            onClick={() => setActivityOpen(true)}
+          >
+            <History className="size-4" aria-hidden />
+          </Button>
+        </div>
 
         <TabsContent value="summary" className="mt-4">
           <TaskSummaryView
@@ -650,17 +671,6 @@ export default function TasksPage() {
           <TaskDocsView canWrite={canWrite} />
         </TabsContent>
 
-        <TabsContent value="log" className="mt-4">
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle className="text-sm">{t("tasks.logAllTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TaskLogList taskId={null} showTask />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="settings" className="mt-4">
           <TaskSettingsView
             types={types}
@@ -674,6 +684,16 @@ export default function TasksPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
+          <DialogHeader className="shrink-0 pr-8">
+            <DialogTitle>{t("tasks.tabLog")}</DialogTitle>
+            <DialogDescription>{t("tasks.logAllTitle")}</DialogDescription>
+          </DialogHeader>
+          <TaskLogList taskId={null} showTask scrollable />
+        </DialogContent>
+      </Dialog>
 
       {formTask !== undefined && (
         <TaskFormDialog
