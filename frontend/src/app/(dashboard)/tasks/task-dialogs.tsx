@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { apiPatch } from "@/lib/api-client";
@@ -221,6 +221,9 @@ export function TaskLogList({
 export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
   const { t, language } = useLanguage();
   const [tab, setTab] = useState("info");
+  /** Tinggi isi tab Informasi; tab Log memakai tinggi yang sama supaya dialog tidak melompat. */
+  const [panelHeight, setPanelHeight] = useState<number | null>(null);
+  const infoContentRef = useRef<HTMLDivElement | null>(null);
   const { data: activityData } = useApi<TaskActivityRow[]>(
     `/api/tasks/activities?taskId=${task.id}&limit=50`
   );
@@ -249,6 +252,21 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
     fields.push({ label: t("tasks.detailCompleted"), value: formatStamp(task.completedAt, language) });
   }
 
+  // Tinggi panel mengikuti isi tab Informasi, lalu dipakai bersama oleh kedua tab:
+  // tab Log jadi setinggi rincian dan daftar log-nya sendiri yang menggulir.
+  useLayoutEffect(() => {
+    const node = infoContentRef.current;
+    if (!node) return;
+    const sync = () => {
+      const next = node.offsetHeight;
+      if (next > 0) setPanelHeight((prev) => (prev === next ? prev : next));
+    };
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tab]);
+
   return (
     <Dialog
       open
@@ -274,53 +292,60 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent
-            value="info"
-            className="mt-0 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+          <div
+            data-detail-panels="1"
+            className="flex min-h-[15rem] flex-col overflow-hidden"
+            style={panelHeight ? { height: panelHeight } : undefined}
           >
-            {task.description && (
-              <div className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t("tasks.fieldDescription")}
-                </span>
-                <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
-                  {task.description}
-                </p>
-              </div>
-            )}
-            <div className="flex shrink-0 flex-col gap-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{t("tasks.fieldProgress")}</span>
-                <span className="font-medium text-foreground">{task.progress}%</span>
-              </div>
-              <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
-                  style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
-                />
-              </div>
-            </div>
-            {latestNote && (
-              <div data-latest-note="1" className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t("tasks.detailLatestNote")}
-                </span>
-                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
-              </div>
-            )}
-            <dl className="grid shrink-0 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-              {fields.map((field) => (
-                <div key={field.label} className="flex flex-col">
-                  <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
-                  <dd className="font-medium">{field.value}</dd>
+            <TabsContent value="info" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                <div ref={infoContentRef} className="flex flex-col gap-3">
+                  {task.description && (
+                    <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {t("tasks.fieldDescription")}
+                      </span>
+                      <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
+                        {task.description}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{t("tasks.fieldProgress")}</span>
+                      <span className="font-medium text-foreground">{task.progress}%</span>
+                    </div>
+                    <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
+                        style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
+                      />
+                    </div>
+                  </div>
+                  {latestNote && (
+                    <div data-latest-note="1" className="rounded-lg border border-border/70 bg-muted/30 p-3">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {t("tasks.detailLatestNote")}
+                      </span>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
+                    </div>
+                  )}
+                  <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                    {fields.map((field) => (
+                      <div key={field.label} className="flex flex-col">
+                        <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
+                        <dd className="font-medium">{field.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
-              ))}
-            </dl>
-          </TabsContent>
+              </div>
+            </TabsContent>
 
-          <TabsContent value="log" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
-            <TaskLogList taskId={task.id} scrollable />
-          </TabsContent>
+            <TabsContent value="log" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+              <TaskLogList taskId={task.id} scrollable />
+            </TabsContent>
+          </div>
         </Tabs>
 
         <DialogFooter className="shrink-0">
