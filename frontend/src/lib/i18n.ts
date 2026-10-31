@@ -200,7 +200,6 @@ const translations = {
   "tasks.fieldIssueType": { id: "Tipe", en: "Type", zh: "类型" },
   "docs.new": { id: "Tulis Catatan", en: "New note", zh: "写笔记" },
   "docs.search": { id: "Cari catatan…", en: "Search notes…", zh: "搜索笔记……" },
-  "docs.allLabels": { id: "Semua label", en: "All labels", zh: "全部标签" },
   "docs.sort": { id: "Urutkan catatan", en: "Sort notes", zh: "笔记排序" },
   "docs.sortNewest": { id: "Terbaru", en: "Newest", zh: "最新" },
   "docs.sortTitle": { id: "Judul A–Z", en: "Title A–Z", zh: "标题 A–Z" },
@@ -240,8 +239,6 @@ const translations = {
     en: "e.g. Meeting minutes Nov 1",
     zh: "例如：11 月 1 日会议记录",
   },
-  "docs.labelLabel": { id: "Label", en: "Label", zh: "标签" },
-  "docs.labelPlaceholder": { id: "MOM, TODO, Info…", en: "MOM, TODO, Info…", zh: "会议、待办、信息……" },
   "docs.bodyLabel": { id: "Isi catatan", en: "Note body", zh: "笔记内容" },
   "docs.bodyPlaceholder": {
     id: "Tulis di sini… ketik @ untuk menyebut orang atau tugas.",

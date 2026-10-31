@@ -35,7 +35,7 @@ type SortMode = "newest" | "title";
 
 /**
  * Tab Dokumentasi sebagai majalah dinding tim: kartu catatan (MOM, todo,
- * info) yang bisa dibaca sekilas, dengan penyematan, pencarian, dan label.
+ * info) yang bisa dibaca sekilas, dengan penyematan dan pencarian.
  */
 export function TaskDocsView({
   canWrite,
@@ -49,22 +49,16 @@ export function TaskDocsView({
   const docs = data ?? [];
 
   const [query, setQuery] = useState("");
-  const [label, setLabel] = useState("all");
   const [sort, setSort] = useState<SortMode>("newest");
   const [readerId, setReaderId] = useState<number | null>(null);
   const [editing, setEditing] = useState<{ open: boolean; doc: TaskDocRow | null }>({ open: false, doc: null });
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const labelOptions = Array.from(new Set(docs.map((doc) => doc.label).filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b)
-  );
-
   const needle = query.trim().toLowerCase();
   const visible = docs
-    .filter((doc) => (label === "all" ? true : doc.label === label))
     .filter((doc) => {
       if (!needle) return true;
-      return `${doc.title} ${doc.body} ${doc.label}`.toLowerCase().includes(needle);
+      return `${doc.title} ${doc.body}`.toLowerCase().includes(needle);
     })
     .sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -111,29 +105,6 @@ export function TaskDocsView({
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-          <Button
-            type="button"
-            size="xs"
-            variant={label === "all" ? "secondary" : "ghost"}
-            onClick={() => setLabel("all")}
-          >
-            {t("docs.allLabels")}
-          </Button>
-          {labelOptions.map((option) => (
-            <Button
-              key={option}
-              type="button"
-              size="xs"
-              variant={label === option ? "secondary" : "ghost"}
-              onClick={() => setLabel(option)}
-              data-label-chip={option}
-            >
-              {option}
-            </Button>
-          ))}
-        </div>
-
         <Select
           value={sort}
           onValueChange={(value) => setSort(value === "title" ? "title" : "newest")}
@@ -152,7 +123,7 @@ export function TaskDocsView({
         </Select>
 
         {canWrite && (
-          <Button size="sm" onClick={() => setEditing({ open: true, doc: null })}>
+          <Button size="sm" className="ml-auto" onClick={() => setEditing({ open: true, doc: null })}>
             <Plus className="size-4" /> {t("docs.new")}
           </Button>
         )}
@@ -191,11 +162,6 @@ export function TaskDocsView({
                 )}
               >
                 <div className="flex items-center gap-1.5">
-                  {doc.label && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary uppercase">
-                      {doc.label}
-                    </span>
-                  )}
                   {doc.pinned && <Pin className="size-3 text-primary" aria-label={t("docs.pinned")} />}
                   <span className="ml-auto text-[10px] text-muted-foreground">
                     {formatStamp(doc.updatedAt ?? doc.createdAt ?? "", language)}
@@ -222,11 +188,6 @@ export function TaskDocsView({
           <DialogHeader className="shrink-0 pr-16">
             <DialogTitle className="text-base">{selected?.title}</DialogTitle>
             <DialogDescription className="flex flex-wrap items-center gap-2 text-xs">
-              {selected?.label && (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary uppercase">
-                  {selected.label}
-                </span>
-              )}
               <span>
                 {selected
                   ? t("docs.updatedBy", {
@@ -298,7 +259,6 @@ export function TaskDocsView({
       <TaskDocsEditor
         open={editing.open}
         doc={editing.doc}
-        labelOptions={labelOptions}
         onOpenTask={onOpenTask}
         onClose={() => setEditing({ open: false, doc: null })}
         onSaved={() => {

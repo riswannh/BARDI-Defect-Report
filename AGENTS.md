@@ -445,8 +445,10 @@ Tab `Dokumentasi` di halaman Tasks bukan lagi textarea polos: papan kartu catata
   (`rich-text-editor.tsx`, `rich-text-toolbar.tsx`, `rich-text-content.tsx`, `plain.ts`,
   `sanitize.ts`, `mention.ts`, `mention-list.tsx`, `mention-popup.tsx`).
 - Simpan ke `task_docs`: `body` = teks polos (cadangan/pencarian) dan `bodyHtml` = HTML
-  editor. Kolom `label` (maks 24) dan `pinned` (sematan) ditambahkan bersamaan; urutan
-  daftar `pinned desc, updatedAt desc`.
+  editor. Kolom `pinned` (sematan) dipakai untuk menaruh catatan di atas. Kolom `label`
+  MASIH ADA di skema/API tetapi **tidak dipakai UI** (user minta isian hanya Judul dan
+  Isi, 1 Nov 2026) — jangan munculkan lagi kotak/filter label tanpa keputusan baru.
+  Urutan daftar `pinned desc, updatedAt desc`.
 - Pustaka editor: `@tiptap/*` **3.32.2** + `dompurify` 3.4.17. `@tiptap/starter-kit@3`
   sudah memuat link, underline, strike, blockquote, dan daftar, jadi jangan menambah
   paket extension untuk itu. Ukuran & warna huruf memakai `TextStyleKit` dari

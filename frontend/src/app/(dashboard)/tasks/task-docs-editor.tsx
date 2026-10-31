@@ -23,27 +23,19 @@ import type { TaskDocRow } from "./task-docs-view";
 type EditorProps = {
   open: boolean;
   doc: TaskDocRow | null;
-  labelOptions: string[];
   onOpenTask: (id: string) => void;
   onClose: () => void;
   onSaved: () => void;
 };
 
 /**
- * Dialog tulis/ubah catatan Mading: judul, label, sematan, dan isi kaya
- * (Tiptap) dengan mention orang/tugas.
+ * Dialog tulis/ubah catatan Mading: judul, isi kaya (Tiptap) dengan mention
+ * orang/tugas, dan tombol sematkan.
  *
  * Isian tinggal di `TaskDocsForm` yang di-`key` per catatan, jadi membuka
  * catatan lain menghasilkan isian baru tanpa efek penyelaras state.
  */
-export function TaskDocsEditor({
-  open,
-  doc,
-  labelOptions,
-  onOpenTask,
-  onClose,
-  onSaved,
-}: EditorProps) {
+export function TaskDocsEditor({ open, doc, onOpenTask, onClose, onSaved }: EditorProps) {
   return (
     <Dialog
       open={open}
@@ -55,7 +47,6 @@ export function TaskDocsEditor({
         <TaskDocsForm
           key={doc ? `doc-${doc.id}` : "new"}
           doc={doc}
-          labelOptions={labelOptions}
           onOpenTask={onOpenTask}
           onClose={onClose}
           onSaved={onSaved}
@@ -65,11 +56,10 @@ export function TaskDocsEditor({
   );
 }
 
-function TaskDocsForm({ doc, labelOptions, onOpenTask, onClose, onSaved }: Omit<EditorProps, "open">) {
+function TaskDocsForm({ doc, onOpenTask, onClose, onSaved }: Omit<EditorProps, "open">) {
   const { t } = useLanguage();
   const initialHtml = doc ? doc.bodyHtml || plainToHtml(doc.body) : "";
   const [title, setTitle] = useState(doc?.title ?? "");
-  const [label, setLabel] = useState(doc?.label ?? "");
   const [pinned, setPinned] = useState(doc?.pinned ?? false);
   const [html, setHtml] = useState(initialHtml);
   const [plain, setPlain] = useState(doc?.body || htmlToPlain(initialHtml));
@@ -87,7 +77,6 @@ function TaskDocsForm({ doc, labelOptions, onOpenTask, onClose, onSaved }: Omit<
         title: cleanTitle,
         body: plain || htmlToPlain(html),
         bodyHtml: html,
-        label: label.trim(),
         pinned,
       };
       if (doc) {
@@ -112,35 +101,17 @@ function TaskDocsForm({ doc, labelOptions, onOpenTask, onClose, onSaved }: Omit<
       </DialogHeader>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="doc-title">{t("docs.titleLabel")}</Label>
-          <Input
-            id="doc-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={t("docs.titlePlaceholder")}
-            maxLength={160}
-            data-field="doc-title"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex min-w-48 flex-1 flex-col gap-1">
-            <Label htmlFor="doc-label">{t("docs.labelLabel")}</Label>
+        <div className="flex items-end gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <Label htmlFor="doc-title">{t("docs.titleLabel")}</Label>
             <Input
-              id="doc-label"
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              placeholder={t("docs.labelPlaceholder")}
-              list="doc-label-options"
-              maxLength={24}
-              data-field="doc-label"
+              id="doc-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={t("docs.titlePlaceholder")}
+              maxLength={160}
+              data-field="doc-title"
             />
-            <datalist id="doc-label-options">
-              {labelOptions.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
           </div>
           <Button
             type="button"
