@@ -409,10 +409,13 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   terbatas dan dialog tidak pernah memaksa menggulir seluruh isi.
 - **Halaman Tasks: "Riwayat Aktivitas" bukan tab halaman lagi (1 Nov 2026).** Tab `value="log"`
   sudah dihapus dari array `tabs` di `src/app/(dashboard)/tasks/page.tsx`; aksesnya sekarang
-  lewat ikon `History` di UJUNG KANAN baris tab (`<TabsList>` dibungkus `div.flex` dengan
-  `TabsList` `min-w-0 flex-1` + `Button` `variant="outline" size="icon-sm"`, `aria-label` =
-  `tasks.tabLog`) yang membuka `Dialog` berisi `<TaskLogList taskId={null} showTask scrollable />`.
-  Jangan menambahkan kembali tab `log`: isinya duplikat dengan dialog ini.
+  lewat ikon `History` di DERETAN AKSI `PageHeader` (anak pertama `div.flex flex-wrap`, tepat di
+  kiri tombol "Tambah Tugas"), `variant="outline" size="icon-sm"` (`28px`, sebaris dengan tombol
+  `size="sm"`), `aria-label`/`title` = `tasks.tabLog`, yang membuka `Dialog` berisi
+  `<TaskLogList taskId={null} showTask scrollable />`. Jangan menambahkan kembali tab `log`:
+  isinya duplikat dengan dialog ini. Jangan pula menaruh ikon itu di baris tab: dua percobaan
+  (tombol terpisah di kanan `TabsList`, lalu di dalam pill tab) sama-sama dinilai jelek karena
+  ikon tunggal menggantung di ujung segmented control; header adalah tempat yang disetujui.
   Penting: `TaskLogList` harus jadi ANAK LANGSUNG `DialogContent` (`flex max-h-[85vh] flex-col`,
   `sm:max-w-2xl`) — kalau dibungkus `div` ber-`overflow-y-auto` lagi, gulirnya pindah ke pembungkus
   dan `[data-log-scroll]` (satu-satunya elemen yang boleh menggulir, diukur skrip uji) berhenti

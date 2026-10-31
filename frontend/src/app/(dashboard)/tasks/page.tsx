@@ -533,6 +533,16 @@ export default function TasksPage() {
         title={t("tasks.title")}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={t("tasks.tabLog")}
+              title={t("tasks.tabLog")}
+              onClick={() => setActivityOpen(true)}
+            >
+              <History className="size-4" aria-hidden />
+            </Button>
             {canWrite && (
               <Button size="sm" onClick={() => setFormTask(null)}>
                 <Plus className="size-4" /> {t("tasks.newTask")}
@@ -550,30 +560,17 @@ export default function TasksPage() {
           setPage(1);
         }}
       >
-        <div className="flex w-full items-start gap-2">
-          <TabsList className="h-auto min-w-0 flex-1 flex-wrap justify-start gap-1">
-            {tabs.map((item) => {
-              const Icon = item.icon;
-              return (
-                <TabsTrigger key={item.value} value={item.value}>
-                  <Icon className="size-3.5" />
-                  {item.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            className="shrink-0"
-            aria-label={t("tasks.tabLog")}
-            title={t("tasks.tabLog")}
-            onClick={() => setActivityOpen(true)}
-          >
-            <History className="size-4" aria-hidden />
-          </Button>
-        </div>
+        <TabsList className="h-auto w-full max-w-full flex-wrap justify-start gap-1">
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            return (
+              <TabsTrigger key={item.value} value={item.value}>
+                <Icon className="size-3.5" />
+                {item.label}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
         <TabsContent value="summary" className="mt-4">
           <TaskSummaryView
