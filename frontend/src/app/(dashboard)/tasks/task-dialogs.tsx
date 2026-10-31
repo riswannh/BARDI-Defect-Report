@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ACTION_LABEL_KEYS,
   DIFFICULTY_LABEL_KEYS,
@@ -219,6 +220,7 @@ export function TaskLogList({
 /** Detail satu task (pemilik, tanggal, prioritas, progres) + riwayat aktivitasnya. */
 export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: () => void }) {
   const { t, language } = useLanguage();
+  const [tab, setTab] = useState("info");
   const { data: activityData } = useApi<TaskActivityRow[]>(
     `/api/tasks/activities?taskId=${task.id}&limit=50`
   );
@@ -262,50 +264,64 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          {task.description && (
-            <div className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t("tasks.fieldDescription")}
-              </span>
-              <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
-                {task.description}
-              </p>
-            </div>
-          )}
-          <div className="flex shrink-0 flex-col gap-1">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{t("tasks.fieldProgress")}</span>
-              <span className="font-medium text-foreground">{task.progress}%</span>
-            </div>
-            <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
-                style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
-              />
-            </div>
-          </div>
-          {latestNote && (
-            <div data-latest-note="1" className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t("tasks.detailLatestNote")}
-              </span>
-              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
-            </div>
-          )}
-          <dl className="grid shrink-0 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            {fields.map((field) => (
-              <div key={field.label} className="flex flex-col">
-                <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
-                <dd className="font-medium">{field.value}</dd>
+        <Tabs value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col gap-3">
+          <TabsList className="w-full shrink-0">
+            <TabsTrigger value="info" className="flex-1">
+              {t("tasks.detailTabInfo")}
+            </TabsTrigger>
+            <TabsTrigger value="log" className="flex-1">
+              {t("tasks.detailTabLog")}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent
+            value="info"
+            className="mt-0 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+          >
+            {task.description && (
+              <div className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("tasks.fieldDescription")}
+                </span>
+                <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed">
+                  {task.description}
+                </p>
               </div>
-            ))}
-          </dl>
-          <div className="flex min-h-0 flex-1 flex-col gap-2">
-            <p className="shrink-0 text-xs font-medium text-muted-foreground">{t("tasks.detailActivity")}</p>
+            )}
+            <div className="flex shrink-0 flex-col gap-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{t("tasks.fieldProgress")}</span>
+                <span className="font-medium text-foreground">{task.progress}%</span>
+              </div>
+              <div data-progress-bar="1" className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className={task.progress >= 100 ? "h-full bg-emerald-500" : "h-full bg-primary"}
+                  style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
+                />
+              </div>
+            </div>
+            {latestNote && (
+              <div data-latest-note="1" className="shrink-0 rounded-lg border border-border/70 bg-muted/30 p-3">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {t("tasks.detailLatestNote")}
+                </span>
+                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{latestNote}</p>
+              </div>
+            )}
+            <dl className="grid shrink-0 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              {fields.map((field) => (
+                <div key={field.label} className="flex flex-col">
+                  <dt className="text-[11px] text-muted-foreground">{field.label}</dt>
+                  <dd className="font-medium">{field.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </TabsContent>
+
+          <TabsContent value="log" className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden">
             <TaskLogList taskId={task.id} scrollable />
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={onClose}>

@@ -356,13 +356,7 @@ const translations = {
   "tasks.filterClear": { id: "Hapus filter", en: "Clear filter", zh: "清除筛选" },
   "tasks.filterArchive": { id: "Arsip", en: "Archive", zh: "归档" },
   "tasks.archiveBadge": { id: "Arsip", en: "Archived", zh: "已归档" },
-  "tasks.export": { id: "Ekspor", en: "Export", zh: "导出" },
   "tasks.exportAll": { id: "Semua akun", en: "All accounts", zh: "所有账号" },
-  "tasks.exportHint": {
-    id: "Unduh laporan Excel Task Planner",
-    en: "Download the Task Planner Excel report",
-    zh: "下载任务计划 Excel 报表",
-  },
   "tasks.showAllUsers": { id: "Tampilkan semua pengguna", en: "Show all users", zh: "显示所有用户" },
   "tasks.hideAllUsers": { id: "Sembunyikan semua pengguna", en: "Hide all users", zh: "隐藏所有用户" },
   "tasks.today": { id: "Hari ini", en: "Today", zh: "今天" },
@@ -389,6 +383,8 @@ const translations = {
   "tasks.detailCompleted": { id: "Selesai pada", en: "Completed at", zh: "完成于" },
   "tasks.detailActivity": { id: "Riwayat aktivitas", en: "Activity history", zh: "活动记录" },
   "tasks.detailLatestNote": { id: "Catatan terbaru", en: "Latest note", zh: "最新备注" },
+  "tasks.detailTabInfo": { id: "Informasi", en: "Details", zh: "详情" },
+  "tasks.detailTabLog": { id: "Log aktivitas", en: "Activity log", zh: "活动日志" },
   "tasks.logTitle": { id: "Riwayat Aktivitas Tugas", en: "Task Activity Log", zh: "任务活动日志" },
   "tasks.logAllTitle": { id: "Riwayat Semua Tugas", en: "All Task Activity", zh: "全部任务活动" },
   "tasks.logAllHint": {
