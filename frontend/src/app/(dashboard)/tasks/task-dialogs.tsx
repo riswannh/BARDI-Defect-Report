@@ -127,7 +127,16 @@ function renderValue(value: unknown): string {
 }
 
 /** Daftar log aktivitas (dipakai dialog maupun tab Log Aktivitas), dengan paging. */
-export function TaskLogList({ taskId, showTask }: { taskId: number | null; showTask?: boolean }) {
+export function TaskLogList({
+  taskId,
+  showTask,
+  limit,
+}: {
+  taskId: number | null;
+  showTask?: boolean;
+  /** Batas jumlah log yang ditampilkan (tanpa paging), mis. 5 di dialog detail. */
+  limit?: number;
+}) {
   const { t, language } = useLanguage();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -135,7 +144,8 @@ export function TaskLogList({ taskId, showTask }: { taskId: number | null; showT
     ? `/api/tasks/activities?taskId=${taskId}&limit=500`
     : "/api/tasks/activities?limit=500";
   const { data } = useApi<TaskActivityRow[]>(url);
-  const rows = data ?? [];
+  const allRows = data ?? [];
+  const rows = limit ? allRows.slice(0, limit) : allRows;
 
   if (rows.length === 0) {
     return (
@@ -184,16 +194,23 @@ export function TaskLogList({ taskId, showTask }: { taskId: number | null; showT
           );
         })}
       </ol>
-      <Pagination
-        totalItems={rows.length}
-        page={safePage}
-        pageSize={pageSize}
-        onPageChange={setPage}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setPage(1);
-        }}
-      />
+      {limit && allRows.length > limit ? (
+        <p className="text-[11px] text-muted-foreground">
+          {t("tasks.logLimited", { count: rows.length, total: allRows.length })}
+        </p>
+      ) : null}
+      {!limit && (
+        <Pagination
+          totalItems={rows.length}
+          page={safePage}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(1);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -233,12 +250,21 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
     >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t("tasks.detailTitle")}</DialogTitle>
-          <DialogDescription className="line-clamp-2">{task.title}</DialogDescription>
+          <DialogTitle className="text-lg font-semibold leading-snug break-words">{task.title}</DialogTitle>
+          <DialogDescription className="text-[11px] font-medium uppercase tracking-wide">
+            {t("tasks.detailTitle")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
-          {task.description && <p className="text-sm whitespace-pre-line">{task.description}</p>}
+          {task.description && (
+            <div className="flex flex-col gap-1 rounded-lg border border-border/70 bg-muted/30 p-3">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                {t("tasks.fieldDescription")}
+              </span>
+              <p className="whitespace-pre-line text-sm leading-relaxed">{task.description}</p>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{t("tasks.fieldProgress")}</span>
@@ -261,7 +287,7 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
           </dl>
           <div className="flex flex-col gap-2">
             <p className="text-xs font-medium text-muted-foreground">{t("tasks.detailActivity")}</p>
-            <TaskLogList taskId={task.id} />
+            <TaskLogList taskId={task.id} limit={5} />
           </div>
         </div>
 
