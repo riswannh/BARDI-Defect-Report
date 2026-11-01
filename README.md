@@ -824,6 +824,13 @@ ke tab `Data Produk`, `Translate` (M) `GOOGLETRANSLATE`. Penulisan dijaga
 `assertWritableRange()` di `lib/gsheet/values.ts`: range harus satu kolom di
 luar A–H, kalau tidak request ditolak sebelum keluar.
 
+Selain dijaga di kode, kolom formula **dikunci di sheet-nya** (Protected ranges,
+1 Nov 2026): **A:I** dan **K:M** tidak bisa diketik siapa pun kecuali pemilik
+spreadsheet, jadi hanya kolom **`Problem` (J)** yang terbuka untuk edit manual.
+Proteksi dipasang `frontend/scripts/gsheet-protect-formulas.ts` (idempoten,
+`--check` hanya melihat status) dan tidak mengganggu sync karena app tidak
+pernah menulis ke kolom itu.
+
 Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
 `Problem` → `problemId`, `Keterangan Kendala` → `problemDetail` (lihat bagian

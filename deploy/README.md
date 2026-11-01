@@ -333,6 +333,21 @@ kalau perubahan schema ternyata bermasalah.
 > kendala **ditunda** (badge kuning "menunggu terjemahan") sampai sync
 > berikutnya — aplikasi tidak pernah menyimpan teks Indonesia ke kolom Inggris.
 
+> **Kolom formula tab "Big Data" dikunci** (1 Nov 2026): protected ranges A:I dan
+> K:M, jadi hanya kolom `Problem` (J) yang bisa diketik; kolom lain menolak edit
+> kecuali pemilik spreadsheet. Kalau proteksinya hilang (mis. sheet dipulihkan
+> dari versi lama), pasang lagi dengan `frontend/scripts/gsheet-protect-formulas.ts`
+> (idempoten, `--check` hanya melihat status):
+>
+> ```powershell
+> $env:GOOGLE_SERVICE_ACCOUNT_FILE="...\gsheet-sa.json"   # kunci service account
+> npx tsx scripts/gsheet-protect-formulas.ts
+> ```
+>
+> Sesudah image versi ini terpasang di server, skrip yang sama bisa dijalankan
+> dari dalam container (kunci sudah di-mount): `docker exec -w /app bardi-app npx tsx scripts/gsheet-protect-formulas.ts --check`.
+> Jangan melonggarkan proteksi ke A–H/K–M — kolomnya formula dan pernah rusak.
+
 ---
 
 ## Perintah harian yang berguna
