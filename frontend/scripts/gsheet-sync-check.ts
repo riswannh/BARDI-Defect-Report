@@ -6,10 +6,8 @@ import assert from "node:assert/strict";
 import {
   baselineFromSheet,
   parseBaseline,
-  planProblemDetail,
   planProblemPushes,
   planRowSync,
-  PROBLEM_DETAIL_SOURCE,
   type RowPlan,
 } from "../src/lib/gsheet/sync";
 import {
@@ -18,7 +16,6 @@ import {
   parseSheetTimestamp,
   resolveHeaderIndex,
   sheetColumnLetter,
-  shortHash,
 } from "../src/lib/gsheet/mapping";
 import { assertWritableRange } from "../src/lib/gsheet/values";
 import { defectValueFromMaster } from "../src/lib/defect-value";
@@ -30,7 +27,7 @@ const base = {
   photosLink: "foto.jpg",
   videosLink: "video.mp4",
   problemId: "Death After Usage",
-  problemDetail: "Totally dead",
+  problemDetailOriginal: "Totally dead",
   productId: "BARDI Smart Tag",
   quantity: "1",
   factoryId: "Pabrik A",
@@ -58,11 +55,11 @@ plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, problemDetail: "Mati total" },
+  sheet: { ...base, problemDetailOriginal: "Mati total" },
   app: { ...base },
   baseline,
 });
-assert.deepEqual(names(plan), { apply: ["problemDetail"], conflicts: [], appOnly: [] });
+assert.deepEqual(names(plan), { apply: ["problemDetailOriginal"], conflicts: [], appOnly: [] });
 assert.equal(plan.apply[0].sheet, "Mati total");
 
 // 3. App berubah, sheet tidak -> tidak ada yang ditulis ke mana pun (informasi saja).
@@ -94,35 +91,35 @@ plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, problemDetail: "Mati total" },
+  sheet: { ...base, problemDetailOriginal: "Mati total" },
   app: { ...base, quantity: "3" },
   baseline,
 });
-assert.deepEqual(names(plan), { apply: ["problemDetail"], conflicts: [], appOnly: ["quantity"] });
+assert.deepEqual(names(plan), { apply: ["problemDetailOriginal"], conflicts: [], appOnly: ["quantity"] });
 
 // 6. Belum pernah disinkron (tanpa baseline) -> selalu tanya, jangan menimpa.
 plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, problemDetail: "Mati total" },
+  sheet: { ...base, problemDetailOriginal: "Mati total" },
   app: { ...base },
   baseline: null,
 });
-assert.deepEqual(names(plan), { apply: [], conflicts: ["problemDetail"], appOnly: [] });
+assert.deepEqual(names(plan), { apply: [], conflicts: ["problemDetailOriginal"], appOnly: [] });
 
 // 7. Baseline selalu mengikuti nilai sheet terakhir (dipakai pembanding berikutnya).
 plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, problemDetail: "Mati total" },
+  sheet: { ...base, problemDetailOriginal: "Mati total" },
   app: { ...base, quantity: "3" },
   baseline,
 });
 assert.equal(
-  plan.baseline.problemDetail,
-  baselineFromSheet({ ...base, problemDetail: "Mati total" }).problemDetail
+  plan.baseline.problemDetailOriginal,
+  baselineFromSheet({ ...base, problemDetailOriginal: "Mati total" }).problemDetailOriginal
 );
 assert.equal(plan.baseline.quantity, baseline.quantity);
 
@@ -142,11 +139,11 @@ plan = planRowSync({
   code: "ABC123",
   sheetRow: 2,
   localId: 1,
-  sheet: { ...base, problemDetail: "" },
+  sheet: { ...base, problemDetailOriginal: "" },
   app: { ...base },
   baseline,
 });
-assert.deepEqual(names(plan), { apply: ["problemDetail"], conflicts: [], appOnly: [] });
+assert.deepEqual(names(plan), { apply: ["problemDetailOriginal"], conflicts: [], appOnly: [] });
 
 // 10. Baseline rusak/kosong diperlakukan sebagai belum pernah sync.
 assert.equal(parseBaseline("bukan json"), null);
@@ -227,7 +224,7 @@ assert.deepEqual(resolved.missing, []);
 assert.equal(resolved.index.codeGaransi, 0);
 assert.equal(resolved.index.problemId, 9);
 assert.equal(resolved.index.productId, 11);
-assert.equal(resolved.index.problemDetail, 4);
+assert.equal(resolved.index.problemDetailOriginal, 4);
 // Kolom status di sheet ("Status" / "Status Defect") sengaja DIABAIKAN sejak
 // 1 Nov 2026: status tidak lagi dibaca dari sheet maupun ditulis balik.
 assert.equal("statusId" in resolved.index, false);
@@ -322,40 +319,6 @@ assert.equal(
   "timestamp kosong -> null"
 );
 
-// 15. Kolom "Keterangan Kendala" (Indonesia) diterjemahkan app, bukan dibaca dari
-//     kolom "Translate" di sheet. Data lama TIDAK di-backfill: baris yang sudah
-//     punya nilai app diadopsi apa adanya dan hanya diterjemahkan ulang kalau
-//     teks sheet-nya berubah. Baris yang terjemahannya gagal (app masih kosong)
-//     tidak boleh diadopsi, supaya sync berikutnya mencoba lagi.
-const legacyBaseline = baselineFromSheet({ codeGaransi: "B2QHLWZ9UI", problemDetail: "Dead" });
-assert.equal(planProblemDetail({ sheetText: "", appText: "Dead", baseline: null }).action, "skip");
-assert.equal(
-  planProblemDetail({ sheetText: "Mati total", appText: "", baseline: null }).action,
-  "translate",
-  "baris baru -> diterjemahkan"
-);
-assert.equal(
-  planProblemDetail({ sheetText: "Mati total", appText: "Dead", baseline: legacyBaseline }).action,
-  "adopt",
-  "baris lama -> nilai app dipertahankan, tidak di-backfill"
-);
-assert.equal(
-  planProblemDetail({ sheetText: "Mati total", appText: "", baseline: legacyBaseline }).action,
-  "translate",
-  "terjemahan sebelumnya gagal -> coba lagi"
-);
-const adoptedBaseline = { ...legacyBaseline, [PROBLEM_DETAIL_SOURCE]: shortHash("Mati total") };
-assert.equal(
-  planProblemDetail({ sheetText: "Mati total", appText: "Dead", baseline: adoptedBaseline }).action,
-  "skip",
-  "teks sheet tidak berubah -> tidak diterjemahkan ulang"
-);
-assert.equal(
-  planProblemDetail({ sheetText: "Mati total banget", appText: "Dead", baseline: adoptedBaseline })
-    .action,
-  "translate",
-  "teks sheet berubah -> terjemahkan ulang"
-);
 
 // 16. Kolom Problem: perubahan dari app dikirim ke sheet lewat log. Nilai
 //     TERAKHIR yang menang, baris yang sudah sama hanya ditandai terkirim,
@@ -419,5 +382,5 @@ assert.doesNotThrow(() => assertWritableRange("'Big Data'!J5"), "kolom Problem b
 assert.throws(() => assertWritableRange("bukan-range"), /tidak dikenali/i);
 
 console.log(
-  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 6 pemeriksaan terjemahan Keterangan Kendala + 11 pemeriksaan kirim Problem"
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 11 pemeriksaan kirim Problem"
 );

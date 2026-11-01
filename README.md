@@ -847,45 +847,46 @@ diabaikan total sejak 1 Nov 2026 (keputusan user): tidak dibaca dari sheet dan
 tidak ditulis balik, jadi header `Status` boleh tetap ada di sheet. Header
 `Value` boleh ada, boleh tidak; ketiadaannya tidak membuat sync gagal.
 
-**Penerjemahan "Keterangan Kendala".** Isi kolom `Keterangan Kendala` di sheet
-masih bahasa Indonesia. Sejak 1 Nov 2026 keterangan kendala disimpan **dalam dua
-bahasa berdampingan**: `defects.problemDetailOriginal` (teks asli) dan
-`defects.problemDetail` (versi Inggris). Sync sheet mengisi yang asli, lalu
-menerjemahkannya dengan **LibreTranslate self-host** (`lib/translate.ts` →
-`POST /translate` di service `libretranslate`, jaringan internal Docker);
-hasilnya di-cache di tabel `translation_cache` (hash teks asli), jadi teks yang
-berulang tidak pernah diterjemahkan dua kali. Kolom `Translate` di sheet sengaja
-**tidak dibaca**: kalau dibaca, dua sumber kebenaran (isi sheet vs hasil app)
-akan saling menimpa. Kalau layanan terjemahan mati, baris tersebut **ditunda**
-(tidak disimpan dalam bahasa Indonesia) dan dicoba lagi pada sync berikutnya;
-baris lama tidak di-backfill — teks yang sudah tersimpan di app dibiarkan apa
-adanya sampai teks sheet-nya berubah. Teks asli Indonesia disimpan sebagai
-patokan di `defects.sheetFields` (`problemDetailSource` = hash teks asli),
-sehingga sync berikutnya tahu kapan harus menerjemahkan ulang. Maksimal 150
-baris baru diterjemahkan per sync (sisanya ditunda ke sync berikutnya). Hasil
-yang jelas rusak — kosong, hanya tanda baca, atau placeholder seperti `_` (Argos
-pernah membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak**
-`isUsableTranslation()` dan diperlakukan seperti layanan mati: barisnya ditunda,
-sampahnya tidak masuk `defects.problemDetail` maupun `translation_cache`.
-Satu pengecualian yang ditangani otomatis: Argos membalas kosong untuk masukan
-**HURUF BESAR semua** ("RUSAK, MATI TIDAK BISA NYALA"), jadi teks seperti itu
-dikirim ulang sekali dalam huruf biasa ("Rusak, mati tidak bisa nyala") — kata
-dan maknanya tidak diubah, hanya kapitalisasinya, dan hasilnya tetap disimpan
-untuk teks aslinya.
+**Terjemahan "Keterangan Kendala" (on-demand).** Isi kolom `Keterangan Kendala`
+di sheet masih bahasa Indonesia. Sejak 1 Nov 2026 keterangan kendala disimpan
+**dalam dua bahasa berdampingan**: `defects.problemDetailOriginal` (teks asli)
+dan `defects.problemDetail` (versi Inggris). Sync sheet hanya mengisi yang asli —
+penerjemahan **tidak** lagi dilakukan saat sync. Versi Inggris dimuat **saat
+dibutuhkan**: operator membuka popup Detail Defect lalu menekan switch **EN**
+(atau **ID** kalau yang ada baru bahasa Inggris), aplikasi menampilkan loading,
+mengirim teks ke **Google Sheet milik user** (`TRANSLATE_SHEET_ID` /
+`TRANSLATE_SHEET_TAB`), menunggu formula `GOOGLETRANSLATE` selesai, lalu
+**menyimpan hasilnya ke database**. Pembukaan berikutnya langsung dari DB, tanpa
+memanggil sheet lagi. Teks yang sama juga di-cache di `translation_cache` (hash
+`from\0to\0teks`), jadi teks berulang tidak memanggil sheet dua kali.
+
+Modul yang menangani ada di `src/lib/translate-sheet.ts`: ia mencari blok
+"Indonesia > Inggris" / "Indonesia < Inggris" / "Indonesia > China" /
+"Indonesia < China" beserta header `Asli`/`Translate`, menulis teks ke baris
+kosong pertama kolom `A` plus formula `=GOOGLETRANSLATE(...)` di kolom `B`,
+membaca hasilnya (polling 350 ms, batas 20 detik), lalu **selalu mengosongkan
+A:B** supaya sheet user tidak kotor. Permintaan diserialkan karena sheet hanya
+punya satu baris kerja. Hasil formulanya harus lolos `isUsableTranslation()`
+(kosong, hanya tanda baca, placeholder `_`, atau error formula seperti `#VALUE!`
+ditolak) dan dicoba ulang sekali. Kolom `Translate` lama di sheet "Big Data"
+tetap **tidak dibaca**.
+
+Konsekuensinya: kalau Google Sheet tidak bisa diakses, popup Detail Defect
+menampilkan pesan gagal dan bahasa itu tinggal kosong sampai dicoba lagi —
+penyimpanan defect tidak lagi ditolak karena terjemahan (keputusan user 1 Nov
+2026, mengganti aturan LibreTranslate sebelumnya).
 
 **Problem Detail dari aplikasi (dua bahasa).** Form defect punya switch **ID /
 EN** di atas kolom Problem Detail, dan popup Detail Defect punya switch yang
-sama; bahasa awalnya mengikuti bahasa aplikasi yang dipilih user. Operator
-mengisi salah satu bahasa, lalu `resolveProblemDetail()`
-(`src/lib/api/defect-detail.ts`) menerjemahkan yang satunya saat simpan. Kalau
-layanan terjemahan mati, penyimpanan **ditolak** (bukan disimpan sebelah) supaya
-tidak ada baris yang cuma punya satu bahasa — keputusan user 1 Nov 2026. Kalau
-operator mengisi dua-duanya sekaligus, keduanya dipakai apa adanya tanpa
-memanggil layanan. Tombol **Ubah** dan **Hapus** defect sekarang ada di footer
-popup Detail Defect (admin), bukan lagi di kolom aksi tiap baris tabel. Modul
-Excel ikut membawa kolom **`Keterangan Kendala`** (bahasa Indonesia) di samping
-`Problem Detail` (Inggris); saat impor kolom itu opsional — kalau diisi, isinya
-dipakai apa adanya tanpa terjemahan.
+sama; bahasa awalnya mengikuti bahasa aplikasi yang dipilih user. Menyimpan form
+**tidak** menerjemahkan apa pun: yang diketik operator disimpan apa adanya, dan
+kalau teks bahasa Indonesia berubah maka versi Inggris lama dikosongkan (tidak
+berlaku lagi). Versi bahasa lain dimuat dari Google Sheet saat switch-nya ditekan
+di popup Detail Defect (lihat bagian penerjemahan di atas). Tombol **Ubah** dan
+**Hapus** defect sekarang ada di footer popup Detail Defect (admin), bukan lagi
+di kolom aksi tiap baris tabel. Modul Excel ikut membawa kolom **`Keterangan
+Kendala`** (bahasa Indonesia) di samping `Problem Detail` (Inggris); saat impor
+kolom itu opsional — kalau diisi, isinya dipakai apa adanya tanpa terjemahan.
 
 **Problem dari aplikasi (dua arah sempit).** Operator bisa mengganti Problem
 sebuah defect di form app. Perubahan itu dicatat di tabel
@@ -908,12 +909,12 @@ dari `GSHEET_FIELDS`; jangan menghidupkan lagi pencocokan kolom status.
 |---|---|---|---|
 | POST | `/api/defects/gsheet/sync` | admin | `{}` |
 | POST | `/api/defects/gsheet/resolve` | admin | `{ defaultChoice?: "sheet"\|"app", items?: [{ codeGaransi, choices: {field: "sheet"\|"app"} }] }` |
-| POST | `/api/translate` | user login | `{ q: string \| string[], source?: "id", target?: "en" }` |
+| POST | `/api/defects/[id]/translate` | user login | `{ language: "en"\|"id" }` |
 
 Respons: `{ ok, tab, summary, conflicts[], issues[], conflictsTruncated,
 pushedProblems[] }` dengan `summary = { sheetRows, localRows, matched,
 inserted, appliedFields, rowsUpdated, conflicts, conflictsResolved, unchanged,
-appOnlyChanges, onlyInApp, skipped, translations, translationsPending,
+appOnlyChanges, onlyInApp, skipped, awaitingTranslation,
 problemsPushed, problemsPushPending }`.
 
 Aturannya:
@@ -941,23 +942,21 @@ Aturannya:
   yang disepakati) + `defects.sheetSyncedAt`, jadi sync berikutnya tahu sisi mana
   yang berubah.
 - `Keterangan Kendala` dibandingkan lewat **teks aslinya**, bukan lewat
-  `problemDetail` (yang berisi versi Inggris). Baris baru diterjemahkan, baris
-  lama dengan nilai app terisi diadopsi tanpa di-backfill, dan baris yang
-  terjemahannya gagal muncul sebagai `issues[]` + `summary.translationsPending`
-  (badge kuning di dialog).
+  `problemDetail` (yang berisi versi Inggris). Sync tidak menerjemahkan apa pun;
+  baris yang bahasa Inggrisnya belum ada dihitung di
+  `summary.awaitingTranslation` ("N baris belum punya teks Inggris — dimuat saat
+  Detail Defect dibuka"). Kalau teks aslinya berubah, versi Inggris lama
+  dikosongkan supaya tidak menyesatkan, lalu dimuat ulang saat dibutuhkan.
 
-Uji tanpa VPS: `cmd /c "npx tsx scripts/translate-check.ts"` menjalankan klien
-terjemahan melawan server tiruan (`node:http` di 127.0.0.1) dengan DB sementara —
-30 pemeriksaan cache, batch, penolakan hasil rusak, dan penanganan 503/429/400.
-`cmd /c "npx tsx scripts/gsheet-sync-check.ts"` menguji planner sync, alias
+Uji tanpa VPS: `cmd /c "npx tsx scripts/translate-sheet-check.ts"` menjalankan
+modul penerjemah Google Sheet melawan `fetch` tiruan (formula "dihitung"
+seketika) dengan DB sementara — memeriksa normalisasi teks, baris kerja yang
+dipakai lalu dikosongkan, cache SQLite, penolakan `#VALUE!`, dan blok bahasa
+yang tidak ada. `cmd /c "npx tsx scripts/gsheet-sync-check.ts"` menguji planner sync, alias
 header, guard tulis, dan pengiriman Problem (butuh salinan DB produksi + kunci
-service account; kalau tidak ada, uji dilewati). Untuk menilai mutu terjemahan
-sungguhan dari data lokal, jalankan `cmd /c "npx tsx scripts/translate-samples.ts 20"`
-di VPS (script mencetak 20 `problemDetail` acak beserta versi Inggrisnya).
-Layanan LibreTranslate di VPS sekarang permanen (`bardi-libretranslate`, port
-hanya loopback `127.0.0.1:5001`); dari laptop akses lewat
-`ssh -N -L 5150:127.0.0.1:5001 root@76.13.182.114` lalu set
-`TRANSLATE_URL=http://127.0.0.1:5150`.
+service account; kalau tidak ada, uji dilewati). Tidak ada lagi container
+LibreTranslate di VPS — penerjemahan sepenuhnya lewat Google Sheet user, dan
+`translation_cache` hanya menyimpan hasil dari sheet itu.
 
 ### Sync Google Sheet (Sales)
 
@@ -1070,7 +1069,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
 - **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
-- **Problem Detail dua bahasa**: kolom keterangan kendala punya switch **ID / EN** (di form maupun di popup detail); bahasa awal mengikuti bahasa aplikasi. Isi satu bahasa, bahasa lainnya diterjemahkan otomatis saat simpan lewat LibreTranslate self-host; kalau layanan mati penyimpanan **ditolak**. Teks asli Indonesia dari Google Sheet tetap disimpan di `problemDetailOriginal` dan ikut diekspor/diimpor Excel sebagai kolom `Keterangan Kendala`.
+- **Problem Detail dua bahasa**: kolom keterangan kendala punya switch **ID / EN** (di form maupun di popup detail); bahasa awal mengikuti bahasa aplikasi. Simpan tidak menerjemahkan apa pun — versi bahasa lain dimuat **on-demand** dari Google Sheet saat switch-nya ditekan di popup Detail Defect (loading → tersimpan ke DB → pembukaan berikutnya langsung dari DB). Teks asli Indonesia dari Google Sheet disimpan di `problemDetailOriginal` dan ikut diekspor/diimpor Excel sebagai kolom `Keterangan Kendala`.
 - **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.

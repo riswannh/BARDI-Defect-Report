@@ -14,7 +14,7 @@ export const GSHEET_FIELDS = [
   "photosLink",
   "videosLink",
   "problemId",
-  "problemDetail",
+  "problemDetailOriginal",
   "productId",
   "quantity",
   "factoryId",
@@ -30,11 +30,12 @@ export const SHEET_COLUMN: Record<GsheetField, string> = {
   videosLink: "Video Kendala",
   problemId: "Problem",
   /**
-   * Teks kendala ASLI (bahasa Indonesia) dari operator. App yang menerjemahkan
-   * ke bahasa Inggris lewat LibreTranslate (lib/translate.ts) — kolom `Translate`
-   * di sheet (formula GOOGLETRANSLATE) sengaja TIDAK dibaca.
+   * Teks kendala ASLI (bahasa Indonesia) dari operator. Versi Inggrisnya
+   * (`defects.problemDetail`) TIDAK ikut sync — dimuat saat popup Detail Defect
+   * dibuka, lewat Google Sheet penerjemah milik user (lib/translate-sheet.ts).
+   * Kolom `Translate` di sheet ini sengaja tidak dibaca.
    */
-  problemDetail: "Keterangan Kendala",
+  problemDetailOriginal: "Keterangan Kendala",
   productId: "Offical Name",
   quantity: "Quantity",
   factoryId: "Pabrik",
@@ -47,7 +48,7 @@ export const FIELD_LABEL: Record<GsheetField, string> = {
   photosLink: "Foto Kendala",
   videosLink: "Video Kendala",
   problemId: "Problem",
-  problemDetail: "Keterangan Kendala (diterjemahkan)",
+  problemDetailOriginal: "Keterangan Kendala",
   productId: "Produk (Offical Name)",
   quantity: "Quantity",
   factoryId: "Pabrik",

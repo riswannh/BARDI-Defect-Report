@@ -300,38 +300,18 @@ docker compose logs -f app
 Migrasi schema dijalankan otomatis saat start. Backup sebelum update penting
 kalau perubahan schema ternyata bermasalah.
 
-> **Dari 1 Nov 2026 compose ikut menjalankan `libretranslate`** (penerjemah
-> "Keterangan Kendala" saat sync Google Sheet). Service ini **permanen** — sudah
-> berjalan di VPS `76.13.182.114` sebagai container `bardi-libretranslate`
-> (healthy sejak 1 Nov 2026), bukan lagi container sementara untuk uji. Port
-> dibuka **hanya di loopback** (`127.0.0.1:5001`), jadi tidak bisa diakses dari
-> internet; app memakai jaringan internal Docker dengan
-> `TRANSLATE_URL: http://libretranslate:5000`. Untuk menguji dari laptop, pakai
-> tunnel SSH:
->
-> ```bash
-> ssh -N -L 5150:127.0.0.1:5001 root@76.13.182.114
-> curl -s -X POST http://127.0.0.1:5150/translate \
->   -H 'content-type: application/json' \
->   -d '{"q":"Lampu tidak menyala","source":"id","target":"en"}'
-> ```
->
-> Start pertamanya mengunduh model `en` + `id` (±65 MB) ke volume
-> `libretranslate_models` dan memakan 1–2 menit; healthcheck diberi
-> `start_period` 180 detik. Batas memori `1.2g` (VPS tanpa swap),
-> `LT_THREADS=2`, `LT_LOAD_ONLY=en,id`. Cara memeriksanya:
->
-> ```bash
-> docker compose ps                          # libretranslate harus healthy
-> docker exec bardi-libretranslate curl -s http://localhost:5000/languages
-> docker exec bardi-libretranslate curl -s -X POST http://localhost:5000/translate \
->   -H 'content-type: application/json' \
->   -d '{"q":"Lampu tidak menyala","source":"id","target":"en"}'
-> ```
->
-> Kalau service ini mati, sync tetap jalan tetapi baris baru dengan teks
-> kendala **ditunda** (badge kuning "menunggu terjemahan") sampai sync
-> berikutnya — aplikasi tidak pernah menyimpan teks Indonesia ke kolom Inggris.
+> **Sejak 1 Nov 2026 TIDAK ADA lagi container terjemahan di VPS.** Penerjemahan
+> Problem Detail sekarang **on-demand lewat Google Sheet milik user**: app menulis
+> teks ke sheet, menunggu formula `GOOGLETRANSLATE` selesai, membaca hasilnya,
+> menyimpannya ke database, lalu mengosongkan sel kerjanya. Konfigurasi ada di
+> env app `TRANSLATE_SHEET_ID` + `TRANSLATE_SHEET_TAB`; service account
+> (`secrets/service-account.json`) harus punya akses **edit** ke sheet itu.
+> Container `bardi-libretranslate` dan volume `libretranslate_models` (±153 MB)
+> sudah dihapus 1 Nov 2026 — jangan dihidupkan lagi.
+
+> Kalau Google Sheet tidak bisa diakses, popup Detail Defect menampilkan pesan
+> gagal dan bahasa itu tetap kosong sampai dicoba lagi; sync dan simpan defect
+> TIDAK terpengaruh.
 
 > **Kolom formula tab "Big Data" dikunci** (1 Nov 2026): protected ranges A:I dan
 > K:M, jadi hanya kolom `Problem` (J) yang bisa diketik; kolom lain menolak edit
@@ -373,4 +353,4 @@ kalau perubahan schema ternyata bermasalah.
 | Container `unhealthy` | Lihat `docker compose logs app` — biasanya database terkunci atau schema gagal |
 | Data hilang setelah update | Database ditimpa; pulihkan dari `backups/` |
 | Halaman lambat | Cek `docker stats` — kalau RAM penuh, lihat log untuk OOM |
-| Sync sheet bilang "belum diterjemahkan" | `libretranslate` tidak sehat / model belum selesai diunduh — `docker compose logs libretranslate`, lalu sync lagi |
+| Popup Detail Defect gagal memuat terjemahan | Cek `TRANSLATE_SHEET_ID`/`TRANSLATE_SHEET_TAB`, izin **edit** service account ke sheet itu, dan `docker exec bardi-app ls /run/secrets`; log app memuat `[translate-sheet]` |

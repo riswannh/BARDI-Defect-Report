@@ -927,6 +927,13 @@ export default function DefectsPage() {
           setDetailDefect(null);
           void handleDelete(d.id);
         }}
+        onTranslated={(id, pair) => {
+          // Simpan hasil terjemahan ke state baris yang sedang dibuka supaya
+          // membuka popup lagi tidak memanggil Google Sheet untuk kedua kalinya.
+          setDetailDefect((current) =>
+            current && current.id === id ? { ...current, ...pair } : current
+          );
+        }}
       />
 
       <ImportResultDialog

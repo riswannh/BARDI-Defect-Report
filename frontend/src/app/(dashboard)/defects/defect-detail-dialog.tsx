@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/lib/i18n";
+import { apiPost } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,9 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDateTime, formatIDR, formatNumber } from "@/lib/format";
-import { Camera, Pencil, Trash2, Video } from "lucide-react";
+import { Camera, Loader2, Pencil, Trash2, Video } from "lucide-react";
 import type { DefectRow } from "./defect-form";
 import type { Factory, Problem } from "@/lib/types";
+
+type DetailPair = { original: string; english: string };
 
 export function DefectDetailDialog({
   defect,
@@ -25,6 +28,7 @@ export function DefectDetailDialog({
   isAdmin,
   onEdit,
   onDelete,
+  onTranslated,
 }: {
   defect: DefectRow | null;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +39,8 @@ export function DefectDetailDialog({
   /** Buka form ubah untuk defect ini (tombol pindah dari tabel ke popup). */
   onEdit?: (defect: DefectRow) => void;
   onDelete?: (defect: DefectRow) => void;
+  /** Hasil terjemahan on-demand dikabarkan ke halaman supaya daftar ikut segar. */
+  onTranslated?: (id: number, pair: { problemDetail: string; problemDetailOriginal: string }) => void;
 }) {
   const { language, t } = useLanguage();
   /**
@@ -45,16 +51,48 @@ export function DefectDetailDialog({
   const [detailLang, setDetailLang] = useState<"id" | "en">(
     language === "id" ? "id" : "en"
   );
+  const [pair, setPair] = useState<DetailPair>({
+    original: defect?.problemDetailOriginal ?? "",
+    english: defect?.problemDetail ?? "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const original = defect?.problemDetailOriginal ?? "";
-  const english = defect?.problemDetail ?? "";
-  const primary = detailLang === "id" ? original : english;
-  const secondary = detailLang === "id" ? english : original;
+  const primary = detailLang === "id" ? pair.original : pair.english;
+  const secondary = detailLang === "id" ? pair.english : pair.original;
   // Kalau versi yang dipilih belum ada (mis. data lama baru punya satu bahasa),
   // tampilkan versi lainnya supaya isinya tidak pernah kosong tanpa alasan.
   const shown = primary || secondary;
   const fellBack = !primary && secondary !== "";
-  const hasBoth = original !== "" && english !== "";
+
+  /**
+   * Ambil bahasa yang belum ada dari Google Sheet milik user, lalu simpan ke
+   * database (server yang menyimpan). Pembukaan berikutnya tidak memanggil sheet
+   * lagi karena datanya sudah ada di baris defect ini.
+   */
+  const pick = async (code: "id" | "en") => {
+    setDetailLang(code);
+    if (!defect || loading) return;
+    const existing = code === "id" ? pair.original : pair.english;
+    if (existing.trim() !== "") {
+      setError("");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const result = await apiPost<{ problemDetail: string; problemDetailOriginal: string }>(
+        `/api/defects/${defect.id}/translate`,
+        { language: code }
+      );
+      setPair({ original: result.problemDetailOriginal, english: result.problemDetail });
+      onTranslated?.(defect.id, result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog
@@ -125,28 +163,44 @@ export function DefectDetailDialog({
                 <dt className="text-xs text-muted-foreground">
                   {t("defects.problemDetail")}
                 </dt>
-                {(hasBoth || fellBack) && (
-                  <div className="flex items-center gap-1" role="group">
-                    {(["id", "en"] as const).map((code) => (
-                      <Button
-                        key={code}
-                        type="button"
-                        size="sm"
-                        variant={detailLang === code ? "default" : "outline"}
-                        className="h-6 px-2 text-[11px] uppercase"
-                        aria-pressed={detailLang === code}
-                        onClick={() => setDetailLang(code)}
-                      >
-                        {code}
-                      </Button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-1" role="group">
+                  {(["id", "en"] as const).map((code) => (
+                    <Button
+                      key={code}
+                      type="button"
+                      size="sm"
+                      variant={detailLang === code ? "default" : "outline"}
+                      className="h-6 px-2 text-[11px] uppercase"
+                      aria-pressed={detailLang === code}
+                      disabled={loading && detailLang === code}
+                      onClick={() => void pick(code)}
+                    >
+                      {code}
+                    </Button>
+                  ))}
+                </div>
               </div>
-              <dd className="whitespace-pre-wrap">{shown || "-"}</dd>
-              {fellBack && (
+              {loading ? (
+                <dd className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("defects.problemDetailLoading")}
+                </dd>
+              ) : (
+                <dd className="whitespace-pre-wrap">{shown || "-"}</dd>
+              )}
+              {!loading && fellBack && (
                 <dd className="text-xs text-muted-foreground">
                   {t("defects.problemDetailMissing")}
+                </dd>
+              )}
+              {!loading && !primary && !secondary && (
+                <dd className="text-xs text-muted-foreground">
+                  {t("defects.problemDetailEmpty")}
+                </dd>
+              )}
+              {error && (
+                <dd className="text-xs text-destructive">
+                  {t("defects.problemDetailLoadFailed", { message: error })}
                 </dd>
               )}
             </div>

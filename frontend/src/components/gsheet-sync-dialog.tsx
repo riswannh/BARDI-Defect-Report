@@ -44,10 +44,8 @@ export type GsheetSyncSummary = {
   appOnlyChanges: number;
   onlyInApp: number;
   skipped: number;
-  /** Baris "Keterangan Kendala" yang berhasil diterjemahkan (sheet -> Inggris). */
-  translations?: number;
-  /** Baris yang terjemahannya ditunda karena layanan terjemahan tidak tersedia. */
-  translationsPending?: number;
+  /** Baris yang teks Indonesianya ada tapi Inggrisnya belum (dimuat on-demand). */
+  awaitingTranslation?: number;
   /** Perubahan Problem dari aplikasi yang berhasil ditulis ke sheet. */
   problemsPushed?: number;
   /** Perubahan Problem yang belum terkirim (gagal/batas per sync/baris tak ada). */
@@ -183,14 +181,9 @@ export function GsheetSyncDialog({
               {t("gsheet.skippedBadge", { count: result.summary.skipped })}
             </Badge>
           )}
-          {result.summary.translations ? (
-            <Badge variant="outline">
-              {t("gsheet.translatedBadge", { count: result.summary.translations })}
-            </Badge>
-          ) : null}
-          {result.summary.translationsPending ? (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
-              {t("gsheet.translationPending", { count: result.summary.translationsPending })}
+          {result.summary.awaitingTranslation ? (
+            <span className="text-xs text-muted-foreground">
+              {t("gsheet.awaitingTranslation", { count: result.summary.awaitingTranslation })}
             </span>
           ) : null}
           {result.summary.problemsPushed ? (

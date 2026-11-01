@@ -16,7 +16,6 @@ import { requireMenu, scopedFactoryId } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { defaultStatusId } from "@/lib/api/defect-status";
-import { DetailTranslateError, resolveProblemDetail } from "@/lib/api/defect-detail";
 import {
   defectSchema,
   defectUpdateSchema,
@@ -437,21 +436,10 @@ export async function defectsPOST(req: NextRequest) {
   }
 
   const { timestamp, ...rest } = parsed.data;
-  // Problem Detail disimpan dalam dua bahasa; kalau operator hanya mengisi satu,
-  // bahasa lainnya diterjemahkan sekarang juga (ditolak bila layanan mati).
-  let detail: Awaited<ReturnType<typeof resolveProblemDetail>> = null;
-  try {
-    detail = await resolveProblemDetail({
-      problemDetail: parsed.data.problemDetail,
-      problemDetailOriginal: parsed.data.problemDetailOriginal,
-    });
-  } catch (error) {
-    if (error instanceof DetailTranslateError) {
-      return jsonError(error.message, error.status);
-    }
-    throw error;
-  }
 
+  // Problem Detail disimpan apa adanya dari form. Bahasa lainnya TIDAK
+  // diterjemahkan di sini: popup Detail Defect yang memintanya saat pertama kali
+  // dibutuhkan (lewat Google Sheet user), lalu menyimpannya ke database.
   // Nilai defect disimpan apa adanya dan tautan ke harga master tidak diisi lagi
   // (keputusan user: satu isian "Value RW" saja, angka di kotak itu yang masuk
   // database). Harga master tetap dipakai form sebagai isian awal.
@@ -461,7 +449,6 @@ export async function defectsPOST(req: NextRequest) {
     .insert(defects)
     .values({
       ...rest,
-      ...(detail ?? {}),
       // Status sudah dihapus dari UI; kolom NOT NULL di DB tetap diisi nilai bawaan.
       statusId: parsed.data.statusId ?? (await defaultStatusId()),
       priceType,
@@ -548,24 +535,17 @@ export async function defectsPATCH(
 
   const { timestamp, ...rest } = parsed.data;
 
-  // Sama seperti POST: lengkapi bahasa yang tidak diisi operator, dan tolak
-  // penyimpanan kalau layanan terjemahan sedang mati.
-  let detail: Awaited<ReturnType<typeof resolveProblemDetail>> = null;
-  try {
-    detail = await resolveProblemDetail({
-      problemDetail: parsed.data.problemDetail,
-      problemDetailOriginal: parsed.data.problemDetailOriginal,
-      current: {
-        problemDetail: current[0].problemDetail,
-        problemDetailOriginal: current[0].problemDetailOriginal,
-      },
-    });
-  } catch (error) {
-    if (error instanceof DetailTranslateError) {
-      return jsonError(error.message, error.status);
-    }
-    throw error;
-  }
+  // Problem Detail dua bahasa: teks Indonesia yang diubah membuat teks Inggris
+  // lama tidak berlaku lagi, jadi dikosongkan dan akan dimuat ulang saat popup
+  // Detail Defect dibuka (kecuali operator mengirim keduanya sekaligus).
+  const nextOriginal = (
+    parsed.data.problemDetailOriginal ?? current[0].problemDetailOriginal
+  ).trim();
+  const staleEnglish =
+    nextOriginal !== current[0].problemDetailOriginal &&
+    parsed.data.problemDetail === undefined
+      ? { problemDetail: "" }
+      : {};
 
   const finalQuantity = parsed.data.quantity ?? current[0].quantity;
 
@@ -573,7 +553,7 @@ export async function defectsPATCH(
     .update(defects)
     .set({
       ...rest,
-      ...(detail ?? {}),
+      ...staleEnglish,
       ...(timestamp ? { timeStamp: timestamp } : {}),
       quantity: finalQuantity,
       // Jenis harga yang tidak dikenal jatuh ke jenis baris sebelumnya (bukan

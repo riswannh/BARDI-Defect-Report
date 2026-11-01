@@ -1,4 +1,4 @@
-import { eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -33,16 +33,13 @@ import {
 import {
   baselineFromSheet,
   parseBaseline,
-  planProblemDetail,
   planProblemPushes,
   planRowSync,
-  PROBLEM_DETAIL_SOURCE,
   type FieldChoice,
   type DiffField,
   type ProblemPush,
   type RowPlan,
 } from "@/lib/gsheet/sync";
-import { normalizeText, translateTexts } from "@/lib/translate";
 
 /**
  * Sync defect dengan tab "Big Data" Google Sheet, dua arah tapi sempit.
@@ -63,9 +60,10 @@ import { normalizeText, translateTexts } from "@/lib/translate";
  *   dibiarkan (tidak pernah ditambahkan ke sheet);
  * - konflik diputuskan PER FIELD dan popup hanya muncul kalau kedua sisi berubah
  *   pada field yang sama;
- * - kolom "Keterangan Kendala" (Indonesia) diterjemahkan app ke bahasa Inggris
- *   lewat LibreTranslate sebelum disimpan/dibandingkan; kolom `Translate` di
- *   sheet DIABAIKAN dan data lama tidak di-backfill (lihat planProblemDetail);
+ * - kolom "Keterangan Kendala" berisi teks ASLI (Indonesia) dan itulah yang
+ *   disimpan app di `problemDetailOriginal`; kolom `Translate` di sheet
+ *   DIABAIKAN. Versi Inggrisnya tidak dibuat saat sync: dimuat saat popup
+ *   Detail Defect dibuka (lib/translate-sheet.ts) lalu disimpan ke database;
  * - kolom "Problem": app menang sampai nilainya terkirim ke sheet, sesudahnya
  *   sheet yang menang (lihat planProblemPushes).
  */
@@ -91,8 +89,9 @@ type LocalRow = {
   /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
   rawTimeStamp: string;
   /**
-   * Teks asli "Keterangan Kendala" (Indonesia) yang tersimpan di app. Dipakai
-   * untuk mengisi kolom pasangan `problemDetail` pada baris lama yang belum punya.
+   * Teks asli "Keterangan Kendala" (Indonesia) yang tersimpan di app. Sync
+   * membandingkan kolom sheet langsung dengan nilai ini; versi Inggrisnya tidak
+   * ikut sync karena dimuat saat Detail Defect dibuka.
    */
   rawProblemDetailOriginal: string;
   /** Nilai mentah lain: dipakai menghitung `value` dari Price List. */
@@ -198,7 +197,7 @@ function localFieldsFromRow(
     photosLink: string | null;
     videosLink: string | null;
     problemId: number;
-    problemDetail: string | null;
+    problemDetailOriginal: string | null;
     productId: number;
     quantity: number;
     factoryId: number;
@@ -212,7 +211,7 @@ function localFieldsFromRow(
     photosLink: row.photosLink ?? "",
     videosLink: row.videosLink ?? "",
     problemId: masters.toName.problemId.get(row.problemId) ?? "",
-    problemDetail: row.problemDetail ?? "",
+    problemDetailOriginal: row.problemDetailOriginal ?? "",
     productId: masters.toName.productId.get(row.productId) ?? "",
     quantity: String(row.quantity ?? 0),
     factoryId: masters.toName.factoryId.get(row.factoryId) ?? "",
@@ -228,7 +227,6 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
       photosLink: defects.photosLink,
       videosLink: defects.videosLink,
       problemId: defects.problemId,
-      problemDetail: defects.problemDetail,
       problemDetailOriginal: defects.problemDetailOriginal,
       productId: defects.productId,
       quantity: defects.quantity,
@@ -418,61 +416,10 @@ export async function runSync(options: {
   let repairedTimestamps = 0;
   const now = new Date();
 
-  /**
-   * Kolom "Keterangan Kendala" (Indonesia) -> Inggris. Hasil satu sync dibatasi
-   * supaya request sync tidak menggantung saat ada banyak baris baru; sisanya
-   * ditunda dan dicoba lagi sync berikutnya.
-   */
-  const MAX_TRANSLATIONS_PER_SYNC = 150;
-  const detailMemo = new Map<string, string | null>();
-  let detailRequests = 0;
-  let detailTranslated = 0;
-  let detailPending = 0;
-
-  const translateDetail = async (value: string): Promise<string | null> => {
-    const key = normalizeText(value);
-    if (!key) return "";
-    const memo = detailMemo.get(key);
-    if (memo !== undefined) return memo;
-    if (detailRequests >= MAX_TRANSLATIONS_PER_SYNC) {
-      detailMemo.set(key, null);
-      return null;
-    }
-    detailRequests += 1;
-    try {
-      const { translations } = await translateTexts([key]);
-      const translated = translations.get(key) ?? null;
-      detailMemo.set(key, translated);
-      return translated;
-    } catch (error) {
-      // Layanan mati bukan alasan menyimpan teks Indonesia ke kolom Inggris.
-      console.error("[gsheet:translate]", (error as Error).message);
-      detailMemo.set(key, null);
-      return null;
-    }
-  };
-
   const localUpdates = new Map<number, Partial<typeof defects.$inferInsert>>();
   const inserts: (typeof defects.$inferInsert)[] = [];
   const pendingInsertCodes = new Set<string>();
   const seenCodes = new Set<string>();
-
-  /**
-   * Baseline + patokan teks asli kolom "Keterangan Kendala".
-   *
-   * Saat terjemahan tertunda, patokan LAMA sengaja dipertahankan: kalau dibuang,
-   * baris lama akan dianggap "belum punya patokan" lalu diadopsi diam-diam dan
-   * tidak pernah diterjemahkan.
-   */
-  const withDetailSource = (
-    baseline: Record<string, string>,
-    sourceHash: string,
-    settled: boolean,
-    previous?: Record<string, string> | null
-  ): Record<string, string> => {
-    const known = settled ? sourceHash : previous?.[PROBLEM_DETAIL_SOURCE];
-    return known ? { ...baseline, [PROBLEM_DETAIL_SOURCE]: known } : baseline;
-  };
 
   for (const row of sheet.rows) {
     if (!row.code) continue;
@@ -495,36 +442,6 @@ export async function runSync(options: {
     }
     const local = localByCode.get(row.code);
 
-    // Teks kendala: sheet berisi bahasa Indonesia, app menyimpan bahasa Inggris.
-    // Nilainya diterjemahkan DULU, baru dibandingkan — supaya perbandingan tetap
-    // apel-ke-apel dan popup konflik menampilkan bahasa Inggris.
-    const rawDetail = sheetFields.problemDetail ?? "";
-    const appDetail = local?.fields.problemDetail ?? "";
-    const detail = planProblemDetail({
-      sheetText: rawDetail,
-      appText: appDetail,
-      baseline: local?.baseline ?? null,
-    });
-    /** true kalau hash teks asli sheet boleh dicatat sebagai patokan. */
-    let detailSettled = detail.action !== "translate";
-    if (detail.action === "translate") {
-      const translated = await translateDetail(rawDetail);
-      if (translated === null) {
-        // Tunda: nilai app dipertahankan apa adanya dan teks asli TIDAK dicatat,
-        // jadi sync berikutnya mencoba menerjemahkan lagi.
-        sheetFields.problemDetail = appDetail;
-        detailSettled = false;
-        detailPending += 1;
-      } else {
-        sheetFields.problemDetail = translated;
-        detailTranslated += 1;
-      }
-    } else {
-      // "adopt" (data lama, tidak di-backfill) dan "skip" (teks tidak berubah):
-      // yang berlaku adalah nilai app, bukan teks Indonesia dari sheet.
-      sheetFields.problemDetail = appDetail;
-    }
-
     if (!local) {
       // Baris hanya ada di sheet -> masuk ke app. Baris hanya di app dibiarkan.
       const insertQuantity = Number.parseInt(sheetFields.quantity || "0", 10) || 0;
@@ -545,7 +462,7 @@ export async function runSync(options: {
         photosLink: sheetFields.photosLink,
         videosLink: sheetFields.videosLink,
         problemId: masters.toId.problemId.get(normalizeName(sheetFields.problemId ?? "")),
-        problemDetail: sheetFields.problemDetail,
+        problemDetailOriginal: sheetFields.problemDetailOriginal,
         productId: insertProductId ?? undefined,
         quantity: insertQuantity,
         factoryId: masters.toId.factoryId.get(normalizeName(sheetFields.factoryId ?? "")),
@@ -581,16 +498,14 @@ export async function runSync(options: {
       pendingInsertCodes.add(insertCode);
       inserts.push({
         ...rest,
-        // Teks asli "Keterangan Kendala" disimpan berpasangan dengan versi
-        // Inggrisnya di `problemDetail` (dua bahasa, keputusan 1 Nov 2026).
-        problemDetailOriginal: rawDetail,
+        // Teks asli "Keterangan Kendala" (Indonesia) dari sheet. Versi Inggrisnya
+        // sengaja dibiarkan kosong: dimuat saat popup Detail Defect dibuka.
+        problemDetailOriginal: sheetFields.problemDetailOriginal,
         statusId: await defaultStatusId(),
         timeStamp: timestamp,
         productPriceId: null,
         value: insertValue,
-        sheetFields: JSON.stringify(
-          withDetailSource(baselineFromSheet(sheetFields), detail.sourceHash, detailSettled)
-        ),
+        sheetFields: JSON.stringify(baselineFromSheet(sheetFields)),
         sheetSyncedAt: now,
       });
       continue;
@@ -606,6 +521,16 @@ export async function runSync(options: {
             GSHEET_FIELDS.map((field) => [field, options.defaultChoice as FieldChoice])
           ) as Record<GsheetField, FieldChoice>)
         : null);
+    /**
+     * Baris lama: baseline-nya dibuat waktu app masih membandingkan versi
+     * Inggris kolom ini, jadi tidak punya kunci `problemDetailOriginal`. Isi
+     * dengan teks app sekarang supaya perubahan di sheet terbaca sebagai "sheet
+     * berubah" (bukan konflik) — tanpa ini 4.281 baris langsung jadi konflik.
+     */
+    if (local.baseline && local.baseline.problemDetailOriginal === undefined) {
+      local.baseline.problemDetailOriginal = shortHash(local.fields.problemDetailOriginal ?? "");
+    }
+
     const plan = planRowSync({
       code: row.code,
       sheetRow: row.sheetRow,
@@ -615,8 +540,6 @@ export async function runSync(options: {
       baseline: local.baseline,
       choices,
     });
-    // Patokan teks asli "Keterangan Kendala" ikut disimpan di baseline.
-    plan.baseline = withDetailSource(plan.baseline, detail.sourceHash, detailSettled, local.baseline);
 
     const patch: Partial<typeof defects.$inferInsert> = {};
     let applied = 0;
@@ -664,30 +587,17 @@ export async function runSync(options: {
     for (const diff of plan.apply) applyFromSheet(diff);
 
     /**
-     * Kolom bahasa Indonesia ikut diisi dari sheet.
+     * Teks asli "Keterangan Kendala" (Indonesia) mengikuti sheet apa adanya.
      *
-     * - Baris lama (belum punya teks asli) diisi sekarang, tanpa menerjemahkan
-     *   ulang — isi sheet memang sudah bahasa Indonesia.
-     * - Saat teks sheet berubah (`translate`/`adopt`), versi Indonesianya ikut
-     *   diperbarui supaya pasangan dua bahasa tetap sinkron.
-     * - Kalau teks sheet TIDAK berubah, editan operator di app dipertahankan
-     *   (jangan ditimpa teks lama dari sheet).
-     *
-     * `patch.problemDetail !== undefined` = baris ini barusan menerima hasil
-     * terjemahan. Pasangannya wajib ditulis di commit yang sama — kalau tidak,
-     * ada baris berbahasa Inggris tanpa teks aslinya (pernah terjadi: baris
-     * 202607227 yang baru sembuh setelah sync berikutnya).
+     * Kalau nilainya berubah, versi Inggris hasil terjemahan lama tidak berlaku
+     * lagi: dikosongkan, lalu dimuat ulang saat popup Detail Defect dibuka
+     * (penerjemahan tidak lagi dilakukan saat sync).
      */
-    const sheetTextChanged = detail.action === "translate" || detail.action === "adopt";
-    const originalPending =
-      detailSettled &&
-      rawDetail !== "" &&
-      rawDetail !== local.rawProblemDetailOriginal &&
-      (local.rawProblemDetailOriginal === "" ||
-        sheetTextChanged ||
-        patch.problemDetail !== undefined);
-    if (originalPending) {
-      patch.problemDetailOriginal = rawDetail;
+    const originalChanged =
+      patch.problemDetailOriginal !== undefined &&
+      patch.problemDetailOriginal !== local.rawProblemDetailOriginal;
+    if (originalChanged) {
+      patch.problemDetail = "";
     }
 
     // Konflik yang sudah diputuskan (termasuk pilihan "pakai app": nilai app
@@ -701,7 +611,7 @@ export async function runSync(options: {
       summary.appliedFields += applied;
       summary.rowsUpdated += 1;
       localUpdates.set(local.id, { ...patch, sheetFields: baselineJson, sheetSyncedAt: now });
-    } else if (baselineChanged || originalPending) {
+    } else if (baselineChanged || originalChanged) {
       localUpdates.set(local.id, { ...patch, sheetFields: baselineJson, sheetSyncedAt: now });
     }
 
@@ -720,12 +630,6 @@ export async function runSync(options: {
   }
 
   summary.onlyInApp = localRows.filter((row) => !seenCodes.has(row.code)).length;
-
-  if (detailPending > 0) {
-    issues.unshift({
-      reason: `${detailPending} baris "Keterangan Kendala" belum diterjemahkan karena layanan terjemahan tidak tersedia — dicoba lagi sync berikutnya.`,
-    });
-  }
 
   if (problemPush.pending > 0) {
     issues.unshift({
@@ -794,13 +698,19 @@ export async function runSync(options: {
     });
   }
 
+  // Baris yang teks Indonesianya ada tapi Inggrisnya belum (dimuat on-demand
+  // saat Detail Defect dibuka). Dihitung sekali di akhir, bukan per baris.
+  const awaitingRows = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(defects)
+    .where(and(ne(defects.problemDetailOriginal, ""), eq(defects.problemDetail, "")));
+  const awaitingTranslation = Number(awaitingRows[0]?.total ?? 0);
+
   return {
     summary: {
       ...summary,
-      /** Baris "Keterangan Kendala" yang berhasil diterjemahkan sync ini. */
-      translations: detailTranslated,
-      /** Baris yang terjemahannya ditunda (layanan mati / batas per sync). */
-      translationsPending: detailPending,
+      /** Baris dengan teks Indonesia tapi belum punya teks Inggris. */
+      awaitingTranslation,
       /** Code Garansi + Problem yang barusan ditulis ke sheet (untuk laporan). */
       pushedProblems: problemPush.sent.map((push) => ({ code: push.code, name: push.name })),
     },

@@ -26,7 +26,6 @@ async function main() {
   const dbFile = path.join(dir, "test.db");
   copyFileSync(SOURCE_DB, dbFile);
   process.env.DB_FILE_NAME = dbFile;
-  process.env.TRANSLATE_URL = "http://127.0.0.1:9";
   process.env.GOOGLE_SERVICE_ACCOUNT_FILE = SA_FILE;
   delete process.env.GSHEET_ID;
   delete process.env.GSHEET_TAB;

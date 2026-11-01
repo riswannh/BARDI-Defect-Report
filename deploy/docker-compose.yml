@@ -29,11 +29,11 @@ services:
       # "Big Data"). Aplikasi membaca sheet itu, dan hanya menulis SATU kolom:
       # "Problem" (J). Kolom A:H, K, L diisi formula dan tidak pernah ditulis.
       GOOGLE_SERVICE_ACCOUNT_FILE: /run/secrets/gsheet-sa.json
-      # Layanan terjemahan (service `libretranslate` di bawah) untuk kolom
-      # "Keterangan Kendala": teks Indonesia diterjemahkan ke Inggris sebelum
-      # disimpan. Nama host = nama service di jaringan internal Docker.
-      TRANSLATE_URL: http://libretranslate:5000
-      TRANSLATE_TIMEOUT_MS: "20000"
+      # Terjemahan Problem Detail: ON-DEMAND lewat Google Sheet milik user
+      # (service account yang sama harus diberi akses EDIT ke sheet itu).
+      # Tidak ada container terjemahan di server ini.
+      TRANSLATE_SHEET_ID: 1hLUyO1T9HdUtHonWGkM0Dpim9BhHs8zYT-M0mLvslSw
+      TRANSLATE_SHEET_TAB: Sheet1
     volumes:
       # Database + backup otomatis (backup-*.db) tinggal di folder ini.
       - ./data:/data
@@ -50,44 +50,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-
-  # Terjemahan Indonesia -> Inggris (LibreTranslate self-host, mesin Argos).
-  # Dipakai sync Google Sheet; nanti juga gelembung chat tiket.
-  #
-  # Dijalankan PERMANEN di VPS (bukan container sementara saat uji). Port hanya
-  # di-bind ke loopback server supaya bisa diuji dari laptop lewat tunnel SSH:
-  #   ssh -N -L 5150:127.0.0.1:5001 root@<vps>
-  # Tidak pernah terbuka ke internet; app memakai jaringan internal Docker.
-  # Model diunduh sekali ke volume (butuh internet saat start pertama).
-  libretranslate:
-    image: libretranslate/libretranslate:latest
-    container_name: bardi-libretranslate
-    restart: unless-stopped
-    environment:
-      # VPS ini tanpa swap: batasi thread, memori, dan model yang dimuat.
-      LT_LOAD_ONLY: en,id
-      LT_THREADS: "2"
-      LT_CHAR_LIMIT: "5000"
-      LT_DISABLE_WEB_UI: "true"
-      LT_UPDATE_MODELS: "false"
-      ARGOS_CHUNK_TYPE: MINISBD
-    ports:
-      - "127.0.0.1:5001:5000"
-    volumes:
-      - libretranslate_models:/home/libretranslate/.local
-    mem_limit: 1.2g
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "python3",
-          "-c",
-          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/languages', timeout=5).status==200 else 1)",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 180s
 
   # Reverse proxy + HTTPS otomatis (sertifikat diurus Caddy, tidak perlu cron
   # certbot). Cukup arahkan domain ke IP VPS lalu Caddy menerbitkan sertifikatnya.
@@ -110,4 +72,3 @@ services:
 volumes:
   caddy_data:
   caddy_config:
-  libretranslate_models:

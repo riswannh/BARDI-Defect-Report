@@ -1,16 +1,18 @@
-import { TranslateError, normalizeText, translateTexts } from "@/lib/translate";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { defects } from "@/lib/db/schema";
+import { SheetTranslateError, translateWithSheet } from "@/lib/translate-sheet";
 
 /**
  * Problem Detail disimpan dalam dua bahasa: `problemDetail` (Inggris) dan
  * `problemDetailOriginal` (Indonesia, teks asli "Keterangan Kendala").
  *
  * Aturan (keputusan user 1 Nov 2026):
- * - Operator cukup mengetik di satu bahasa; bahasa lainnya diisi otomatis lewat
- *   LibreTranslate saat menyimpan.
- * - Kalau layanan terjemahan mati, PENYIMPANAN DITOLAK. Layanan itu selalu
- *   dinyalakan di VPS, jadi kegagalan dianggap gangguan yang harus kelihatan.
- * - Kalau operator mengubah kedua bahasa, keduanya dipakai apa adanya (tidak
- *   ditimpa terjemahan).
+ * - Penyimpanan defect TIDAK menerjemahkan apa pun; operator cukup mengisi satu
+ *   bahasa dan bahasa lain dimuat saat dibutuhkan.
+ * - Saat popup Detail Defect pertama kali diminta bahasa yang belum ada, app
+ *   memanggil Google Sheet milik user (lihat lib/translate-sheet.ts), lalu
+ *   menyimpannya ke database. Pembukaan berikutnya langsung dari database.
  */
 export class DetailTranslateError extends Error {
   status: number;
@@ -22,80 +24,77 @@ export class DetailTranslateError extends Error {
   }
 }
 
-type DetailPair = { problemDetail: string; problemDetailOriginal: string };
+export type DefectDetailPair = { problemDetail: string; problemDetailOriginal: string };
 
-async function translateOne(
-  text: string,
-  from: "id" | "en",
-  to: "id" | "en"
-): Promise<string> {
-  try {
-    // Kunci `translations` memakai teks yang sudah dinormalisasi.
-    const key = normalizeText(text);
-    const { translations } = await translateTexts([key], { from, to });
-    return translations.get(key) ?? "";
-  } catch (error) {
-    if (error instanceof TranslateError) {
-      throw new DetailTranslateError(
-        error.code === "rate-limit"
-          ? "Layanan terjemahan sedang sibuk. Coba simpan lagi sebentar lagi."
-          : "Layanan terjemahan tidak tersedia. Coba simpan lagi sebentar lagi.",
-        error.code === "rate-limit" ? 429 : 503
-      );
-    }
-    throw new DetailTranslateError(
-      "Layanan terjemahan tidak tersedia. Coba simpan lagi sebentar lagi."
-    );
+/** Ubah kegagalan sheet jadi pesan yang bisa ditindaklanjuti operator. */
+function friendly(error: unknown): DetailTranslateError {
+  if (error instanceof SheetTranslateError) {
+    return new DetailTranslateError(error.message, error.code === "config" ? 503 : 502);
   }
+  console.error("[defects:translate]", (error as Error)?.message ?? error);
+  return new DetailTranslateError("Penerjemah Google Sheet gagal. Coba lagi sebentar.");
 }
 
 /**
- * Tentukan isi kedua kolom Problem Detail untuk satu penyimpanan.
+ * Lengkapi satu baris defect dengan bahasa yang diminta.
  *
- * Mengembalikan `null` kalau tidak ada perubahan yang perlu ditulis, atau
- * `{ problemDetail, problemDetailOriginal }` kalau salah satu/keduanya berubah.
- * Melempar `DetailTranslateError` bila terjemahan dibutuhkan tapi gagal.
+ * `language` adalah bahasa TUJUAN: "en" mengisi `problemDetail` dari teks
+ * Indonesia, "id" mengisi `problemDetailOriginal` dari teks Inggris.
  */
-export async function resolveProblemDetail(input: {
-  problemDetail?: string;
-  problemDetailOriginal?: string;
-  current?: DetailPair;
-}): Promise<DetailPair | null> {
-  const current = input.current ?? { problemDetail: "", problemDetailOriginal: "" };
-  const enProvided = input.problemDetail !== undefined;
-  const idProvided = input.problemDetailOriginal !== undefined;
-  const nextEn = (enProvided ? input.problemDetail! : current.problemDetail).trim();
-  const nextId = (
-    idProvided ? input.problemDetailOriginal! : current.problemDetailOriginal
-  ).trim();
+export async function translateDefectDetail(
+  defectId: number,
+  language: "en" | "id"
+): Promise<DefectDetailPair & { translated: boolean }> {
+  const rows = await db
+    .select({
+      id: defects.id,
+      problemDetail: defects.problemDetail,
+      problemDetailOriginal: defects.problemDetailOriginal,
+    })
+    .from(defects)
+    .where(eq(defects.id, defectId));
+  const current = rows[0];
+  if (!current) throw new DetailTranslateError("Data defect tidak ditemukan.", 404);
 
-  const enChanged = enProvided && nextEn !== current.problemDetail;
-  const idChanged = idProvided && nextId !== current.problemDetailOriginal;
-  if (!enChanged && !idChanged) return null;
+  const pair: DefectDetailPair = {
+    problemDetail: current.problemDetail ?? "",
+    problemDetailOriginal: current.problemDetailOriginal ?? "",
+  };
 
-  if (enChanged && idChanged) {
-    return { problemDetail: nextEn, problemDetailOriginal: nextId };
+  // Sudah ada: tidak perlu memanggil sheet sama sekali.
+  if (language === "en" && pair.problemDetail.trim() !== "") {
+    return { ...pair, translated: false };
+  }
+  if (language === "id" && pair.problemDetailOriginal.trim() !== "") {
+    return { ...pair, translated: false };
   }
 
-  if (enChanged) {
-    if (!nextEn) return { problemDetail: "", problemDetailOriginal: nextId };
-    const translated = await translateOne(nextEn, "en", "id");
-    if (!translated) {
-      throw new DetailTranslateError(
-        "Layanan terjemahan tidak bisa menerjemahkan Problem Detail ini.",
-        422
-      );
-    }
-    return { problemDetail: nextEn, problemDetailOriginal: translated };
-  }
-
-  if (!nextId) return { problemDetail: nextEn, problemDetailOriginal: "" };
-  const translated = await translateOne(nextId, "id", "en");
-  if (!translated) {
+  const source = language === "en" ? pair.problemDetailOriginal : pair.problemDetail;
+  if (source.trim() === "") {
     throw new DetailTranslateError(
-      "Layanan terjemahan tidak bisa menerjemahkan Problem Detail ini.",
+      language === "en"
+        ? "Baris ini belum punya teks Indonesia untuk diterjemahkan."
+        : "Baris ini belum punya teks Inggris untuk diterjemahkan.",
       422
     );
   }
-  return { problemDetail: translated, problemDetailOriginal: nextId };
+
+  let translated: string;
+  try {
+    translated = await translateWithSheet(
+      source,
+      language === "en" ? "id" : "en",
+      language
+    );
+  } catch (error) {
+    throw friendly(error);
+  }
+
+  const next: DefectDetailPair =
+    language === "en"
+      ? { problemDetail: translated, problemDetailOriginal: pair.problemDetailOriginal }
+      : { problemDetail: pair.problemDetail, problemDetailOriginal: translated };
+
+  await db.update(defects).set(next).where(eq(defects.id, defectId));
+  return { ...next, translated: true };
 }

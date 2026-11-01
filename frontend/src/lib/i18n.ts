@@ -1413,14 +1413,29 @@ const translations = {
     zh: "问题详细说明",
   },
   "defects.problemDetailHint": {
-    id: "Bahasa lain diterjemahkan otomatis saat disimpan.",
-    en: "The other language is translated automatically when you save.",
-    zh: "保存时会自动翻译另一种语言。",
+    id: "Bahasa lain dimuat saat Detail Defect dibuka.",
+    en: "The other language loads when Defect Detail opens.",
+    zh: "打开缺陷详情时会加载另一种语言。",
   },
   "defects.problemDetailMissing": {
     id: "Belum ada terjemahan.",
     en: "No translation yet.",
     zh: "暂无翻译。",
+  },
+  "defects.problemDetailEmpty": {
+    id: "Belum ada teks di bahasa ini — pilih bahasanya untuk memuat.",
+    en: "No text in this language yet — pick it to load.",
+    zh: "该语言还没有文本 — 选择后加载。",
+  },
+  "defects.problemDetailLoading": {
+    id: "Memuat terjemahan dari Google Sheet…",
+    en: "Loading translation from Google Sheets…",
+    zh: "正在从表格加载翻译…",
+  },
+  "defects.problemDetailLoadFailed": {
+    id: "Gagal memuat terjemahan: {message}",
+    en: "Failed to load the translation: {message}",
+    zh: "加载翻译失败：{message}",
   },
   "defects.detailTitle": {
     id: "Detail Defect",
@@ -1562,15 +1577,10 @@ const translations = {
     en: "Problem changes made in the app are written to sheet rows by Code Garansi.",
     zh: "应用中的 Problem 修改会按 Code Garansi 写入表格对应行。",
   },
-  "gsheet.translatedBadge": {
-    id: "{count} baris diterjemahkan",
-    en: "{count} rows translated",
-    zh: "{count} 行已翻译",
-  },
-  "gsheet.translationPending": {
-    id: "{count} baris menunggu terjemahan — coba sync lagi nanti",
-    en: "{count} rows waiting for translation — try syncing again later",
-    zh: "{count} 行等待翻译 — 稍后再同步",
+  "gsheet.awaitingTranslation": {
+    id: "{count} baris belum punya teks Inggris — dimuat saat Detail Defect dibuka",
+    en: "{count} rows have no English text yet — loaded when Defect Detail opens",
+    zh: "{count} 行还没有英文译文 — 打开缺陷详情时加载",
   },
   "gsheet.noConflict": {
     id: "Tidak ada konflik — semua perubahan dari sheet sudah masuk.",
