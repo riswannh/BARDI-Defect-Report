@@ -394,6 +394,15 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   dan pemilih tipe periode (Bulanan/Mingguan/Harian) — semuanya urutan kronologis/alur kerja.
   Label item yang sama juga dipakai `SelectSearch` di popup, jadi jangan mengurutkan ulang di
   render per halaman.
+- **Dialog yang isinya lebih tinggi dari layar ponsel WAJIB punya batas tinggi + area gulir
+  sendiri.** `DialogContent` di `src/components/ui/dialog.tsx` adalah popup `fixed` yang
+  dipusatkan; tanpa `max-h` isinya terpotong di atas/bawah, `overflow-y` tetap `visible` sehingga
+  TIDAK bisa digulir, sementara halaman di belakangnya terkunci `overflow: hidden` oleh Base UI.
+  Gejala yang dilaporkan user: "tampilan gk bisa di scroll" di HP. Pola yang dipakai:
+  `max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain` (form Defect dan popup Detail
+  Defect memakainya sejak 1 Nov 2026). `100dvh` supaya address bar ponsel ikut dihitung,
+  `overscroll-contain` supaya gulir tidak merembet ke halaman. Jangan menaruh batas tinggi hanya
+  di elemen dalam (`<dl>`, list) karena header/footer dialog tetap ikut terpotong.
 - **`onOpenChange` pada `Dialog` bukan tempat untuk navigasi.** Di halaman Sales dulu
   `open === false` memanggil `advanceEdit()`, yang langsung `return` ketika antrean
   edit kosong — akibatnya dialog form TAMBAH **tidak bisa ditutup sama sekali** (klik X

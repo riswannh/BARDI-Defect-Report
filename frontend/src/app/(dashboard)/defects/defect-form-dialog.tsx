@@ -182,9 +182,15 @@ export function DefectFormDialog({
 
   return (
     <>
+      {/*
+        Di ponsel daftar isian lebih tinggi dari layar. Tanpa batas tinggi dan
+        area gulir sendiri, popup fixed ini terpotong di atas/bawah dan tidak
+        bisa digulir sama sekali (halaman di belakang terkunci selama dialog
+        terbuka). `100dvh` mengikuti tinggi layar yang benar-benar terlihat.
+      */}
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="sm:max-w-lg"
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-lg"
           initialFocus={codeInputRef}
           finalFocus={isEditing ? true : false}
         >
