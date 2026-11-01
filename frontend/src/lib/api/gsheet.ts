@@ -90,6 +90,11 @@ type LocalRow = {
   baseline: Record<string, string> | null;
   /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
   rawTimeStamp: string;
+  /**
+   * Teks asli "Keterangan Kendala" (Indonesia) yang tersimpan di app. Dipakai
+   * untuk mengisi kolom pasangan `problemDetail` pada baris lama yang belum punya.
+   */
+  rawProblemDetailOriginal: string;
   /** Nilai mentah lain: dipakai menghitung `value` dari Price List. */
   raw: {
     productId: number;
@@ -224,6 +229,7 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
       videosLink: defects.videosLink,
       problemId: defects.problemId,
       problemDetail: defects.problemDetail,
+      problemDetailOriginal: defects.problemDetailOriginal,
       productId: defects.productId,
       quantity: defects.quantity,
       factoryId: defects.factoryId,
@@ -239,6 +245,7 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
     baseline: parseBaseline(row.sheetFields),
     /** Nilai mentah di app (bukan hasil normalisasi) untuk mendeteksi format lama. */
     rawTimeStamp: row.timeStamp,
+    rawProblemDetailOriginal: row.problemDetailOriginal ?? "",
     raw: {
       productId: row.productId,
       quantity: row.quantity,
@@ -574,6 +581,9 @@ export async function runSync(options: {
       pendingInsertCodes.add(insertCode);
       inserts.push({
         ...rest,
+        // Teks asli "Keterangan Kendala" disimpan berpasangan dengan versi
+        // Inggrisnya di `problemDetail` (dua bahasa, keputusan 1 Nov 2026).
+        problemDetailOriginal: rawDetail,
         statusId: await defaultStatusId(),
         timeStamp: timestamp,
         productPriceId: null,
@@ -653,6 +663,26 @@ export async function runSync(options: {
 
     for (const diff of plan.apply) applyFromSheet(diff);
 
+    /**
+     * Kolom bahasa Indonesia ikut diisi dari sheet.
+     *
+     * - Baris lama (belum punya teks asli) diisi sekarang, tanpa menerjemahkan
+     *   ulang — isi sheet memang sudah bahasa Indonesia.
+     * - Saat teks sheet berubah (`translate`/`adopt`), versi Indonesianya ikut
+     *   diperbarui supaya pasangan dua bahasa tetap sinkron.
+     * - Kalau teks sheet TIDAK berubah, editan operator di app dipertahankan
+     *   (jangan ditimpa teks lama dari sheet).
+     */
+    const sheetTextChanged = detail.action === "translate" || detail.action === "adopt";
+    const originalPending =
+      detailSettled &&
+      rawDetail !== "" &&
+      rawDetail !== local.rawProblemDetailOriginal &&
+      (local.rawProblemDetailOriginal === "" || sheetTextChanged);
+    if (originalPending) {
+      patch.problemDetailOriginal = rawDetail;
+    }
+
     // Konflik yang sudah diputuskan (termasuk pilihan "pakai app": nilai app
     // dipertahankan, tidak ada yang ditulis ke sheet karena sheet read-only).
     summary.conflictsResolved += plan.resolved.length;
@@ -664,8 +694,8 @@ export async function runSync(options: {
       summary.appliedFields += applied;
       summary.rowsUpdated += 1;
       localUpdates.set(local.id, { ...patch, sheetFields: baselineJson, sheetSyncedAt: now });
-    } else if (baselineChanged) {
-      localUpdates.set(local.id, { sheetFields: baselineJson, sheetSyncedAt: now });
+    } else if (baselineChanged || originalPending) {
+      localUpdates.set(local.id, { ...patch, sheetFields: baselineJson, sheetSyncedAt: now });
     }
 
     if (plan.conflicts.length > 0) {

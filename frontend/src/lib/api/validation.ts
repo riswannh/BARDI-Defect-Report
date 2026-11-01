@@ -107,6 +107,8 @@ export const defectFields = {
   videosLink: z.string().trim(),
   problemId: z.coerce.number().int().positive(),
   problemDetail: z.string().trim(),
+  /** Teks asli (Indonesia) dari "Keterangan Kendala"; lihat schema.ts. */
+  problemDetailOriginal: z.string().trim(),
   productId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().int().min(0),
   factoryId: z.coerce.number().int().positive(),
@@ -125,6 +127,7 @@ export const defectSchema = buildCreate(defectFields, {
   photosLink: z.string().trim().default(""),
   videosLink: z.string().trim().default(""),
   problemDetail: z.string().trim().default(""),
+  problemDetailOriginal: z.string().trim().default(""),
   quantity: z.coerce.number().int().min(0).default(0),
   value: z.coerce.number().int().min(0).default(0),
   priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),

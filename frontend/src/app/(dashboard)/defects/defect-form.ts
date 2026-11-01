@@ -20,6 +20,14 @@ export interface DefectForm {
   videosLink: string;
   problemId: string;
   problemDetail: string;
+  /**
+   * Teks "Keterangan Kendala" versi Indonesia (teks asli). Dua kolom ini
+   * disimpan berdampingan: `problemDetail` untuk bahasa Inggris dan
+   * `problemDetailOriginal` untuk bahasa Indonesia. Kalau operator hanya
+   * mengetik salah satunya, server menerjemahkan yang lain saat menyimpan
+   * (lihat `src/lib/api/defect-detail.ts`).
+   */
+  problemDetailOriginal: string;
   productId: string;
   quantity: string;
   factoryId: string;
@@ -67,6 +75,7 @@ export function emptyForm(): DefectForm {
     videosLink: "",
     problemId: "",
     problemDetail: "",
+    problemDetailOriginal: "",
     productId: "",
     quantity: "",
     factoryId: "",
@@ -104,6 +113,7 @@ export function formHasContent(form: DefectForm): boolean {
     form.quantity.trim() !== "" ||
     form.priceRw.trim() !== "" ||
     form.problemDetail.trim() !== "" ||
+    form.problemDetailOriginal.trim() !== "" ||
     form.photosLink.trim() !== "" ||
     form.videosLink.trim() !== ""
   );
@@ -119,6 +129,7 @@ export function rowToForm(d: DefectRow): DefectForm {
     videosLink: d.videosLink,
     problemId: String(d.problemId),
     problemDetail: d.problemDetail,
+    problemDetailOriginal: d.problemDetailOriginal ?? "",
     productId: String(d.productId),
     quantity: String(d.quantity),
     factoryId: String(d.factoryId),

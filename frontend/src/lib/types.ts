@@ -237,6 +237,8 @@ export interface Defect {
   videosLink: string;
   problemId: number;
   problemDetail: string;
+  /** Teks asli "Keterangan Kendala" (Indonesia); pasangan dari problemDetail. */
+  problemDetailOriginal: string;
   productId: number;
   quantity: number;
   factoryId: number;

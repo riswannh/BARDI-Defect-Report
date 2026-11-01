@@ -204,6 +204,9 @@ const DEFECT_HEADERS = [
   "Link Video",
   "Problem",
   "Problem Detail",
+  // Teks asli "Keterangan Kendala" (Indonesia) — pasangan dua bahasa dengan
+  // kolom "Problem Detail" (Inggris). Kolom ini opsional saat impor.
+  "Keterangan Kendala",
   "Produk",
   "Quantity",
   "Pabrik",
@@ -415,6 +418,7 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       "Link Video": row.videosLink,
       Problem: row.problemName ?? "",
       "Problem Detail": row.problemDetail,
+      "Keterangan Kendala": row.problemDetailOriginal ?? "",
       Produk: row.productName ?? "",
       Quantity: row.quantity,
       Pabrik: row.factoryName ?? "",
@@ -868,6 +872,9 @@ async function importDefects(sheet: SheetRow[]) {
         videosLink: cellString(row["Link Video"]),
         problemId: problemId as number,
         problemDetail: cellString(row["Problem Detail"]),
+        // Kolom opsional: teks asli "Keterangan Kendala" (Indonesia). Berkas lama
+        // tanpa kolom ini tetap bisa diimpor (kolomnya kosong).
+        problemDetailOriginal: cellString(row["Keterangan Kendala"]),
         productId: productId as number,
         quantity,
         statusId,

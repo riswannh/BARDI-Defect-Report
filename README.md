@@ -375,7 +375,8 @@ duplikat (keputusan pemilik produk).
 | `timeStamp` | text | datetime lengkap, format `YYYY-MM-DDTHH:mm` |
 | `photosLink` / `videosLink` | text (default "") | tautan media (bukan upload) |
 | `problemId` | FK → problems | |
-| `problemDetail` | text (default "") | |
+| `problemDetail` | text (default "") | **versi Inggris** dari keterangan kendala |
+| `problemDetailOriginal` | text (default "") | **versi Indonesia** (teks asli dari sheet/operator). Dua kolom disimpan berdampingan supaya UI bisa punya switch ID/EN — lihat §8.3 |
 | `productId` | FK → products | |
 | `quantity` | integer (default 0) | |
 | `statusId` | FK → statuses | **warisan** — tidak dipakai UI/API sejak 1 Nov 2026; kolom NOT NULL sengaja tidak di-drop, semua insert mengisinya lewat `defaultStatusId()` |
@@ -835,8 +836,9 @@ pernah menulis ke kolom itu.
 
 Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
-`Problem` → `problemId`, `Keterangan Kendala` → `problemDetail` (lihat bagian
-penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`,
+`Problem` → `problemId`, `Keterangan Kendala` → `problemDetailOriginal`
+(teks asli Indonesia; versi Inggrisnya diterjemahkan ke `problemDetail` — lihat
+bagian penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`,
 `Pabrik` → `factoryId`. Kolom `Translate`, `Produk`, `Status` / `Status Defect`,
 `Month`, dan kolom **`Value`** (sejak 12 Okt 2026 dipindah user ke kolom paling
 kanan, O) **tidak dipakai** — nilai defect tidak lagi diambil dari sheet, tapi
@@ -846,24 +848,39 @@ tidak ditulis balik, jadi header `Status` boleh tetap ada di sheet. Header
 `Value` boleh ada, boleh tidak; ketiadaannya tidak membuat sync gagal.
 
 **Penerjemahan "Keterangan Kendala".** Isi kolom `Keterangan Kendala` di sheet
-masih bahasa Indonesia, sedangkan `defects.problemDetail` menyimpan versi
-Inggris. Jadi setiap baris diterjemahkan dulu oleh **LibreTranslate self-host**
-(`lib/translate.ts` → `POST /translate` di service `libretranslate`, jaringan
-internal Docker) sebelum disimpan; hasilnya di-cache di tabel
-`translation_cache` (hash teks asli), jadi teks yang berulang tidak pernah
-diterjemahkan dua kali. Kolom `Translate` di sheet sengaja **tidak dibaca**:
-kalau dibaca, dua sumber kebenaran (isi sheet vs hasil app) akan saling
-menimpa. Kalau layanan terjemahan mati, baris tersebut **ditunda** (tidak
-disimpan dalam bahasa Indonesia) dan dicoba lagi pada sync berikutnya; baris
-lama tidak di-backfill — teks yang sudah tersimpan di app dibiarkan apa adanya
-sampai teks sheet-nya berubah. Teks asli Indonesia disimpan sebagai patokan di
-`defects.sheetFields` (`problemDetailSource` = hash teks asli), sehingga sync
-berikutnya tahu kapan harus menerjemahkan ulang. Maksimal 150 baris baru
-diterjemahkan per sync (sisanya ditunda ke sync berikutnya). Hasil yang jelas
-rusak — kosong, hanya tanda baca, atau placeholder seperti `_` (Argos pernah
-membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak** `isUsableTranslation()`
-dan diperlakukan seperti layanan mati: barisnya ditunda, sampahnya tidak masuk
-`defects.problemDetail` maupun `translation_cache`.
+masih bahasa Indonesia. Sejak 1 Nov 2026 keterangan kendala disimpan **dalam dua
+bahasa berdampingan**: `defects.problemDetailOriginal` (teks asli) dan
+`defects.problemDetail` (versi Inggris). Sync sheet mengisi yang asli, lalu
+menerjemahkannya dengan **LibreTranslate self-host** (`lib/translate.ts` →
+`POST /translate` di service `libretranslate`, jaringan internal Docker);
+hasilnya di-cache di tabel `translation_cache` (hash teks asli), jadi teks yang
+berulang tidak pernah diterjemahkan dua kali. Kolom `Translate` di sheet sengaja
+**tidak dibaca**: kalau dibaca, dua sumber kebenaran (isi sheet vs hasil app)
+akan saling menimpa. Kalau layanan terjemahan mati, baris tersebut **ditunda**
+(tidak disimpan dalam bahasa Indonesia) dan dicoba lagi pada sync berikutnya;
+baris lama tidak di-backfill — teks yang sudah tersimpan di app dibiarkan apa
+adanya sampai teks sheet-nya berubah. Teks asli Indonesia disimpan sebagai
+patokan di `defects.sheetFields` (`problemDetailSource` = hash teks asli),
+sehingga sync berikutnya tahu kapan harus menerjemahkan ulang. Maksimal 150
+baris baru diterjemahkan per sync (sisanya ditunda ke sync berikutnya). Hasil
+yang jelas rusak — kosong, hanya tanda baca, atau placeholder seperti `_` (Argos
+pernah membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak**
+`isUsableTranslation()` dan diperlakukan seperti layanan mati: barisnya ditunda,
+sampahnya tidak masuk `defects.problemDetail` maupun `translation_cache`.
+
+**Problem Detail dari aplikasi (dua bahasa).** Form defect punya switch **ID /
+EN** di atas kolom Problem Detail, dan popup Detail Defect punya switch yang
+sama; bahasa awalnya mengikuti bahasa aplikasi yang dipilih user. Operator
+mengisi salah satu bahasa, lalu `resolveProblemDetail()`
+(`src/lib/api/defect-detail.ts`) menerjemahkan yang satunya saat simpan. Kalau
+layanan terjemahan mati, penyimpanan **ditolak** (bukan disimpan sebelah) supaya
+tidak ada baris yang cuma punya satu bahasa — keputusan user 1 Nov 2026. Kalau
+operator mengisi dua-duanya sekaligus, keduanya dipakai apa adanya tanpa
+memanggil layanan. Tombol **Ubah** dan **Hapus** defect sekarang ada di footer
+popup Detail Defect (admin), bukan lagi di kolom aksi tiap baris tabel. Modul
+Excel ikut membawa kolom **`Keterangan Kendala`** (bahasa Indonesia) di samping
+`Problem Detail` (Inggris); saat impor kolom itu opsional — kalau diisi, isinya
+dipakai apa adanya tanpa terjemahan.
 
 **Problem dari aplikasi (dua arah sempit).** Operator bisa mengganti Problem
 sebuah defect di form app. Perubahan itu dicatat di tabel
@@ -1044,10 +1061,11 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 - Ringkasan total quantity & value defect (value hanya admin).
 - Tabel: Code Garansi, Timestamp, Produk, Pabrik, Problem, Qty, Value (admin).
-- **Klik baris** → dialog detail defect.
+- **Klik baris** → dialog detail defect; dari popup itu juga bisa **Ubah** dan **Hapus** (admin) — kolom aksi di tabel tidak ada lagi.
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
 - **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
+- **Problem Detail dua bahasa**: kolom keterangan kendala punya switch **ID / EN** (di form maupun di popup detail); bahasa awal mengikuti bahasa aplikasi. Isi satu bahasa, bahasa lainnya diterjemahkan otomatis saat simpan lewat LibreTranslate self-host; kalau layanan mati penyimpanan **ditolak**. Teks asli Indonesia dari Google Sheet tetap disimpan di `problemDetailOriginal` dan ikut diekspor/diimpor Excel sebagai kolom `Keterangan Kendala`.
 - **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.

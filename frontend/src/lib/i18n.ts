@@ -1412,6 +1412,16 @@ const translations = {
     en: "Detailed problem description",
     zh: "问题详细说明",
   },
+  "defects.problemDetailHint": {
+    id: "Bahasa lain diterjemahkan otomatis saat disimpan.",
+    en: "The other language is translated automatically when you save.",
+    zh: "保存时会自动翻译另一种语言。",
+  },
+  "defects.problemDetailMissing": {
+    id: "Belum ada terjemahan.",
+    en: "No translation yet.",
+    zh: "暂无翻译。",
+  },
   "defects.detailTitle": {
     id: "Detail Defect",
     en: "Defect Detail",
@@ -1423,9 +1433,9 @@ const translations = {
     zh: "保存并继续添加",
   },
   "defects.carryOverHint": {
-    id: "Produk, Pabrik, dan Status dibawa dari entri sebelumnya.",
-    en: "Product, Factory, and Status carry over from the previous entry.",
-    zh: "产品、工厂和状态将沿用上一条记录。",
+    id: "Produk dan Pabrik dibawa dari entri sebelumnya.",
+    en: "Product and Factory carry over from the previous entry.",
+    zh: "产品和工厂将沿用上一条记录。",
   },
   "defects.codeHint": {
     id: "Saran kode berikutnya untuk {factory} — tekan untuk memakai.",

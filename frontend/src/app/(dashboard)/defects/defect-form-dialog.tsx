@@ -73,10 +73,20 @@ export function DefectFormDialog({
   problemOptions,
   productPrices,
 }: DefectFormDialogProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const codeInputRef = useRef<HTMLInputElement>(null);
   const isEditing = editingId !== null;
   const [discardOpen, setDiscardOpen] = useState(false);
+  /**
+   * Bahasa Problem Detail yang sedang diedit. Default mengikuti bahasa aplikasi
+   * saat form dibuka (Indonesia -> ID, selain itu -> EN); operator bisa pindah
+   * untuk mengisi bahasa lainnya. Server melengkapi bahasa yang kosong saat
+   * menyimpan. Dialog di-remount per defect (lihat `key` di halaman), jadi
+   * nilai awalnya selalu ikut bahasa aplikasi.
+   */
+  const [detailLang, setDetailLang] = useState<"id" | "en">(
+    language === "id" ? "id" : "en"
+  );
 
   const suggestedCode = useMemo(
     () => (isEditing ? null : suggestNextCode(defects, factories, form.factoryId)),
@@ -486,17 +496,47 @@ export function DefectFormDialog({
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="defect-detail">
-                {t("defects.problemDetail")}
-              </Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="defect-detail">
+                  {t("defects.problemDetail")}
+                </Label>
+                {/* Dua bahasa disimpan berdampingan; pilih mana yang sedang diedit. */}
+                <div className="flex items-center gap-1" role="group">
+                  {(["id", "en"] as const).map((code) => (
+                    <Button
+                      key={code}
+                      type="button"
+                      size="sm"
+                      variant={detailLang === code ? "default" : "outline"}
+                      className="h-6 px-2 text-[11px] uppercase"
+                      aria-pressed={detailLang === code}
+                      onClick={() => setDetailLang(code)}
+                    >
+                      {code}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <Textarea
                 id="defect-detail"
-                value={form.problemDetail}
+                lang={detailLang}
+                value={
+                  detailLang === "id"
+                    ? form.problemDetailOriginal
+                    : form.problemDetail
+                }
                 onChange={(e) =>
-                  onFormChange((f) => ({ ...f, problemDetail: e.target.value }))
+                  onFormChange((f) =>
+                    detailLang === "id"
+                      ? { ...f, problemDetailOriginal: e.target.value }
+                      : { ...f, problemDetail: e.target.value }
+                  )
                 }
                 placeholder={t("defects.problemDetailPlaceholder")}
               />
+              <p className="text-xs text-muted-foreground">
+                {t("defects.problemDetailHint")}
+              </p>
             </div>
             <DialogFooter className="sm:justify-between">
               <span className="hidden text-xs text-muted-foreground sm:block">

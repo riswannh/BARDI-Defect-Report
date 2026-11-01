@@ -318,6 +318,7 @@ export default function DefectsPage() {
       videosLink: form.videosLink.trim(),
       problemId: Number(form.problemId),
       problemDetail: form.problemDetail.trim(),
+      problemDetailOriginal: form.problemDetailOriginal.trim(),
       productId: Number(form.productId),
       quantity: Number(form.quantity) || 0,
       factoryId: Number(form.factoryId),
@@ -547,6 +548,9 @@ export default function DefectsPage() {
       />
 
       <DefectFormDialog
+        // Remount per baris/form kosong supaya switch bahasa Problem Detail
+        // selalu mulai dari bahasa aplikasi.
+        key={editingId ?? "new"}
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
         editingId={editingId}
@@ -806,7 +810,6 @@ export default function DefectsPage() {
                   </TableHead>
                 )}
                 <TableHead>{t("common.media")}</TableHead>
-                {isAdmin && <TableHead className="w-24"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -871,32 +874,12 @@ export default function DefectsPage() {
                       )}
                     </div>
                   </TableCell>
-                  {isAdmin && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => openEdit(d)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleDelete(d.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
                 </TableRow>
               ))}
               {visibleDefects.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 10 : 8}
+                    colSpan={isAdmin ? 9 : 7}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}
@@ -924,6 +907,7 @@ export default function DefectsPage() {
       </Card>
 
       <DefectDetailDialog
+        key={detailDefect?.id ?? "none"}
         defect={detailDefect}
         onOpenChange={(open) => {
           if (!open) setDetailDefect(null);
@@ -934,6 +918,15 @@ export default function DefectsPage() {
         factories={factories}
         problems={problems}
         isAdmin={isAdmin}
+        onEdit={(d) => {
+          // Tombol Ubah pindah dari tabel ke popup detail (permintaan user).
+          setDetailDefect(null);
+          openEdit(d);
+        }}
+        onDelete={(d) => {
+          setDetailDefect(null);
+          void handleDelete(d.id);
+        }}
       />
 
       <ImportResultDialog

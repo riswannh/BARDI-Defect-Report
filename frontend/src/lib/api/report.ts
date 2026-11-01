@@ -181,6 +181,7 @@ export async function reportGET(req: NextRequest) {
     videosLink: row.videosLink,
     problemId: row.problemId,
     problemDetail: row.problemDetail,
+    problemDetailOriginal: row.problemDetailOriginal,
     productId: row.productId,
     quantity: row.quantity,
     factoryId: row.factoryId,

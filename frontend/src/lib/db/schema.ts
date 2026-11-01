@@ -274,6 +274,14 @@ export const defects = sqliteTable(
       .notNull()
       .references(() => problems.id),
     problemDetail: text("problemDetail").notNull().default(""),
+    /**
+     * Teks "Keterangan Kendala" apa adanya (bahasa Indonesia, dari Google
+     * Sheet atau yang diketik operator). `problemDetail` di atas menyimpan
+     * versi Inggrisnya, jadi satu defect punya dua bahasa dan UI memilih mana
+     * yang tampil sesuai bahasa aplikasi. Kolom ini sengaja dipisah (bukan
+     * cuma di `sheetFields`) supaya bisa dicari, diedit, dan diekspor.
+     */
+    problemDetailOriginal: text("problemDetailOriginal").notNull().default(""),
     productId: integer("productId")
       .notNull()
       .references(() => products.id),
