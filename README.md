@@ -881,6 +881,14 @@ Aturannya:
   terjemahannya gagal muncul sebagai `issues[]` + `summary.translationsPending`
   (badge kuning di dialog).
 
+Uji tanpa VPS: `cmd /c "npx tsx scripts/translate-check.ts"` menjalankan klien
+terjemahan melawan server tiruan (`node:http` di 127.0.0.1) dengan DB sementara —
+24 pemeriksaan cache, batch, dan penanganan 503/429/400. Untuk menilai mutu
+terjemahan sungguhan dari data lokal, jalankan
+`cmd /c "npx tsx scripts/translate-samples.ts 20"` di VPS setelah
+`docker compose up -d` (script mencetak 20 `problemDetail` acak beserta versi
+Inggrisnya).
+
 ### Sync Google Sheet (Sales)
 
 Menarik angka penjualan dari tab **Data Penjualan** spreadsheet yang sama.
