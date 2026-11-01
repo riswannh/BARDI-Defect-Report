@@ -403,6 +403,10 @@ Ditulis dari bug nyata, bukan teori. Baca sebelum menyentuh `src/components/ui/`
   Defect memakainya sejak 1 Nov 2026). `100dvh` supaya address bar ponsel ikut dihitung,
   `overscroll-contain` supaya gulir tidak merembet ke halaman. Jangan menaruh batas tinggi hanya
   di elemen dalam (`<dl>`, list) karena header/footer dialog tetap ikut terpotong.
+- **Form Defect: `initialFocus` hanya untuk mode TAMBAH.** Di `defect-form-dialog.tsx`
+  `initialFocus={isEditing ? false : codeInputRef}`. Dulu selalu `codeInputRef`, jadi tiap kali
+  mengubah defect kursor langsung melompat ke isian Code Garansi dan (di ponsel) keyboard muncul
+  menutupi bagian atas form. Mode ubah tidak boleh memfokuskan isian apa pun.
 - **`onOpenChange` pada `Dialog` bukan tempat untuk navigasi.** Di halaman Sales dulu
   `open === false` memanggil `advanceEdit()`, yang langsung `return` ketika antrean
   edit kosong — akibatnya dialog form TAMBAH **tidak bisa ditutup sama sekali** (klik X

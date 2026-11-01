@@ -187,11 +187,16 @@ export function DefectFormDialog({
         area gulir sendiri, popup fixed ini terpotong di atas/bawah dan tidak
         bisa digulir sama sekali (halaman di belakang terkunci selama dialog
         terbuka). `100dvh` mengikuti tinggi layar yang benar-benar terlihat.
+
+        Fokus awal hanya untuk form TAMBAH (langsung ke Code Garansi supaya
+        operator bisa mengetik). Saat mengubah data yang sudah ada kita tidak
+        memfokuskan isian apa pun — dulu kursor selalu melompat ke Code Garansi
+        dan menutupi bagian atas form di ponsel.
       */}
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           className="max-h-[85vh] overflow-y-auto overscroll-contain supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] sm:max-w-lg"
-          initialFocus={codeInputRef}
+          initialFocus={isEditing ? false : codeInputRef}
           finalFocus={isEditing ? true : false}
         >
           <DialogHeader>
