@@ -672,13 +672,20 @@ export async function runSync(options: {
      *   diperbarui supaya pasangan dua bahasa tetap sinkron.
      * - Kalau teks sheet TIDAK berubah, editan operator di app dipertahankan
      *   (jangan ditimpa teks lama dari sheet).
+     *
+     * `patch.problemDetail !== undefined` = baris ini barusan menerima hasil
+     * terjemahan. Pasangannya wajib ditulis di commit yang sama — kalau tidak,
+     * ada baris berbahasa Inggris tanpa teks aslinya (pernah terjadi: baris
+     * 202607227 yang baru sembuh setelah sync berikutnya).
      */
     const sheetTextChanged = detail.action === "translate" || detail.action === "adopt";
     const originalPending =
       detailSettled &&
       rawDetail !== "" &&
       rawDetail !== local.rawProblemDetailOriginal &&
-      (local.rawProblemDetailOriginal === "" || sheetTextChanged);
+      (local.rawProblemDetailOriginal === "" ||
+        sheetTextChanged ||
+        patch.problemDetail !== undefined);
     if (originalPending) {
       patch.problemDetailOriginal = rawDetail;
     }
