@@ -13,7 +13,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-type Mode = "ok" | "fail" | "partial" | "rate" | "junk";
+type Mode = "ok" | "fail" | "partial" | "rate" | "junk" | "caps";
 
 const state = {
   mode: "ok" as Mode,
@@ -50,9 +50,12 @@ async function main() {
         res.writeHead(429, { "content-type": "text/plain" }).end("slow down");
         return;
       }
-      const translated = q.map((text) =>
-        state.mode === "junk" && /rusak/i.test(text) ? "_" : `EN(${text})`
-      );
+      const translated = q.map((text) => {
+        if (state.mode === "junk" && /rusak/i.test(text)) return "_";
+        // Tiru Argos: masukan HURUF BESAR semua dibalas kosong.
+        if (state.mode === "caps" && /[A-Z]/.test(text) && !/[a-z]/.test(text)) return "";
+        return `EN(${text})`;
+      });
       if (state.mode === "partial") translated.pop();
       res
         .writeHead(200, { "content-type": "application/json" })
@@ -188,6 +191,35 @@ async function main() {
   );
   checks += 1;
   state.mode = "ok";
+
+  // 11. Teks HURUF BESAR semua: layanan membalas kosong, dicoba ulang dengan
+  // huruf biasa — hasilnya disimpan untuk teks ASLINYA (satu kunci cache).
+  state.mode = "caps";
+  state.requests.length = 0;
+  const shout = await translateTexts(["RUSAK, MATI TIDAK BISA NYALA"]);
+  check(
+    shout.translations.get("RUSAK, MATI TIDAK BISA NYALA") === "EN(Rusak, mati tidak bisa nyala)",
+    "huruf besar semua diterjemahkan lewat percobaan huruf biasa"
+  );
+  check(state.requests.length === 2, "teks huruf besar dikirim dua kali");
+  check(
+    state.requests[1].join("|") === "Rusak, mati tidak bisa nyala",
+    "percobaan kedua memakai kalimat huruf biasa"
+  );
+  check(shout.requested === 1, "hasil percobaan kedua dicatat sebagai terjemahan");
+
+  // Kalimat biasa tidak ikut dikirim ulang.
+  state.requests.length = 0;
+  const plain = await translateTexts(["Lampu mati total"]);
+  check(plain.translations.has("Lampu mati total"), "kalimat biasa tetap diterjemahkan sekali");
+  check(state.requests.length === 1, "kalimat biasa tidak dikirim ulang");
+
+  // Hasil percobaan kedua tersimpan di cache untuk teks asli.
+  state.mode = "ok";
+  state.requests.length = 0;
+  const shoutCached = await translateTexts(["RUSAK, MATI TIDAK BISA NYALA"]);
+  check(shoutCached.cached === 1 && shoutCached.requested === 0, "hasil huruf besar masuk cache");
+  check(state.requests.length === 0, "teks huruf besar tidak dikirim lagi");
 
   server.close();
   console.log(`SEMUA LULUS: ${checks} pemeriksaan klien terjemahan (server tiruan, cache SQLite)`);

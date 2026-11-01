@@ -61,6 +61,24 @@ export const isUsableTranslation = (translated: string): boolean => {
 export const translationHash = (text: string, from: string, to: string): string =>
   createHash("sha1").update(`${from}\u0000${to}\u0000${text}`, "utf8").digest("hex").slice(0, 16);
 
+/**
+ * Teks yang hampir seluruhnya HURUF BESAR. Argos sering membalas kosong untuk
+ * masukan seperti ini ("RUSAK, MATI TIDAK BISA NYALA"), padahal kalimat yang
+ * sama dalam huruf biasa diterjemahkan normal.
+ */
+const isShouty = (text: string): boolean => {
+  const letters = text.match(/\p{L}/gu) ?? [];
+  if (letters.length < 4) return false;
+  const upper = letters.filter((ch) => ch !== ch.toLowerCase() && ch === ch.toUpperCase()).length;
+  return upper / letters.length >= 0.7;
+};
+
+/** "RUSAK, MATI" -> "Rusak, mati" (kata-katanya tidak diubah, hanya kapital). */
+const sentenceCase = (text: string): string =>
+  text
+    .toLocaleLowerCase("id")
+    .replace(/^(\s*)(\p{L})/u, (_match, space: string, ch: string) => space + ch.toUpperCase());
+
 export const translateEndpoint = (): string =>
   (process.env.TRANSLATE_URL?.trim() || DEFAULT_URL).replace(/\/+$/, "");
 
@@ -220,6 +238,39 @@ export async function translateTexts(
         toLang: to,
       });
     });
+  }
+
+  // Percobaan kedua khusus teks HURUF BESAR: layanan membalas kosong untuk
+  // masukan itu, jadi kirim ulang versi huruf biasa. Kata-katanya tetap sama;
+  // hasilnya disimpan untuk teks ASLINYA supaya cache tetap satu kunci.
+  const shouty = missing.filter((text) => !translations.has(text) && isShouty(text));
+  if (shouty.length > 0) {
+    const variants = new Map(shouty.map((text) => [text, sentenceCase(text)] as const));
+    const wanted = [...new Set([...variants.values()])];
+    try {
+      for (const chunk of chunkTexts(wanted)) {
+        const out = await requestTranslate(chunk, from, to);
+        chunk.forEach((variant, index) => {
+          const value = out[index];
+          if (!value) return;
+          for (const [original, candidate] of variants) {
+            if (candidate !== variant || translations.has(original)) continue;
+            translations.set(original, value);
+            rows.push({
+              hash: translationHash(original, from, to),
+              sourceText: original,
+              translated: value,
+              fromLang: from,
+              toLang: to,
+            });
+          }
+        });
+      }
+    } catch (error) {
+      // Layanan bermasalah saat mencoba ulang: biarkan barisnya ditunda, jangan
+      // menggagalkan teks lain yang sudah berhasil diterjemahkan.
+      if (!(error instanceof TranslateError)) throw error;
+    }
   }
   if (rows.length > 0) db.insert(translationCache).values(rows).onConflictDoNothing().run();
 

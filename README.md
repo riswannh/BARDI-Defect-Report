@@ -867,6 +867,11 @@ yang jelas rusak — kosong, hanya tanda baca, atau placeholder seperti `_` (Arg
 pernah membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak**
 `isUsableTranslation()` dan diperlakukan seperti layanan mati: barisnya ditunda,
 sampahnya tidak masuk `defects.problemDetail` maupun `translation_cache`.
+Satu pengecualian yang ditangani otomatis: Argos membalas kosong untuk masukan
+**HURUF BESAR semua** ("RUSAK, MATI TIDAK BISA NYALA"), jadi teks seperti itu
+dikirim ulang sekali dalam huruf biasa ("Rusak, mati tidak bisa nyala") — kata
+dan maknanya tidak diubah, hanya kapitalisasinya, dan hasilnya tetap disimpan
+untuk teks aslinya.
 
 **Problem Detail dari aplikasi (dua bahasa).** Form defect punya switch **ID /
 EN** di atas kolom Problem Detail, dan popup Detail Defect punya switch yang
