@@ -1532,6 +1532,16 @@ const translations = {
     en: "{count} rows skipped",
     zh: "{count} 行已跳过",
   },
+  "gsheet.translatedBadge": {
+    id: "{count} baris diterjemahkan",
+    en: "{count} rows translated",
+    zh: "{count} 行已翻译",
+  },
+  "gsheet.translationPending": {
+    id: "{count} baris menunggu terjemahan — coba sync lagi nanti",
+    en: "{count} rows waiting for translation — try syncing again later",
+    zh: "{count} 行等待翻译 — 稍后再同步",
+  },
   "gsheet.noConflict": {
     id: "Tidak ada konflik — semua perubahan dari sheet sudah masuk.",
     en: "No conflicts — every sheet change has been applied.",

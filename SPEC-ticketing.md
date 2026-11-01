@@ -69,7 +69,7 @@ Semua tabel di `frontend/src/lib/db/schema.ts`, mengikuti pola tabel `defects` (
 - **Penyaringan di server**, bukan di UI: CS hanya menerima ruang `all`, Tim Pabrik hanya ruang `factory`, Tim Produk menerima keduanya. Pesan/lampiran ruang `factory` tidak pernah masuk respons untuk user CS.
 - **Relay permintaan pabrik ke CS**: Tim Produk menuliskan permintaan pabrik di ruang `all` supaya CS membacanya, jadi CS tetap boleh mengirim pesan di ruang `all` setelah tiket dieskalasi (ruang CS tidak dikunci).
 - **Terjemahan per bubble**: tiap gelembung punya aksi "Terjemahkan ke <bahasa UI aktif>" (mengikuti bahasa aktif di `frontend/src/lib/i18n.ts`); hasil tampil di bawah teks asli + tombol sembunyikan, teks asli tidak pernah ditimpa.
-- `POST /api/translate` meneruskan ke `http://libretranslate:5000/translate` (jaringan internal Docker), hasilnya disimpan ke `translation_cache` supaya teks yang sama tidak dihitung ulang. Kalau layanan mati → 503, UI menampilkan "Terjemahan tidak tersedia".
+- `POST /api/translate` meneruskan ke `http://libretranslate:5000/translate` (jaringan internal Docker), hasilnya disimpan ke `translation_cache` supaya teks yang sama tidak dihitung ulang. Kalau layanan mati → 503, UI menampilkan "Terjemahan tidak tersedia". Endpoint + cache ini **sudah jadi** (1 Nov 2026, dipakai lebih dulu oleh sync Google Sheet "Keterangan Kendala"); Fase 2 tinggal memanggilnya dari gelembung chat.
 
 ## 7. API Contract (Fase 1)
 
@@ -130,6 +130,8 @@ LibreTranslate: image `libretranslate/libretranslate:latest` ±209 MB terkompres
 - `restart: unless-stopped` + healthcheck, volume model `libretranslate_models:/home/libretranslate/.local`.
 - Port **tidak** dipublikasikan ke host (hanya jaringan internal compose).
 - `translation_cache` di aplikasi supaya teks yang sama tidak dihitung ulang.
+
+**Status 1 Nov 2026:** service `libretranslate` sudah dipasang di `deploy/docker-compose.yml` dan `docker-compose.yml` (dev, port 5000 dipublikasikan hanya untuk uji) dengan pengaman di atas, tetapi `LT_LOAD_ONLY` baru **`en,id`** — model `zh` sengaja belum dimuat karena baru dibutuhkan chat tiket (Fase 2); tambahkan `zh` bersamaan dengan fitur itu, setelah memastikan RAM VPS masih cukup tanpa swap. Terjemahan yang sudah berjalan sekarang: id → en untuk kolom "Keterangan Kendala" saat sync Google Sheet (lihat README §Sync Google Sheet), lewat `src/lib/translate.ts` + `translation_cache` yang sama.
 
 ## 12. Risiko & asumsi
 

@@ -821,22 +821,41 @@ hanya membaca — tidak ada jalur tulis ke sheet sama sekali.
 
 Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
-`Problem` → `problemId`, `Translate` → `problemDetail`, `Offical Name` →
-`productId`, `Quantity` → `quantity`, `Status Defect` → `statusId`, `Pabrik` →
-`factoryId`. Kolom `Keterangan Kendala`, `Produk`, `Status`, `Month`, dan kolom
-**`Value`** (sejak 12 Okt 2026 dipindah user ke kolom paling kanan, O) **tidak
-dipakai** — nilai defect tidak lagi diambil dari sheet, tapi dihitung server dari
-Price List (`defectValueFromMaster()`, §8.8). Header `Value` boleh ada, boleh
-tidak; ketiadaannya tidak membuat sync gagal.
+`Problem` → `problemId`, `Keterangan Kendala` → `problemDetail` (lihat bagian
+penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`,
+`Status Defect` → `statusId`, `Pabrik` → `factoryId`. Kolom `Translate`,
+`Produk`, `Status`, `Month`, dan kolom **`Value`** (sejak 12 Okt 2026 dipindah
+user ke kolom paling kanan, O) **tidak dipakai** — nilai defect tidak lagi
+diambil dari sheet, tapi dihitung server dari Price List
+(`defectValueFromMaster()`, §8.8). Header `Value` boleh ada, boleh tidak;
+ketiadaannya tidak membuat sync gagal.
+
+**Penerjemahan "Keterangan Kendala".** Isi kolom `Keterangan Kendala` di sheet
+masih bahasa Indonesia, sedangkan `defects.problemDetail` menyimpan versi
+Inggris. Jadi setiap baris diterjemahkan dulu oleh **LibreTranslate self-host**
+(`lib/translate.ts` → `POST /translate` di service `libretranslate`, jaringan
+internal Docker) sebelum disimpan; hasilnya di-cache di tabel
+`translation_cache` (hash teks asli), jadi teks yang berulang tidak pernah
+diterjemahkan dua kali. Kolom `Translate` di sheet sengaja **tidak dibaca**:
+kalau dibaca, dua sumber kebenaran (isi sheet vs hasil app) akan saling
+menimpa. Kalau layanan terjemahan mati, baris tersebut **ditunda** (tidak
+disimpan dalam bahasa Indonesia) dan dicoba lagi pada sync berikutnya; baris
+lama tidak di-backfill — teks yang sudah tersimpan di app dibiarkan apa adanya
+sampai teks sheet-nya berubah. Teks asli Indonesia disimpan sebagai patokan di
+`defects.sheetFields` (`problemDetailSource` = hash teks asli), sehingga sync
+berikutnya tahu kapan harus menerjemahkan ulang. Maksimal 150 baris baru
+diterjemahkan per sync (sisanya ditunda ke sync berikutnya).
 
 | Method | Path | Akses | Body |
 |---|---|---|---|
 | POST | `/api/defects/gsheet/sync` | admin | `{}` |
 | POST | `/api/defects/gsheet/resolve` | admin | `{ defaultChoice?: "sheet"\|"app", items?: [{ codeGaransi, choices: {field: "sheet"\|"app"} }] }` |
+| POST | `/api/translate` | user login | `{ q: string \| string[], source?: "id", target?: "en" }` |
 
 Respons: `{ ok, tab, summary, conflicts[], issues[], conflictsTruncated }` dengan
 `summary = { sheetRows, localRows, matched, inserted, appliedFields, rowsUpdated,
-conflicts, conflictsResolved, unchanged, appOnlyChanges, onlyInApp, skipped }`.
+conflicts, conflictsResolved, unchanged, appOnlyChanges, onlyInApp, skipped,
+translations, translationsPending }`.
 
 Aturannya:
 
@@ -856,6 +875,11 @@ Aturannya:
 - Pilihan terakhir dicatat per baris di `defects.sheetFields` (hash nilai sheet
   yang disepakati) + `defects.sheetSyncedAt`, jadi sync berikutnya tahu sisi mana
   yang berubah.
+- `Keterangan Kendala` dibandingkan lewat **teks aslinya**, bukan lewat
+  `problemDetail` (yang berisi versi Inggris). Baris baru diterjemahkan, baris
+  lama dengan nilai app terisi diadopsi tanpa di-backfill, dan baris yang
+  terjemahannya gagal muncul sebagai `issues[]` + `summary.translationsPending`
+  (badge kuning di dialog).
 
 ### Sync Google Sheet (Sales)
 

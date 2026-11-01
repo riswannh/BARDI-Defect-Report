@@ -11,6 +11,8 @@ services:
       DB_FILE_NAME: /data/sqlite.db
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-ubah-secret-ini-minimal-32-karakter}
+      # Terjemahan "Keterangan Kendala" (id -> en). Nama host = service di bawah.
+      TRANSLATE_URL: http://libretranslate:5000
     volumes:
       - ./data:/data
     healthcheck:
@@ -25,3 +27,38 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
+
+  # Terjemahan lokal untuk development — tidak wajib hidup: kalau mati, baris
+  # baru dari sync ditunda (bukan disimpan dalam bahasa Indonesia).
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: bardi-libretranslate
+    restart: unless-stopped
+    ports:
+      # Hanya untuk coba-coba dari host (mis. curl ke /translate).
+      - "5000:5000"
+    environment:
+      LT_LOAD_ONLY: en,id
+      LT_THREADS: "2"
+      LT_CHAR_LIMIT: "5000"
+      LT_DISABLE_WEB_UI: "true"
+      LT_UPDATE_MODELS: "false"
+      ARGOS_CHUNK_TYPE: MINISBD
+    volumes:
+      - libretranslate_models:/home/libretranslate/.local
+    mem_limit: 1.2g
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/languages', timeout=5).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+volumes:
+  libretranslate_models:

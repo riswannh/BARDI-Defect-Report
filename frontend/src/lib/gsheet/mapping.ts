@@ -30,7 +30,12 @@ export const SHEET_COLUMN: Record<GsheetField, string> = {
   photosLink: "Foto Kendala",
   videosLink: "Video Kendala",
   problemId: "Problem",
-  problemDetail: "Translate",
+  /**
+   * Teks kendala ASLI (bahasa Indonesia) dari operator. App yang menerjemahkan
+   * ke bahasa Inggris lewat LibreTranslate (lib/translate.ts) — kolom `Translate`
+   * di sheet (formula GOOGLETRANSLATE) sengaja TIDAK dibaca.
+   */
+  problemDetail: "Keterangan Kendala",
   productId: "Offical Name",
   quantity: "Quantity",
   statusId: "Status Defect",
@@ -44,7 +49,7 @@ export const FIELD_LABEL: Record<GsheetField, string> = {
   photosLink: "Foto Kendala",
   videosLink: "Video Kendala",
   problemId: "Problem",
-  problemDetail: "Translate",
+  problemDetail: "Keterangan Kendala (diterjemahkan)",
   productId: "Produk (Offical Name)",
   quantity: "Quantity",
   statusId: "Status Defect",

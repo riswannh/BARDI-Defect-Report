@@ -905,3 +905,23 @@ export const taskTypes = sqliteTable(
     index("task_types_sort_idx").on(t.sortOrder),
   ]
 );
+
+/**
+ * Cache terjemahan (LibreTranslate self-host di VPS yang sama).
+ *
+ * Dipakai sync Google Sheet untuk kolom "Keterangan Kendala" (Indonesia ->
+ * Inggris); fitur tiket memakai tabel yang sama untuk gelembung chat. Satu baris
+ * per kombinasi teks + bahasa sumber + bahasa tujuan, jadi teks yang berulang
+ * tidak pernah dikirim ulang ke layanan terjemahan.
+ */
+export const translationCache = sqliteTable("translation_cache", {
+  /** sha1(from + "\\0" + to + "\\0" + teks) 16 karakter — lihat lib/translate.ts. */
+  hash: text("hash").primaryKey(),
+  sourceText: text("sourceText").notNull(),
+  translated: text("translated").notNull(),
+  fromLang: text("fromLang").notNull().default("id"),
+  toLang: text("toLang").notNull().default("en"),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .default(sql`(unixepoch())`),
+});

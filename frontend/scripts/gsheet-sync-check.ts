@@ -6,7 +6,9 @@ import assert from "node:assert/strict";
 import {
   baselineFromSheet,
   parseBaseline,
+  planProblemDetail,
   planRowSync,
+  PROBLEM_DETAIL_SOURCE,
   type RowPlan,
 } from "../src/lib/gsheet/sync";
 import {
@@ -14,6 +16,7 @@ import {
   parseSheetNumber,
   parseSheetTimestamp,
   resolveHeaderIndex,
+  shortHash,
 } from "../src/lib/gsheet/mapping";
 import { defectValueFromMaster } from "../src/lib/defect-value";
 import type { ProductPrice } from "../src/lib/types";
@@ -222,7 +225,7 @@ assert.deepEqual(resolved.missing, []);
 assert.equal(resolved.index.codeGaransi, 0);
 assert.equal(resolved.index.problemId, 9);
 assert.equal(resolved.index.productId, 11);
-assert.equal(resolved.index.problemDetail, 12);
+assert.equal(resolved.index.problemDetail, 4);
 assert.equal(resolved.index.statusId, 13);
 assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 9);
 
@@ -315,6 +318,41 @@ assert.equal(
   "timestamp kosong -> null"
 );
 
+// 15. Kolom "Keterangan Kendala" (Indonesia) diterjemahkan app, bukan dibaca dari
+//     kolom "Translate" di sheet. Data lama TIDAK di-backfill: baris yang sudah
+//     punya nilai app diadopsi apa adanya dan hanya diterjemahkan ulang kalau
+//     teks sheet-nya berubah. Baris yang terjemahannya gagal (app masih kosong)
+//     tidak boleh diadopsi, supaya sync berikutnya mencoba lagi.
+const legacyBaseline = baselineFromSheet({ codeGaransi: "B2QHLWZ9UI", problemDetail: "Dead" });
+assert.equal(planProblemDetail({ sheetText: "", appText: "Dead", baseline: null }).action, "skip");
+assert.equal(
+  planProblemDetail({ sheetText: "Mati total", appText: "", baseline: null }).action,
+  "translate",
+  "baris baru -> diterjemahkan"
+);
+assert.equal(
+  planProblemDetail({ sheetText: "Mati total", appText: "Dead", baseline: legacyBaseline }).action,
+  "adopt",
+  "baris lama -> nilai app dipertahankan, tidak di-backfill"
+);
+assert.equal(
+  planProblemDetail({ sheetText: "Mati total", appText: "", baseline: legacyBaseline }).action,
+  "translate",
+  "terjemahan sebelumnya gagal -> coba lagi"
+);
+const adoptedBaseline = { ...legacyBaseline, [PROBLEM_DETAIL_SOURCE]: shortHash("Mati total") };
+assert.equal(
+  planProblemDetail({ sheetText: "Mati total", appText: "Dead", baseline: adoptedBaseline }).action,
+  "skip",
+  "teks sheet tidak berubah -> tidak diterjemahkan ulang"
+);
+assert.equal(
+  planProblemDetail({ sheetText: "Mati total banget", appText: "Dead", baseline: adoptedBaseline })
+    .action,
+  "translate",
+  "teks sheet berubah -> terjemahkan ulang"
+);
+
 console.log(
-  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect"
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 6 pemeriksaan terjemahan Keterangan Kendala"
 );

@@ -141,3 +141,50 @@ export function parseBaseline(raw: string | null | undefined): Record<string, st
     return null;
   }
 }
+
+/**
+ * Kunci baseline tambahan untuk teks ASLI kolom "Keterangan Kendala" (bahasa
+ * Indonesia). `problemDetail` sendiri menyimpan hash versi INGGRIS-nya, karena
+ * itulah yang tersimpan di app.
+ */
+export const PROBLEM_DETAIL_SOURCE = "problemDetailSource";
+
+export type ProblemDetailAction = "translate" | "adopt" | "skip";
+
+export type ProblemDetailPlan = {
+  action: ProblemDetailAction;
+  /** Hash teks asli sheet — dicatat supaya sync berikutnya tahu teksnya berubah. */
+  sourceHash: string;
+};
+
+/**
+ * Aturan kolom teks kendala (Indonesia -> Inggris), satu-satunya field yang
+ * tidak boleh dibandingkan apa adanya antara sheet dan app.
+ *
+ * - teks sheet kosong            -> tidak ada yang perlu diterjemahkan;
+ * - belum pernah sync (baseline  -> terjemahkan (nilainya dipakai kalau user
+ *   null, mis. baris dari impor)    memilih "pakai sheet");
+ * - baris lama tanpa kunci sumber -> ADOPSI: nilai app dipertahankan (data lama
+ *   TIDAK di-backfill, sesuai keputusan user) dan teks asli sekarang dicatat
+ *   sebagai patokan. Terjemahan baru jalan kalau teks sheet-nya berubah;
+ * - kunci sumber ada tapi beda    -> teks sheet berubah, terjemahkan ulang;
+ * - kunci sumber sama             -> tidak berubah, jangan terjemahkan lagi.
+ *
+ * Baris yang app-nya masih kosong (terjemahan sync sebelumnya gagal) tidak
+ * pernah diadopsi, supaya sync berikutnya mencoba menerjemahkan lagi.
+ */
+export function planProblemDetail(input: {
+  sheetText: string;
+  appText: string;
+  baseline: Record<string, string> | null;
+}): ProblemDetailPlan {
+  const sheetText = input.sheetText ?? "";
+  const sourceHash = shortHash(sheetText);
+  if (!sheetText) return { action: "skip", sourceHash };
+  if (!input.baseline) return { action: "translate", sourceHash };
+  const known = input.baseline[PROBLEM_DETAIL_SOURCE];
+  if (known === undefined) {
+    return { action: input.appText.trim() ? "adopt" : "translate", sourceHash };
+  }
+  return { action: known === sourceHash ? "skip" : "translate", sourceHash };
+}
