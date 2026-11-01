@@ -190,7 +190,7 @@ export function DefectFormDialog({
       */}
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-lg"
+          className="max-h-[85vh] overflow-y-auto overscroll-contain supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] sm:max-w-lg"
           initialFocus={codeInputRef}
           finalFocus={isEditing ? true : false}
         >

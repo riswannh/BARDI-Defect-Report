@@ -105,7 +105,7 @@ export function DefectDetailDialog({
         Sama seperti form: di ponsel popup ini bisa lebih tinggi dari layar,
         jadi butuh batas tinggi + area gulir sendiri supaya isinya terbaca.
       */}
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto overscroll-contain supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("defects.detailTitle")}</DialogTitle>
           <DialogDescription>{defect?.codeGaransi ?? "-"}</DialogDescription>
