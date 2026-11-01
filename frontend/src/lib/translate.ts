@@ -44,6 +44,19 @@ export const normalizeText = (value: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
+/**
+ * Terjemahan yang jelas rusak jangan disimpan. LibreTranslate/Argos sesekali
+ * membalas "_" atau tanda baca saja untuk kalimat yang tidak dikenali (terbukti
+ * pada "BARANG BARU MATI TOTAL" -> "_"), dan sampah seperti itu tidak boleh
+ * masuk `defects.problemDetail` maupun cache.
+ */
+export const isUsableTranslation = (translated: string): boolean => {
+  const text = normalizeText(translated);
+  if (text.length < 2) return false;
+  if (/^[\s_\-–—.…?*]+$/.test(text)) return false;
+  return /\p{L}/u.test(text);
+};
+
 /** Kunci cache: satu teks pada satu pasangan bahasa. */
 export const translationHash = (text: string, from: string, to: string): string =>
   createHash("sha1").update(`${from}\u0000${to}\u0000${text}`, "utf8").digest("hex").slice(0, 16);
@@ -101,14 +114,16 @@ async function requestTranslate(texts: string[], from: string, to: string): Prom
         const data = (await res.json().catch(() => ({}))) as { translatedText?: string | string[] };
         const raw = Array.isArray(data.translatedText) ? data.translatedText : [data.translatedText ?? ""];
         const out = raw.map((item) => normalizeText(String(item ?? "")));
-        if (out.length !== texts.length || out.some((item) => !item)) {
+        if (out.length !== texts.length) {
           throw new TranslateError(
             "invalid",
             "Layanan terjemahan mengembalikan hasil yang tidak lengkap. Coba lagi nanti.",
             `diminta ${texts.length}, diterima ${out.length}`
           );
         }
-        return out;
+        // Hasil rusak dikosongkan: pemanggil menganggap teks itu belum
+        // diterjemahkan, jadi barisnya ditunda dan sampahnya tidak tersimpan.
+        return out.map((item) => (isUsableTranslation(item) ? item : ""));
       }
 
       const detail = (await res.text().catch(() => "")).slice(0, 200);
@@ -194,6 +209,8 @@ export async function translateTexts(
     const out = await requestTranslate(chunk, from, to);
     chunk.forEach((text, index) => {
       const value = out[index];
+      // Hasil rusak dibiarkan kosong supaya barisnya ditunda ke sync berikutnya.
+      if (!value) return;
       translations.set(text, value);
       rows.push({
         hash: translationHash(text, from, to),
@@ -215,5 +232,13 @@ export async function translateText(
   options: { from?: string; to?: string } = {}
 ): Promise<string> {
   const { translations } = await translateTexts([text], options);
-  return translations.get(normalizeText(text)) ?? "";
+  const value = translations.get(normalizeText(text));
+  if (!value) {
+    throw new TranslateError(
+      "invalid",
+      "Layanan terjemahan tidak bisa menerjemahkan teks ini.",
+      normalizeText(text).slice(0, 80)
+    );
+  }
+  return value;
 }

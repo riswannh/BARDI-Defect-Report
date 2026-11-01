@@ -844,7 +844,11 @@ lama tidak di-backfill — teks yang sudah tersimpan di app dibiarkan apa adanya
 sampai teks sheet-nya berubah. Teks asli Indonesia disimpan sebagai patokan di
 `defects.sheetFields` (`problemDetailSource` = hash teks asli), sehingga sync
 berikutnya tahu kapan harus menerjemahkan ulang. Maksimal 150 baris baru
-diterjemahkan per sync (sisanya ditunda ke sync berikutnya).
+diterjemahkan per sync (sisanya ditunda ke sync berikutnya). Hasil yang jelas
+rusak — kosong, hanya tanda baca, atau placeholder seperti `_` (Argos pernah
+membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak** `isUsableTranslation()`
+dan diperlakukan seperti layanan mati: barisnya ditunda, sampahnya tidak masuk
+`defects.problemDetail` maupun `translation_cache`.
 
 | Method | Path | Akses | Body |
 |---|---|---|---|

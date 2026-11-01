@@ -13,7 +13,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-type Mode = "ok" | "fail" | "partial" | "rate";
+type Mode = "ok" | "fail" | "partial" | "rate" | "junk";
 
 const state = {
   mode: "ok" as Mode,
@@ -50,7 +50,9 @@ async function main() {
         res.writeHead(429, { "content-type": "text/plain" }).end("slow down");
         return;
       }
-      const translated = q.map((text) => `EN(${text})`);
+      const translated = q.map((text) =>
+        state.mode === "junk" && /rusak/i.test(text) ? "_" : `EN(${text})`
+      );
       if (state.mode === "partial") translated.pop();
       res
         .writeHead(200, { "content-type": "application/json" })
@@ -61,9 +63,8 @@ async function main() {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   process.env.TRANSLATE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
 
-  const { translateEndpoint, translateTexts, normalizeText, TranslateError } = await import(
-    "../src/lib/translate"
-  );
+  const { isUsableTranslation, translateEndpoint, translateText, translateTexts, normalizeText, TranslateError } =
+    await import("../src/lib/translate");
   const { sqliteClient } = await import("../src/lib/db");
 
   sqliteClient.exec(`
@@ -168,6 +169,25 @@ async function main() {
   state.requests.length = 0;
   const retry = await translateTexts(["Hasil terpotong"]);
   check(retry.requested === 1, "teks gagal tadi dicoba lagi (tidak tercache)");
+
+  // 10. Hasil rusak ("_") dianggap belum diterjemahkan dan tidak dicache.
+  check(isUsableTranslation("_") === false, "'_' bukan terjemahan yang sah");
+  check(isUsableTranslation("  ...  ") === false, "tanda baca saja ditolak");
+  check(isUsableTranslation("No") === true, "kata pendek tetap sah");
+  state.mode = "junk";
+  const junk = await translateTexts(["Barang rusak total", "Barang baik sekali"]);
+  check(!junk.translations.has("Barang rusak total"), "hasil '_' dianggap gagal");
+  check(
+    junk.translations.get("Barang baik sekali") === "EN(Barang baik sekali)",
+    "teks lain dalam batch yang sama tetap diterjemahkan"
+  );
+  await assert.rejects(
+    () => translateText("Barang rusak total"),
+    (error: unknown) => error instanceof TranslateError && error.code === "invalid",
+    "translateText menolak hasil rusak"
+  );
+  checks += 1;
+  state.mode = "ok";
 
   server.close();
   console.log(`SEMUA LULUS: ${checks} pemeriksaan klien terjemahan (server tiruan, cache SQLite)`);

@@ -45,7 +45,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const { translations } = await translateTexts(texts, { from, to });
-    const out = texts.map((text) => translations.get(text) ?? "");
+    const missing = texts.filter((text) => !translations.has(text));
+    if (missing.length > 0) {
+      // Hasil rusak/kosong tidak dikirim ke pemanggil — lebih baik gagal jelas.
+      return jsonError(
+        `Layanan tidak bisa menerjemahkan: "${missing[0].slice(0, 60)}". Coba lagi nanti.`,
+        422
+      );
+    }
+    const out = texts.map((text) => translations.get(text) as string);
     return jsonOk({ translatedText: Array.isArray(raw) ? out : out[0] });
   } catch (error) {
     if (error instanceof TranslateError) {
