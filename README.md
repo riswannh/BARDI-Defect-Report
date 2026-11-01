@@ -454,6 +454,15 @@ Semua endpoint ada di `frontend/src/app/api/`. Auth via cookie session Better Au
 
 Berlaku untuk `products`, `problems`, `factories`:
 
+**Nama Problem ditulis dalam bahasa Inggris** (keputusan 1 Nov 2026): 41 entri
+berbahasa Indonesia hasil tambah manual operator diterjemahkan manual
+("Tidak merekam" → "Not Recording", "Baterai cepat habis" → "Battery Drains
+Fast", dst), dua duplikat persis digabung ke entri lama ("Mekanisme Eror" →
+Mechanism Error, "Stuck Indikator" → Stuck Indicator) dan baris repair yang
+memakainya ikut dipindahkan. Pengecualian: **"Kosong"** tetap — itu nilai
+default untuk sel Problem kosong di Google Sheet (403 baris) dan dipakai 685
+defect. Jangan menambah entri Problem berbahasa Indonesia lagi.
+
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
 | GET | `/api/{module}` | user login | daftar data (`factories` di-scope untuk role Pabrik) |
