@@ -7,6 +7,11 @@ import { createHash } from "node:crypto";
  * `value` SENGAJA tidak ada di sini: nilai defect dihitung app dari Price List
  * (lihat `defectValueFromMaster`), jadi kolom "Value" di sheet tidak dibaca dan
  * tidak pernah lagi jadi konflik.
+ *
+ * `factoryId` juga TIDAK ada di sini: kolom "Pabrik" di sheet sudah dihapus
+ * (1 Nov 2026). Pabrik defect mengikuti kaitan produk → pabrik yang dikelola di
+ * User Management › daftar pabrik, persis seperti form Defect yang mengisi
+ * Pabrik otomatis begitu produk dipilih.
  */
 export const GSHEET_FIELDS = [
   "codeGaransi",
@@ -17,7 +22,6 @@ export const GSHEET_FIELDS = [
   "problemDetailOriginal",
   "productId",
   "quantity",
-  "factoryId",
 ] as const;
 
 export type GsheetField = (typeof GSHEET_FIELDS)[number];
@@ -38,7 +42,6 @@ export const SHEET_COLUMN: Record<GsheetField, string> = {
   problemDetailOriginal: "Keterangan Kendala",
   productId: "Offical Name",
   quantity: "Quantity",
-  factoryId: "Pabrik",
 };
 
 /** Label bahasa Indonesia untuk popup konflik. */
@@ -51,7 +54,6 @@ export const FIELD_LABEL: Record<GsheetField, string> = {
   problemDetailOriginal: "Keterangan Kendala",
   productId: "Produk (Offical Name)",
   quantity: "Quantity",
-  factoryId: "Pabrik",
 };
 
 /** Nilai canonical satu baris: semuanya string, nama master bukan id. */

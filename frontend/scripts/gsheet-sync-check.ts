@@ -30,7 +30,6 @@ const base = {
   problemDetailOriginal: "Totally dead",
   productId: "BARDI Smart Tag",
   quantity: "1",
-  factoryId: "Pabrik A",
 };
 const baseline = baselineFromSheet(base);
 const names = (plan: RowPlan) => ({
@@ -211,7 +210,6 @@ const header = [
   "Status",
   "Month",
   "Problem",
-  "Pabrik",
   "Offical Name",
   "Translate",
   "Status Defect",
@@ -223,12 +221,15 @@ const resolved = resolveHeaderIndex(header);
 assert.deepEqual(resolved.missing, []);
 assert.equal(resolved.index.codeGaransi, 0);
 assert.equal(resolved.index.problemId, 9);
-assert.equal(resolved.index.productId, 11);
+assert.equal(resolved.index.productId, 10);
 assert.equal(resolved.index.problemDetailOriginal, 4);
 // Kolom status di sheet ("Status" / "Status Defect") sengaja DIABAIKAN sejak
 // 1 Nov 2026: status tidak lagi dibaca dari sheet maupun ditulis balik.
 assert.equal("statusId" in resolved.index, false);
-assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 8);
+// Kolom "Pabrik" sudah dihapus dari sheet (1 Nov 2026) dan pabrik defect
+// mengikuti kaitan produk → pabrik di User Management › daftar pabrik.
+assert.equal("factoryId" in resolved.index, false);
+assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 7);
 
 // Timestamp: sel tanggal di "Big Data" format tampilannya campur, jadi semua
 // bentuk yang pernah muncul harus dikenali (dan yang aneh -> kosong, bukan jam ngawur).

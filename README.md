@@ -822,10 +822,16 @@ Alirannya **sheet → aplikasi**, dengan satu pengecualian sempit: kolom
 **`Problem` (J)** boleh ditulis aplikasi ketika operator mengubah Problem sebuah
 defect di aplikasi (lihat "Problem dari aplikasi" di bawah). Kolom lain tidak
 pernah ditulis: A:H diisi `=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat
-IMPORTRANGE), `Month` (I) formula, `Pabrik` (K) dan `Offical Name` (L) XLOOKUP
-ke tab `Data Produk`, `Translate` (M) `GOOGLETRANSLATE`. Penulisan dijaga
-`assertWritableRange()` di `lib/gsheet/values.ts`: range harus satu kolom di
-luar A–H, kalau tidak request ditolak sebelum keluar.
+IMPORTRANGE), `Month` (I) formula, `Offical Name` (K) XLOOKUP ke tab
+`Data Produk`. Penulisan dijaga `assertWritableRange()` di `lib/gsheet/values.ts`:
+range harus satu kolom di luar A–H, kalau tidak request ditolak sebelum keluar.
+
+Sejak 1 Nov 2026 user **menghapus kolom `Pabrik`** dari tab Big Data: pabrik
+sebuah defect mengikuti **kaitan produk → pabrik** yang dikelola di
+**User Management › Daftar Pabrik** (`product_factories`). Baris baru dari sheet
+masuk dengan `factoryId` hasil kaitan produknya; kalau produk itu belum punya
+kaitan, baris dilewati dan sync melaporkan issue "Pabrik untuk produk … belum
+diatur". Baris yang sudah ada tidak diubah pabriknya.
 
 Selain dijaga di kode, kolom formula **dikunci di sheet-nya** (Protected ranges,
 1 Nov 2026): **A:I** dan **K:M** tidak bisa diketik siapa pun kecuali pemilik
@@ -837,10 +843,11 @@ pernah menulis ke kolom itu.
 Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
 `Problem` → `problemId`, `Keterangan Kendala` → `problemDetailOriginal`
-(teks asli Indonesia; versi Inggrisnya diterjemahkan ke `problemDetail` — lihat
-bagian penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`,
-`Pabrik` → `factoryId`. Kolom `Translate`, `Produk`, `Status` / `Status Defect`,
-`Month`, dan kolom **`Value`** (sejak 12 Okt 2026 dipindah user ke kolom paling
+(teks asli Indonesia; versi Inggrisnya dimuat on-demand — lihat bagian
+penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`.
+Kolom `Translate` (sudah dihapus dari sheet), `Produk`, `Status` / `Status Defect`,
+`Month`, `Pabrik` (dihapus dari sheet 1 Nov 2026), dan kolom **`Value`**
+(sejak 12 Okt 2026 dipindah user ke kolom paling
 kanan, O) **tidak dipakai** — nilai defect tidak lagi diambil dari sheet, tapi
 dihitung server dari Price List (`defectValueFromMaster()`, §8.8). Kolom status
 diabaikan total sejak 1 Nov 2026 (keputusan user): tidak dibaca dari sheet dan
@@ -920,10 +927,12 @@ problemsPushed, problemsPushPending }`.
 Aturannya:
 
 - Baris dicocokkan lewat **Code Garansi** (tanpa peduli huruf besar/kecil).
-- Nama master (Problem, Pabrik, Offical Name) dicocokkan ke Data
+- Nama master (Problem, Offical Name) dicocokkan ke Data
   Master dan ditulis memakai ejaan master; sel kosong jadi `Kosong` (problem),
   sama seperti jalur impor Excel. Status tidak lagi dicocokkan sama sekali.
-  Baris baru dari sheet memakai status bawaan dari tabel `statuses` (kolom DB
+  Pabrik tidak dicocokkan dari sheet (kolomnya sudah dihapus); baris baru memakai
+  kaitan produk → pabrik di User Management, dan dilewati bila kaitan itu belum
+  ada. Baris baru dari sheet memakai status bawaan dari tabel `statuses` (kolom DB
   `defects.statusId` masih `NOT NULL`, jadi diisi lewat `defaultStatusId()`).
 - Perubahan yang hanya ada di sheet langsung dipakai di aplikasi. Perubahan yang
   hanya ada di aplikasi **tidak dikirim ke sheet** — cuma dihitung dan

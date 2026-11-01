@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import {
   defectProblemLog,
   defects,
-  factories,
   problems,
+  productFactories,
   productPrices,
   products,
 } from "@/lib/db/schema";
@@ -104,17 +104,23 @@ type LocalRow = {
   };
 };
 
-type NameField = "problemId" | "factoryId" | "productId";
+type NameField = "problemId" | "productId";
 
 type Masters = {
   toName: Record<NameField, Map<number, string>>;
   toId: Record<NameField, Map<string, number>>;
+  /**
+   * Kaitan produk → pabrik (User Management › daftar pabrik). Sheet tidak lagi
+   * punya kolom "Pabrik", jadi baris baru mengambil pabrik dari produknya —
+   * sama seperti form Defect yang mengisi Pabrik otomatis setelah produk dipilih.
+   */
+  productFactory: Map<number, number>;
 };
 
 const isNameField = (field: GsheetField): field is NameField =>
-  field === "problemId" || field === "factoryId" || field === "productId";
+  field === "problemId" || field === "productId";
 
-const NAME_FIELDS: NameField[] = ["problemId", "factoryId", "productId"];
+const NAME_FIELDS: NameField[] = ["problemId", "productId"];
 
 /** Sel kosong di sheet dipetakan ke master bawaan app (sama seperti jalur impor Excel). */
 const NAME_DEFAULT: Partial<Record<NameField, string>> = { problemId: "Kosong" };
@@ -133,21 +139,25 @@ function canonicalName(masters: Masters, field: NameField, raw: string, fallback
 }
 
 async function loadMasters(): Promise<Masters> {
-  const [problemRows, factoryRows, productRows] = await Promise.all([
+  const [problemRows, productRows, productFactoryRows] = await Promise.all([
     db.select({ id: problems.id, name: problems.name }).from(problems),
-    db.select({ id: factories.id, name: factories.name }).from(factories),
     db.select({ id: products.id, name: products.name }).from(products),
+    db
+      .select({ productId: productFactories.productId, factoryId: productFactories.factoryId })
+      .from(productFactories),
   ]);
   const build = (rows: { id: number; name: string }[]) => ({
     toName: new Map(rows.map((r) => [r.id, r.name] as const)),
     toId: new Map(rows.map((r) => [normalizeName(r.name), r.id] as const)),
   });
   const p = build(problemRows);
-  const f = build(factoryRows);
   const pr = build(productRows);
   return {
-    toName: { problemId: p.toName, factoryId: f.toName, productId: pr.toName },
-    toId: { problemId: p.toId, factoryId: f.toId, productId: pr.toId },
+    toName: { problemId: p.toName, productId: pr.toName },
+    toId: { problemId: p.toId, productId: pr.toId },
+    productFactory: new Map(
+      productFactoryRows.map((row) => [row.productId, row.factoryId] as const)
+    ),
   };
 }
 
@@ -200,7 +210,6 @@ function localFieldsFromRow(
     problemDetailOriginal: string | null;
     productId: number;
     quantity: number;
-    factoryId: number;
     value: number;
   },
   masters: Masters
@@ -214,7 +223,6 @@ function localFieldsFromRow(
     problemDetailOriginal: row.problemDetailOriginal ?? "",
     productId: masters.toName.productId.get(row.productId) ?? "",
     quantity: String(row.quantity ?? 0),
-    factoryId: masters.toName.factoryId.get(row.factoryId) ?? "",
   };
 }
 
@@ -230,7 +238,6 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
       problemDetailOriginal: defects.problemDetailOriginal,
       productId: defects.productId,
       quantity: defects.quantity,
-      factoryId: defects.factoryId,
       priceType: defects.priceType,
       value: defects.value,
       sheetFields: defects.sheetFields,
@@ -456,6 +463,24 @@ export async function runSync(options: {
           timeStamp: sheetFields.timeStamp ?? "",
           priceType: null,
         }) ?? 0;
+      // Sheet tidak lagi punya kolom "Pabrik": pabriknya ikut produk, memakai
+      // kaitan produk → pabrik yang diatur di User Management › daftar pabrik.
+      const insertFactoryId = insertProductId
+        ? masters.productFactory.get(insertProductId) ?? null
+        : null;
+      if (insertFactoryId === null) {
+        summary.skipped += 1;
+        if (issues.length < MAX_ISSUES) {
+          issues.push({
+            row: row.sheetRow,
+            code: row.code,
+            reason: `Pabrik untuk produk "${
+              sheetFields.productId || "(kosong)"
+            }" belum diatur di User Management › daftar pabrik.`,
+          });
+        }
+        continue;
+      }
       const parsed = defectSchema.safeParse({
         codeGaransi: sheetFields.codeGaransi || row.code,
         timestamp: sheetFields.timeStamp,
@@ -465,7 +490,7 @@ export async function runSync(options: {
         problemDetailOriginal: sheetFields.problemDetailOriginal,
         productId: insertProductId ?? undefined,
         quantity: insertQuantity,
-        factoryId: masters.toId.factoryId.get(normalizeName(sheetFields.factoryId ?? "")),
+        factoryId: insertFactoryId,
         value: insertValue,
       });
       if (!parsed.success) {
