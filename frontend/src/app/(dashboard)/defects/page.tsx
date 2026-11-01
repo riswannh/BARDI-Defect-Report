@@ -35,7 +35,6 @@ import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
 import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -837,7 +836,6 @@ export default function DefectsPage() {
                 <TableHead>{t("common.timestamp")}</TableHead>
                 <TableHead>{t("common.product")}</TableHead>
                 <TableHead>{t("common.problem")}</TableHead>
-                <TableHead>{t("common.status")}</TableHead>
                 <TableHead>{t("common.factory")}</TableHead>
                 <TableHead className="text-right">
                   {t("common.quantity")}
@@ -874,11 +872,6 @@ export default function DefectsPage() {
                   <TableCell>{productName(products, d.productId)}</TableCell>
                   <TableCell>
                     {problems.find((p) => p.id === d.problemId)?.name ?? "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {statuses.find((s) => s.id === d.statusId)?.name ?? "-"}
-                    </Badge>
                   </TableCell>
                   <TableCell>
                     {factories.find((f) => f.id === d.factoryId)?.name ?? "-"}
@@ -943,7 +936,7 @@ export default function DefectsPage() {
               {visibleDefects.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 11 : 9}
+                    colSpan={isAdmin ? 10 : 8}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}
