@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { rolePermissions, roles, user } from "@/lib/db/schema";
+import { rolePermissions, roles, user, userRoles } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { roleCreateSchema, roleUpdateSchema } from "@/lib/api/validation";
@@ -65,27 +65,28 @@ export async function rolesGET() {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const [roleRows, matrix, userCounts] = await Promise.all([
+  const [roleRows, matrix, links, legacyRows] = await Promise.all([
     db.select().from(roles).orderBy(asc(roles.id)),
     permissionsByRole(),
-    db
-      .select({ roleId: user.roleId, total: user.id })
-      .from(user)
-      .then((rows) => {
-        const counts: Record<number, number> = {};
-        for (const row of rows) {
-          if (row.roleId === null) continue;
-          counts[row.roleId] = (counts[row.roleId] ?? 0) + 1;
-        }
-        return counts;
-      }),
+    db.select({ userId: userRoles.userId, roleId: userRoles.roleId }).from(userRoles),
+    db.select({ id: user.id, roleId: user.roleId }).from(user),
   ]);
+
+  // Pemakai role = gabungan tautan `user_roles` + role utama lama (`user.roleId`).
+  const usersByRole = new Map<number, Set<string>>();
+  const add = (roleId: number, userId: string) => {
+    const set = usersByRole.get(roleId) ?? new Set<string>();
+    set.add(userId);
+    usersByRole.set(roleId, set);
+  };
+  for (const row of links) add(row.roleId, row.userId);
+  for (const row of legacyRows) if (row.roleId !== null) add(row.roleId, row.id);
 
   return jsonOk(
     roleRows.map((role) => ({
       ...role,
       permissions: matrix[role.id] ?? {},
-      userCount: userCounts[role.id] ?? 0,
+      userCount: usersByRole.get(role.id)?.size ?? 0,
     }))
   );
 }
@@ -215,6 +216,7 @@ export async function rolesDELETE(
   }
 
   // User pemakai role ini jatuh ke tanpa-akses (perlu diatur ulang admin).
+  await db.delete(userRoles).where(eq(userRoles.roleId, roleId));
   await db
     .update(user)
     .set({ roleId: null })

@@ -402,6 +402,45 @@ Index: `factoryId`, `productId`, `timeStamp`.
 
 Constraint unik: `(productId, factoryId, month)` — kunci deteksi duplikat impor. Index: `factoryId`.
 
+**`user_roles`** (multi group role, 1 Nov 2026)
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `userId` | FK → user (cascade) | |
+| `roleId` | FK → roles (cascade) | |
+| `createdAt` | timestamp | |
+
+Constraint unik `(userId, roleId)`. Izin semua role user **digabung union** di `getSessionUser()`;
+`user.roleId` tetap dipakai sebagai role utama.
+
+**`notifications`**
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `userId` | FK → user (cascade) | penerima |
+| `kind` | text | `task-mention` atau `doc-mention` |
+| `title` / `body` / `href` | text | judul task/dokumen, ringkasan, tautan tujuan |
+| `actorName` | text | nama pelaku |
+| `sourceType` / `sourceId` | text | `task`/`doc` + id sumber |
+| `readAt` | timestamp (nullable) | null = belum dibaca |
+| `createdAt` | timestamp | |
+
+Index `(userId, readAt)` dan `(userId, createdAt)`.
+
+**`task_mentions`**
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | integer PK auto | |
+| `taskId` | FK → tasks (cascade) | |
+| `userId` | FK → user (cascade) | akun yang di-@ |
+| `actorId` | text | pelaku yang menambahkan |
+| `createdAt` | timestamp | |
+
+Constraint unik `(taskId, userId)`. Dipakai untuk notifikasi dan hak ubah task oleh yang di-@.
+
 ### Tabel Better Auth
 
 - **`user`** — `id` (text PK), `name`, `email` (unik), `emailVerified`, `image`, `createdAt`, `updatedAt`, `username` (unik, plugin username), `displayUsername`, **`isAdmin`** (boolean), **`factoryId`** (FK → factories, `onDelete: set null`).
@@ -784,11 +823,22 @@ seperti harga produk (yang sudah ada di periode tujuan dilewati).
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/users` | admin | daftar user + `factoryName` |
-| POST | `/api/users` | admin | buat user (username, password, isAdmin, factoryId) |
-| PATCH | `/api/users/{id}` | admin | ubah (password opsional) |
+| GET | `/api/users` | admin | daftar user + `factoryName`, `roleIds`, `roles[]` (multi group role) |
+| POST | `/api/users` | admin | buat user (username, password, isAdmin, factoryId, `roleIds[]`) |
+| PATCH | `/api/users/{id}` | admin | ubah (password opsional, `roleIds[]` mengganti seluruh role) |
 | DELETE | `/api/users/{id}` | admin | hapus |
 | DELETE | `/api/users` | admin | hapus semua **kecuali akun sendiri** + backup |
+
+### Notifikasi
+
+| Method | Path | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/api/notifications` | login | 20 notifikasi terbaru + jumlah `unread` |
+| POST | `/api/notifications/read` | login | tandai dibaca: body `{id}` atau `{all:true}` |
+
+Notifikasi dibuat server saat ada mention @user BARU di deskripsi Task (`task-mention`)
+atau di dokumen Docs Tasks (`doc-mention`). Klien hanya menampilkan lonceng di header
+(`src/components/notification-bell.tsx`, polling 60 detik) dan menandai dibaca.
 
 ### Excel
 
@@ -1165,11 +1215,18 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.6 User Management
 
-- Tab: **User** dan **Pabrik**.
+- Tab: **User**, **Pabrik**, dan **Role**.
 - Tab **Pabrik**: tombol **Kaitkan produk** di tiap baris membuka dialog pemilihan produk.
   Dialog **hanya memilih** produk master yang sudah ada; produk baru dibuat di tab Produk
   (Data Master), bukan dari dialog ini.
 - User: username (boleh berisi spasi, validator `/^[a-zA-Z0-9 _.-]+$/`), password (hash), Pabrik, status Admin.
+- **Multi group role**: satu user boleh punya beberapa role sekaligus. Di form User pilih **Group role**
+  lalu tambahkan role satu per satu (chip); role pertama menjadi role utama (`user.roleId`) untuk tampilan.
+  Daftar role tersimpan di tabel `user_roles`.
+- **Izin beberapa role digabung union paling longgar**: kalau salah satu role boleh **baca** menu, user boleh
+  baca; kalau salah satu role boleh **tulis**, user boleh tulis. Nilai uang tetap disembunyikan bila salah
+  satu role berkode `pabrik`.
+- Akun lama yang hanya punya `user.roleId` tetap berjalan dan dipetakan ke `user_roles` saat disimpan ulang.
 - Import users: pabrik yang belum ada **otomatis dibuat**; email disintesis; duplikat username di-skip.
 - Hapus semua user mengecualikan akun sendiri.
 
@@ -1246,6 +1303,21 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - **Keterangan di-hardcode** (`Product Order` / `Sparepart Order` / `Replacement`); nilai asing jatuh ke
   default saat POST/PATCH, sedangkan pada impor Excel barisnya ditolak dengan alasan.
 - Role Pabrik tidak menerima `pricePerPcs`, `value`, `currency`, `ppn`, `priceType`, maupun `productPrice*`.
+
+### 8.11 Notifikasi Lonceng & Mention
+
+- **Lonceng di header** (`src/components/notification-bell.tsx`) menampilkan jumlah belum dibaca
+  (badge `9+`), daftar 20 notifikasi terbaru, tandai dibaca per item atau semua, dan memuat ulang
+  tiap 60 detik. Data dari `GET /api/notifications`.
+- **Dua sumber notifikasi**: mention @user di **deskripsi Task** (`task-mention`, task ikut muncul di
+  daftar Task orang yang di-@) dan mention @user di **dokumen Docs Tasks** (`doc-mention`).
+- **Hanya mention BARU yang berbunyi.** Menyimpan ulang task/dokumen tanpa menambah mention tidak
+  mengirim notifikasi lagi; pelaku tidak menerima notifikasi untuk dirinya sendiri.
+- **Akun yang di-@ boleh mengubah task** itu (bukan hanya melihat): progres, status, dan isian lain
+  — selain pemilik dan admin. Untuk itu `PATCH /api/tasks/[id]` memakai izin **baca** menu Task lalu
+  memeriksa hak per baris; hapus task tetap milik pembuat/admin.
+- Di form Task, tombol `@` menambah orang sebagai chip dan menyisipkan `@Nama` ke deskripsi; chip juga
+  bisa dilepas. Daftar orang diambil dari user aktif.
 
 ---
 

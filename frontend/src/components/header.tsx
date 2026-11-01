@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/i18n";
 import { useApi } from "@/lib/use-api";
 import type { Factory } from "@/lib/types";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -65,6 +66,7 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-1">
+        <NotificationBell />
         <LanguageSwitcher />
         <DropdownMenu>
           <DropdownMenuTrigger

@@ -975,3 +975,100 @@ export const defectProblemLog = sqliteTable(
     index("defect_problem_log_code_idx").on(t.codeGaransi),
   ]
 );
+
+/* ============================================================
+ * Group role jamak + notifikasi + mention task
+ * ============================================================ */
+
+/**
+ * Satu user boleh punya BEBERAPA group role. Hak akses menu dihitung gabungan
+ * (union) dari semua role: menu dianggap boleh dibaca kalau salah satu role
+ * menyalakannya, dan boleh ditulis kalau salah satu role mengizinkan tulis.
+ *
+ * `user.roleId` tetap disimpan sebagai role UTAMA (kompatibilitas data lama dan
+ * tampilan ringkas); tabel ini adalah sumber kebenaran daftar role user.
+ */
+export const userRoles = sqliteTable(
+  "user_roles",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: integer("roleId")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    uniqueIndex("user_roles_user_role_idx").on(t.userId, t.roleId),
+    index("user_roles_role_idx").on(t.roleId),
+  ]
+);
+
+/**
+ * Notifikasi lonceng. Saat ini sumbernya hanya Task Planner: (1) user disebut
+ * (`@`) di Mading Dokumentasi, (2) user disebut di deskripsi task.
+ *
+ * `href` menyimpan tujuan klik (mis. `/tasks`), `sourceType`/`sourceId`
+ * menunjuk benda asalnya supaya duplikat bisa dicegah dan isi notifikasi bisa
+ * diperiksa tanpa join.
+ */
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** Penerima (user.id). */
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** "doc-mention" | "task-mention". */
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    href: text("href").notNull().default(""),
+    /** Nama tampilan pelaku (snapshot, tanpa join). */
+    actorName: text("actorName").notNull().default(""),
+    /** "doc" | "task" — jenis benda sumber. */
+    sourceType: text("sourceType").notNull().default(""),
+    sourceId: text("sourceId").notNull().default(""),
+    /** Null = belum dibaca. */
+    readAt: integer("readAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    index("notifications_user_read_idx").on(t.userId, t.readAt),
+    index("notifications_user_created_idx").on(t.userId, t.createdAt),
+  ]
+);
+
+/**
+ * User yang disebut (`@`) di deskripsi task. Task muncul di daftar Tasks orang
+ * yang disebut (selain task miliknya sendiri) dan orang itu boleh mengubah
+ * progres/statusnya — keputusan user 1 Nov 2026.
+ */
+export const taskMentions = sqliteTable(
+  "task_mentions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    taskId: integer("taskId")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    /** Pelaku yang menambahkan mention. */
+    actorId: text("actorId").notNull().default(""),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (t) => [
+    uniqueIndex("task_mentions_task_user_idx").on(t.taskId, t.userId),
+    index("task_mentions_user_idx").on(t.userId),
+  ]
+);

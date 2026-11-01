@@ -1,9 +1,17 @@
-import { and, desc, eq, like, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, type SQL } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { rolePermissions, roles, taskActivities, tasks, user as userTable } from "@/lib/db/schema";
+import {
+  rolePermissions,
+  roles,
+  taskActivities,
+  taskMentions,
+  tasks,
+  user as userTable,
+} from "@/lib/db/schema";
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
+import { notifyMentions, validMentionIds } from "@/lib/api/notifications";
 import { calendarColorSchema, taskCreateSchema, taskUpdateSchema, taskViewSchema } from "@/lib/api/validation";
 import { nextOccurrence } from "@/lib/task-dates";
 
@@ -75,6 +83,62 @@ function validateTask(
   return null;
 }
 
+/** Daftar akun yang disebut (@) di sebuah task. */
+async function mentionIdsOf(taskId: number): Promise<string[]> {
+  const rows = await db
+    .select({ userId: taskMentions.userId })
+    .from(taskMentions)
+    .where(eq(taskMentions.taskId, taskId));
+  return rows.map((row) => row.userId);
+}
+
+/**
+ * Samakan daftar mention task dengan kiriman form.
+ *
+ * Hanya mention BARU yang dibunyikan di lonceng — menyimpan ulang task tanpa
+ * menambah nama tidak mengirim notifikasi lagi (keputusan user 1 Nov 2026).
+ */
+async function saveTaskMentions(input: {
+  taskId: number;
+  taskTitle: string;
+  actor: SessionUser;
+  userIds: string[] | undefined;
+}): Promise<string[]> {
+  if (input.userIds === undefined) return mentionIdsOf(input.taskId);
+
+  const valid = await validMentionIds(input.userIds);
+  const before = new Set(await mentionIdsOf(input.taskId));
+
+  await db.delete(taskMentions).where(eq(taskMentions.taskId, input.taskId));
+  if (valid.length > 0) {
+    await db.insert(taskMentions).values(
+      valid.map((userId) => ({
+        taskId: input.taskId,
+        userId,
+        actorId: input.actor.id,
+        createdAt: new Date(),
+      }))
+    );
+  }
+
+  const added = valid.filter((userId) => !before.has(userId));
+  await notifyMentions(
+    input.actor.id,
+    added.map((userId) => ({
+      userId,
+      kind: "task-mention" as const,
+      title: input.taskTitle,
+      body: input.actor.name,
+      href: "/tasks",
+      actorName: input.actor.name,
+      sourceType: "task" as const,
+      sourceId: String(input.taskId),
+    }))
+  );
+
+  return valid;
+}
+
 async function logActivity(input: {
   taskId: number | null;
   taskTitle: string;
@@ -117,7 +181,16 @@ export async function tasksGET(req: NextRequest) {
     return jsonError("Hanya admin yang bisa melihat semua task.", 403);
   }
 
-  if (scope === "mine") conditions.push(eq(tasks.userId, guard.user.id));
+  if (scope === "mine") {
+    // "Task saya" = task milik sendiri + task yang menyebut saya (@), supaya
+    // pekerjaan yang didelegasikan lewat mention ikut muncul di daftar.
+    const mentioned = db
+      .select({ taskId: taskMentions.taskId })
+      .from(taskMentions)
+      .where(eq(taskMentions.userId, guard.user.id));
+    const clause = or(eq(tasks.userId, guard.user.id), inArray(tasks.id, mentioned));
+    if (clause) conditions.push(clause);
+  }
 
   const status = params.get("status")?.trim();
   if (status) conditions.push(eq(tasks.status, status));
@@ -144,7 +217,32 @@ export async function tasksGET(req: NextRequest) {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(tasks.updatedAt), desc(tasks.id));
 
-  return jsonOk(rows);
+  if (rows.length === 0) return jsonOk([]);
+
+  // Sertakan daftar mention supaya UI bisa menandai task yang didelegasikan.
+  const mentionRows = await db
+    .select({ taskId: taskMentions.taskId, userId: taskMentions.userId })
+    .from(taskMentions)
+    .where(
+      inArray(
+        taskMentions.taskId,
+        rows.map((row) => row.id)
+      )
+    );
+  const byTask = new Map<number, string[]>();
+  for (const row of mentionRows) {
+    const list = byTask.get(row.taskId) ?? [];
+    list.push(row.userId);
+    byTask.set(row.taskId, list);
+  }
+
+  return jsonOk(
+    rows.map((row) => ({
+      ...row,
+      mentionedUserIds: byTask.get(row.id) ?? [],
+      mentionedMe: (byTask.get(row.id) ?? []).includes(guard.user.id),
+    }))
+  );
 }
 
 /**
@@ -163,7 +261,7 @@ export async function tasksGET_ONE(_req: NextRequest, ctx: { params: Promise<{ i
   const [row] = await db.select().from(tasks).where(eq(tasks.id, taskId));
   if (!row) return jsonError("Task tidak ditemukan.", 404);
 
-  return jsonOk(row);
+  return jsonOk({ ...row, mentionedUserIds: await mentionIdsOf(taskId) });
 }
 
 export async function tasksPOST(req: NextRequest) {
@@ -241,14 +339,24 @@ export async function tasksPOST(req: NextRequest) {
     note,
   });
 
-  return jsonOk(row);
+  await saveTaskMentions({
+    taskId: row.id,
+    taskTitle: row.title,
+    actor: guard.user,
+    userIds: raw.mentionedUserIds,
+  });
+
+  return jsonOk({ ...row, mentionedUserIds: await mentionIdsOf(row.id) });
 }
 
 export async function tasksPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const guard = await requireMenu("tasks", "write");
+  // Cukup "baca" di menu Task: hak mengubah ditentukan per baris di bawah —
+  // pemilik task, admin, atau akun yang di-@ (keputusan user 1 Nov 2026).
+  // Tanpa ini, akun yang di-@ tapi role-nya hanya baca tidak bisa mengubah.
+  const guard = await requireMenu("tasks", "read");
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -257,8 +365,15 @@ export async function tasksPATCH(
 
   const [current] = await db.select().from(tasks).where(eq(tasks.id, taskId));
   if (!current) return jsonError("Task tidak ditemukan", 404);
-  if (current.userId !== guard.user.id && !guard.user.isAdmin) {
-    return jsonError("Hanya pembuat task atau admin yang bisa mengubah.", 403);
+  // Yang boleh mengubah: pemilik task, admin, dan akun yang disebut (@) di
+  // deskripsi task — keputusan user 1 Nov 2026.
+  const mentionedBy = await mentionIdsOf(taskId);
+  if (
+    current.userId !== guard.user.id &&
+    !guard.user.isAdmin &&
+    !mentionedBy.includes(guard.user.id)
+  ) {
+    return jsonError("Hanya pembuat task, admin, atau yang di-@ di task ini yang bisa mengubah.", 403);
   }
 
   const body = await req.json().catch(() => null);
@@ -336,6 +451,17 @@ export async function tasksPATCH(
     note,
   });
 
+  // Hanya pemilik/admin yang boleh mengubah daftar mention; akun yang di-@
+  // tetap boleh memperbarui progres tanpa menyentuh daftar itu.
+  const canEditMentions =
+    current.userId === guard.user.id || guard.user.isAdmin;
+  await saveTaskMentions({
+    taskId: updated.id,
+    taskTitle: updated.title,
+    actor: guard.user,
+    userIds: canEditMentions ? patch.mentionedUserIds : undefined,
+  });
+
   // Task repeatable: selesai → buat occurrence berikutnya (baris baru).
   let occurrence: TaskRow | null = null;
   if (becomingDone) {
@@ -378,6 +504,21 @@ export async function tasksPATCH(
         })
         .returning();
 
+      // Occurrence berikutnya mewarisi daftar mention tanpa membunyikan
+      // lonceng lagi (orangnya sudah tahu task ini berulang).
+      const created = occurrence;
+      const inheritMentions = created ? await mentionIdsOf(current.id) : [];
+      if (created && inheritMentions.length > 0) {
+        await db.insert(taskMentions).values(
+          inheritMentions.map((userId) => ({
+            taskId: created.id,
+            userId,
+            actorId: guard.user.id,
+            createdAt: now,
+          }))
+        );
+      }
+
       await logActivity({
         taskId: null,
         taskTitle: occurrence.title,
@@ -388,7 +529,10 @@ export async function tasksPATCH(
     }
   }
 
-  return jsonOk({ task: updated, occurrence });
+  return jsonOk({
+    task: { ...updated, mentionedUserIds: await mentionIdsOf(updated.id) },
+    occurrence,
+  });
 }
 
 export async function tasksDELETE(

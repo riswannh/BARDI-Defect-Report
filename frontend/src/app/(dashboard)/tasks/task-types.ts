@@ -43,6 +43,10 @@ export interface TaskRow {
   completedAt: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  /** Akun yang disebut (@) di deskripsi task; mereka ikut menerima task ini. */
+  mentionedUserIds?: string[];
+  /** True kalau user yang sedang login termasuk yang disebut. */
+  mentionedMe?: boolean;
 }
 
 export interface TaskActivityRow {

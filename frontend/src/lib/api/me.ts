@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { roles, user } from "@/lib/db/schema";
 import { requireUser } from "@/lib/api/guard";
@@ -26,6 +26,15 @@ export async function meGET() {
     .leftJoin(roles, eq(roles.id, user.roleId))
     .where(eq(user.id, sessionUser.id));
 
+  // Daftar group role (bisa lebih dari satu) untuk ditampilkan di profil.
+  const roleRows =
+    sessionUser.roleIds.length > 0
+      ? await db
+          .select({ id: roles.id, name: roles.name, code: roles.code })
+          .from(roles)
+          .where(inArray(roles.id, sessionUser.roleIds))
+      : [];
+
   return jsonOk({
     name: row?.name ?? sessionUser.name,
     username: row?.username ?? sessionUser.username,
@@ -34,6 +43,9 @@ export async function meGET() {
     roleId: sessionUser.roleId,
     roleCode: sessionUser.roleCode,
     roleName: row?.roleName ?? null,
+    roleIds: sessionUser.roleIds,
+    roleCodes: sessionUser.roleCodes,
+    roles: roleRows,
     hideFinance: sessionUser.hideFinance,
     permissions: sessionUser.permissions,
   });

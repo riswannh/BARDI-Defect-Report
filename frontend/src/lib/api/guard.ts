@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import type { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { rolePermissions, roles } from "@/lib/db/schema";
+import { rolePermissions, roles, userRoles } from "@/lib/db/schema";
 import { jsonError } from "@/lib/api/response";
 import {
   can,
@@ -24,12 +24,19 @@ export interface SessionUser {
   username: string;
   isAdmin: boolean;
   factoryId: number | null;
+  /** Role utama (kompatibilitas data lama). */
   roleId: number | null;
+  /** Semua group role yang dimiliki user. */
+  roleIds: number[];
+  /** Kode role utama, dipakai aturan yang membaca satu kode. */
   roleCode: string | null;
+  /** Semua kode role user; dicek untuk aturan Pabrik. */
+  roleCodes: string[];
   permissions: PermissionMap;
   /**
    * Aturan khusus role Pabrik yang DI-HARDCODE (bukan dari matriks UI):
-   * nilai/harga Rupiah tidak boleh ikut terkirim.
+   * nilai/harga Rupiah tidak boleh ikut terkirim. Kalau user punya beberapa
+   * role dan salah satunya Pabrik, nilainya tetap disembunyikan.
    */
   hideFinance: boolean;
 }
@@ -47,32 +54,52 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 
   const isAdmin = Boolean(u.isAdmin);
-  const roleId = u.roleId ?? null;
-  let roleCode: string | null = null;
   const permissions = isAdmin ? fullPermissions() : emptyPermissions();
 
-  if (!isAdmin && roleId !== null) {
-    const rows = await db
-      .select({
-        code: roles.code,
-        menu: rolePermissions.menu,
-        canRead: rolePermissions.canRead,
-        canWrite: rolePermissions.canWrite,
-      })
-      .from(roles)
-      .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
-      .where(eq(roles.id, roleId));
+  // Daftar role: tabel `user_roles` (bisa banyak) + `user.roleId` sebagai role
+  // utama. Akun lama yang belum punya baris `user_roles` tetap terbaca.
+  const links = await db
+    .select({ roleId: userRoles.roleId })
+    .from(userRoles)
+    .where(eq(userRoles.userId, u.id));
+  const roleIds = new Set<number>();
+  for (const link of links) roleIds.add(link.roleId);
+  if (u.roleId != null) roleIds.add(u.roleId);
 
-    roleCode = rows[0]?.code ?? null;
-    for (const row of rows) {
-      if (isMenuKey(row.menu)) {
-        permissions[row.menu] = {
-          read: Boolean(row.canRead),
-          write: Boolean(row.canWrite),
-        };
-      }
+  const roleRows =
+    roleIds.size > 0
+      ? await db
+          .select({
+            id: roles.id,
+            code: roles.code,
+            menu: rolePermissions.menu,
+            canRead: rolePermissions.canRead,
+            canWrite: rolePermissions.canWrite,
+          })
+          .from(roles)
+          .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+          .where(inArray(roles.id, [...roleIds]))
+      : [];
+
+  const roleCodes: string[] = [];
+  for (const row of roleRows) {
+    if (!roleCodes.includes(row.code)) roleCodes.push(row.code);
+    if (isAdmin) continue;
+    if (isMenuKey(row.menu)) {
+      const current = permissions[row.menu];
+      permissions[row.menu] = {
+        // Gabungan (union): satu role yang mengizinkan sudah cukup.
+        read: current.read || Boolean(row.canRead),
+        write: current.write || Boolean(row.canWrite),
+      };
     }
   }
+
+  // Role utama: `user.roleId` kalau ada, kalau tidak role pertama yang tertaut.
+  const primaryRoleId = u.roleId ?? [...roleIds][0] ?? null;
+  const primaryCode = primaryRoleId != null
+    ? roleRows.find((row) => row.id === primaryRoleId)?.code ?? null
+    : null;
 
   return {
     id: u.id,
@@ -80,10 +107,12 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     username: u.username ?? "",
     isAdmin,
     factoryId: u.factoryId ?? null,
-    roleId,
-    roleCode,
+    roleId: primaryRoleId,
+    roleIds: [...roleIds],
+    roleCode: primaryCode,
+    roleCodes,
     permissions,
-    hideFinance: !isAdmin && roleCode === PABRIK_ROLE_CODE,
+    hideFinance: !isAdmin && roleCodes.includes(PABRIK_ROLE_CODE),
   };
 }
 

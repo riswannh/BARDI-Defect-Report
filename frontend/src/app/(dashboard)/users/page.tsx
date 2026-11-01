@@ -65,6 +65,9 @@ interface UserRow {
   roleId: number | null;
   roleName: string | null;
   roleCode: string | null;
+  /** Semua group role user (bisa lebih dari satu). */
+  roles?: Array<{ id: number; name: string; code: string }>;
+  roleIds?: number[];
 }
 
 interface UserForm {
@@ -73,8 +76,10 @@ interface UserForm {
   jabatan: string;
   password: string;
   factoryId: string;
-  /** "admin" atau "role:<id>". */
+  /** "admin" (super admin), "role" (satu atau beberapa group role), "none". */
   role: string;
+  /** Group role terpilih; izinnya digabung (union) di server. */
+  roleIds: number[];
 }
 
 const emptyUserForm: UserForm = {
@@ -84,6 +89,7 @@ const emptyUserForm: UserForm = {
   password: "",
   factoryId: "",
   role: "admin",
+  roleIds: [],
 };
 
 export default function UsersPage() {
@@ -114,16 +120,19 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyUserForm);
 
-  // Pilihan role = daftar group role (tabel roles) + role Admin. "Tanpa Role"
-  // tidak ditawarkan lagi; hanya disisipkan sebagai nilai tampil untuk user
-  // lama yang belum punya role supaya form-nya tidak kosong.
+  // Pilihan akses: Admin (super admin) atau satu/beberapa group role. "Tanpa
+  // Role" hanya muncul untuk akun lama yang belum punya role sama sekali.
   const roleOptions = [
-    ...roles.map((role) => ({ value: `role:${role.id}`, label: role.name })),
     { value: "admin", label: t("common.admin") },
+    { value: "role", label: t("users.roleGroup") },
     ...(form.role === "none"
       ? [{ value: "none", label: t("users.noRole") }]
       : []),
   ];
+  const pickedRoles = roles.filter((role) => form.roleIds.includes(role.id));
+  const addableRoles = roles
+    .filter((role) => !form.roleIds.includes(role.id))
+    .map((role) => ({ value: String(role.id), label: role.name }));
 
   const sortedUsers = useMemo(() => {
     const users = userData ?? [];
@@ -159,7 +168,17 @@ export default function UsersPage() {
       jabatan: u.jabatan ?? "",
       password: "",
       factoryId: u.factoryId ? String(u.factoryId) : "",
-      role: u.isAdmin ? "admin" : u.roleId ? `role:${u.roleId}` : "none",
+      role: u.isAdmin
+        ? "admin"
+        : (u.roleIds?.length ?? 0) > 0 || u.roleId
+          ? "role"
+          : "none",
+      roleIds:
+        u.roleIds && u.roleIds.length > 0
+          ? u.roleIds
+          : u.roleId
+            ? [u.roleId]
+            : [],
     });
     setDialogOpen(true);
   }
@@ -168,10 +187,7 @@ export default function UsersPage() {
     e.preventDefault();
     const isAdmin = form.role === "admin";
     const factoryId = isAdmin ? null : Number(form.factoryId) || null;
-    const roleId =
-      isAdmin || form.role === "none"
-        ? null
-        : Number(form.role.replace("role:", ""));
+    const roleIds = isAdmin || form.role === "none" ? [] : form.roleIds;
     if (!form.name.trim() || !form.username.trim()) return;
 
     // Nama dan username dua hal terpisah: nama tampilan boleh spasi, username
@@ -189,7 +205,8 @@ export default function UsersPage() {
           password: form.password,
           factoryId,
           isAdmin,
-          roleId,
+          roleIds,
+          roleId: roleIds[0] ?? null,
         });
       } else {
         await apiPatch(`/api/users/${editingId}`, {
@@ -199,7 +216,8 @@ export default function UsersPage() {
           ...(form.password ? { password: form.password } : {}),
           factoryId,
           isAdmin,
-          roleId,
+          roleIds,
+          roleId: roleIds[0] ?? null,
         });
       }
       setDialogOpen(false);
@@ -380,7 +398,9 @@ export default function UsersPage() {
                         <Badge variant={u.isAdmin ? "default" : "secondary"}>
                           {u.isAdmin
                             ? t("common.admin")
-                            : (u.roleName ?? t("users.noRole"))}
+                            : (u.roles && u.roles.length > 0
+                                ? u.roles.map((role) => role.name).join(", ")
+                                : u.roleName) ?? t("users.noRole")}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -552,6 +572,63 @@ export default function UsersPage() {
                 {t("users.roleHint")}
               </p>
             </div>
+            {form.role === "role" && (
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label>{t("users.roleGroup")}</Label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {pickedRoles.map((role) => (
+                    <span
+                      key={role.id}
+                      className="flex items-center gap-1 rounded-full bg-primary/10 py-0.5 pr-1 pl-2 text-xs text-primary"
+                    >
+                      {role.name}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            roleIds: f.roleIds.filter((id) => id !== role.id),
+                          }))
+                        }
+                        className="rounded-full px-1 text-primary/70 hover:text-primary"
+                        aria-label={t("users.roleRemove", { name: role.name })}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {addableRoles.length > 0 && (
+                    <Select
+                      value=""
+                      onValueChange={(v) =>
+                        setForm((f) => ({
+                          ...f,
+                          roleIds: [...f.roleIds, Number(v)],
+                        }))
+                      }
+                      items={addableRoles}
+                    >
+                      <SelectTrigger
+                        className="h-7 w-auto min-w-32 gap-1 px-2 text-xs"
+                        aria-label={t("users.roleAdd")}
+                      >
+                        <SelectValue placeholder={t("users.roleAdd")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {addableRoles.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("users.roleMultiHint")}
+                </p>
+              </div>
+            )}
             {form.role !== "admin" && (
               <div className="flex flex-col gap-1.5">
                 <Label>{t("common.factory")}</Label>

@@ -68,6 +68,14 @@ export function TaskFormDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  /** Akun yang disebut (@) di deskripsi — menerima lonceng + boleh mengubah. */
+  const [mentioned, setMentioned] = useState<Array<{ id: string; name: string }>>(
+    () =>
+      (task?.mentionedUserIds ?? [])
+        .map((id) => users.find((item) => item.id === id))
+        .filter((item): item is { id: string; name: string } => Boolean(item))
+  );
+  const [mentionPick, setMentionPick] = useState("");
   const [issueType, setIssueType] = useState(task?.issueType ?? ownerTypes[0]?.code ?? "task");
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
@@ -121,6 +129,33 @@ export function TaskFormDialog({
     label: String(index + 1),
   }));
 
+  const mentionOptions = users
+    .filter((item) => !mentioned.some((row) => row.id === item.id))
+    .map((item) => ({ value: item.id, label: item.name }));
+
+  /** Tambah mention: chip muncul dan namanya ikut ditulis di deskripsi. */
+  function addMention(userId: string) {
+    const person = users.find((item) => item.id === userId);
+    if (!person || mentioned.some((row) => row.id === person.id)) return;
+    setMentioned((current) => [...current, person]);
+    setDescription((current) =>
+      current.includes(`@${person.name}`)
+        ? current
+        : current.trim()
+          ? `${current.trimEnd()} @${person.name}`
+          : `@${person.name}`
+    );
+    setMentionPick("");
+  }
+
+  function removeMention(userId: string) {
+    const person = mentioned.find((row) => row.id === userId);
+    setMentioned((current) => current.filter((row) => row.id !== userId));
+    if (person) {
+      setDescription((current) => current.replace(`@${person.name}`, "").replace(/\s{2,}/g, " ").trim());
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!title.trim()) {
@@ -145,6 +180,7 @@ export function TaskFormDialog({
       repeatDay: repeatRule === "monthly" ? Number(repeatDay) : null,
       // Hanya admin yang boleh membuat/memindahkan task ke akun lain.
       ownerId: isAdmin ? ownerId : undefined,
+      mentionedUserIds: mentioned.map((item) => item.id),
     };
     // Status & progres hanya diisi saat membuat task. Setelah task ada, dua
     // field itu diubah lewat tombol Progres / Selesai agar tidak bentrok.
@@ -190,6 +226,46 @@ export function TaskFormDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+            <div className="flex flex-wrap items-center gap-1.5">
+              {mentioned.map((item) => (
+                <span
+                  key={item.id}
+                  className="flex items-center gap-1 rounded-full bg-primary/10 py-0.5 pr-1 pl-2 text-xs text-primary"
+                >
+                  @{item.name}
+                  <button
+                    type="button"
+                    onClick={() => removeMention(item.id)}
+                    className="rounded-full px-1 text-primary/70 hover:text-primary"
+                    aria-label={t("tasks.mentionRemove", { name: item.name })}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {mentionOptions.length > 0 && (
+                <Select
+                  value={mentionPick}
+                  onValueChange={(value) => addMention(String(value))}
+                  items={mentionOptions}
+                >
+                  <SelectTrigger
+                    className="h-7 w-auto min-w-32 gap-1 px-2 text-xs"
+                    aria-label={t("tasks.mentionAdd")}
+                  >
+                    <SelectValue placeholder={t("tasks.mentionAdd")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mentionOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("tasks.mentionHint")}</p>
           </div>
 
           {isAdmin && (

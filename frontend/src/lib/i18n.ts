@@ -313,6 +313,21 @@ const translations = {
   "tasks.updateProgress": { id: "Perbarui Kemajuan", en: "Update Progress", zh: "更新进度" },
   "tasks.fieldTitle": { id: "Judul Tugas", en: "Task Title", zh: "任务标题" },
   "tasks.fieldDescription": { id: "Keterangan", en: "Description", zh: "说明" },
+  "tasks.mentionAdd": {
+    id: "@ sebut orang",
+    en: "@ mention someone",
+    zh: "@ 提及某人",
+  },
+  "tasks.mentionHint": {
+    id: "Orang yang disebut menerima notifikasi dan task ini muncul di daftar mereka.",
+    en: "Mentioned people get a notification and this task shows up in their list.",
+    zh: "被提及的人会收到通知，并且这个任务会出现在他们的列表中。",
+  },
+  "tasks.mentionRemove": {
+    id: "Hapus sebutan {name}",
+    en: "Remove mention of {name}",
+    zh: "移除对 {name} 的提及",
+  },
   "tasks.fieldProgress": { id: "Kemajuan (%)", en: "Progress (%)", zh: "进度（%）" },
   "tasks.fieldPriority": { id: "Prioritas", en: "Priority", zh: "优先级" },
   "tasks.fieldDifficulty": { id: "Tingkat Kesulitan", en: "Difficulty", zh: "难度" },
@@ -490,6 +505,30 @@ const translations = {
   "header.logout": { id: "Keluar", en: "Log out", zh: "退出" },
   "header.profile": { id: "Profil saya", en: "My profile", zh: "我的资料" },
   "header.language": { id: "Bahasa", en: "Language", zh: "语言" },
+
+  // Notifikasi (lonceng di header)
+  "notif.bell": { id: "Notifikasi", en: "Notifications", zh: "通知" },
+  "notif.title": { id: "Notifikasi", en: "Notifications", zh: "通知" },
+  "notif.empty": {
+    id: "Belum ada notifikasi.",
+    en: "No notifications yet.",
+    zh: "还没有通知。",
+  },
+  "notif.markAll": {
+    id: "Tandai semua dibaca",
+    en: "Mark all read",
+    zh: "全部标为已读",
+  },
+  "notif.docMention": {
+    id: 'Anda disebut di dokumen "{title}"',
+    en: 'You were mentioned in the document "{title}"',
+    zh: "您在文档“{title}”中被提及",
+  },
+  "notif.taskMention": {
+    id: 'Anda disebut di task "{title}"',
+    en: 'You were mentioned in the task "{title}"',
+    zh: "您在任务“{title}”中被提及",
+  },
 
   // Profil (halaman milik user sendiri)
   "profile.title": { id: "Profil Saya", en: "My Profile", zh: "我的资料" },
@@ -2116,6 +2155,26 @@ const translations = {
     zh: "系统角色：名称和描述锁定，只能修改权限。",
   },
   "users.noRole": { id: "Tanpa role", en: "No role", zh: "无角色" },
+  "users.roleGroup": {
+    id: "Group role",
+    en: "Group roles",
+    zh: "角色组",
+  },
+  "users.roleAdd": {
+    id: "Tambah role",
+    en: "Add role",
+    zh: "添加角色",
+  },
+  "users.roleRemove": {
+    id: "Hapus role {name}",
+    en: "Remove role {name}",
+    zh: "移除角色 {name}",
+  },
+  "users.roleMultiHint": {
+    id: "Satu user boleh punya beberapa role; hak akses menunya digabung (yang paling longgar menang).",
+    en: "One user can have several roles; menu access is combined (the most permissive wins).",
+    zh: "一个用户可以拥有多个角色；菜单权限会合并（以最宽松的为准）。",
+  },
   "users.roleHint": {
     id: "Menu yang bisa dibuka ditentukan role. Role Pabrik otomatis menyembunyikan nilai Rupiah.",
     en: "Available menus follow the role. The Factory role hides Rupiah values automatically.",

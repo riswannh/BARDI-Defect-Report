@@ -525,7 +525,10 @@ export const userCreateSchema = z.object({
   jabatan: jabatanField.default(""),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().default(false),
+  /** Kompatibilitas: satu role. Digabung dengan `roleIds` bila keduanya ada. */
   roleId: z.coerce.number().int().positive().nullable().optional(),
+  /** Group role jamak (tabel user_roles); minimal satu untuk akun non-admin. */
+  roleIds: z.array(z.coerce.number().int().positive()).max(20).optional(),
 });
 
 export const userUpdateSchema = z.object({
@@ -536,6 +539,7 @@ export const userUpdateSchema = z.object({
   factoryId: z.coerce.number().int().positive().nullable().optional(),
   isAdmin: z.boolean().optional(),
   roleId: z.coerce.number().int().positive().nullable().optional(),
+  roleIds: z.array(z.coerce.number().int().positive()).max(20).optional(),
 });
 
 /**
@@ -652,6 +656,8 @@ const taskFields = {
   repeatDay: z.coerce.number().int().min(1).max(31).nullable(),
   /** Catatan bebas untuk log aktivitas (tidak disimpan di baris task). */
   note: z.string().trim().max(500),
+  /** Akun yang disebut (@) di deskripsi; menerima notifikasi + boleh mengubah. */
+  mentionedUserIds: z.array(z.string().trim().min(1).max(64)).max(20),
 };
 
 export const taskCreateSchema = buildCreate(taskFields, {
@@ -667,6 +673,7 @@ export const taskCreateSchema = buildCreate(taskFields, {
   repeatWeekday: z.coerce.number().int().min(1).max(7).nullable().default(null),
   repeatDay: z.coerce.number().int().min(1).max(31).nullable().default(null),
   note: z.string().trim().max(500).default(""),
+  mentionedUserIds: z.array(z.string().trim().min(1).max(64)).max(20).default([]),
 });
 
 export const taskUpdateSchema = buildUpdate(taskFields);

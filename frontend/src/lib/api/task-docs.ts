@@ -4,7 +4,43 @@ import { db } from "@/lib/db";
 import { taskDocs } from "@/lib/db/schema";
 import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
+import { docMentionedUserIds } from "@/lib/api/doc-mentions";
+import { notifyMentions, validMentionIds } from "@/lib/api/notifications";
 import { taskDocCreateSchema, taskDocUpdateSchema } from "@/lib/api/validation";
+
+/**
+ * Bunyikan lonceng untuk user yang BARU disebut di dokumen.
+ *
+ * Mention yang sudah ada di versi sebelumnya tidak dikirim ulang — menyimpan
+ * ulang dokumen tanpa menambah nama baru harus senyap (keputusan user).
+ */
+async function notifyDocMentions(input: {
+  docId: number;
+  title: string;
+  bodyHtml: string;
+  previousHtml: string;
+  actor: { id: string; name: string; username: string };
+}) {
+  const before = new Set(docMentionedUserIds(input.previousHtml));
+  const added = docMentionedUserIds(input.bodyHtml).filter((id) => !before.has(id));
+  if (added.length === 0) return;
+
+  const valid = await validMentionIds(added);
+  const actorName = input.actor.name || input.actor.username;
+  await notifyMentions(
+    input.actor.id,
+    valid.map((userId) => ({
+      userId,
+      kind: "doc-mention" as const,
+      title: input.title,
+      body: actorName,
+      href: "/tasks",
+      actorName,
+      sourceType: "doc" as const,
+      sourceId: String(input.docId),
+    }))
+  );
+}
 
 export async function taskDocsGET() {
   const guard = await requireMenu("tasks", "read");
@@ -41,6 +77,14 @@ export async function taskDocsPOST(req: NextRequest) {
     })
     .returning();
 
+  await notifyDocMentions({
+    docId: row.id,
+    title: row.title,
+    bodyHtml: row.bodyHtml ?? "",
+    previousHtml: "",
+    actor: guard.user,
+  });
+
   return jsonOk(row);
 }
 
@@ -71,6 +115,14 @@ export async function taskDocsPATCH(req: NextRequest, ctx: { params: Promise<{ i
     })
     .where(eq(taskDocs.id, docId))
     .returning();
+
+  await notifyDocMentions({
+    docId,
+    title: updated.title,
+    bodyHtml: updated.bodyHtml ?? "",
+    previousHtml: current.bodyHtml ?? "",
+    actor: guard.user,
+  });
 
   return jsonOk(updated);
 }

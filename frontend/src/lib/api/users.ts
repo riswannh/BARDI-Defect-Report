@@ -1,13 +1,48 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { account, factories, roles, user } from "@/lib/db/schema";
+import { account, factories, roles, user, userRoles } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import { userCreateSchema, userUpdateSchema } from "@/lib/api/validation";
 import { PABRIK_ROLE_CODE } from "@/lib/permissions";
+
+/**
+ * Samakan daftar group role user dengan tabel `user_roles`.
+ *
+ * `user.roleId` ikut diisi role pertama sebagai role utama supaya kode lama
+ * (dan tampilan ringkas) tetap punya satu nilai yang bisa dibaca.
+ */
+export async function setUserRoles(userId: string, roleIds: number[]) {
+  const unique = [...new Set(roleIds.filter((id) => Number.isInteger(id) && id > 0))];
+  const exists = unique.length
+    ? await db.select({ id: roles.id }).from(roles).where(inArray(roles.id, unique))
+    : [];
+  const valid = unique.filter((id) => exists.some((row) => row.id === id));
+
+  await db.delete(userRoles).where(eq(userRoles.userId, userId));
+  if (valid.length > 0) {
+    await db.insert(userRoles).values(
+      valid.map((roleId) => ({ userId, roleId, createdAt: new Date() }))
+    );
+  }
+  await db
+    .update(user)
+    .set({ roleId: valid[0] ?? null })
+    .where(eq(user.id, userId));
+  return valid;
+}
+
+/** Role utama cadangan untuk akun baru tanpa pilihan role. */
+async function fallbackRoleId(): Promise<number | null> {
+  const [fallback] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(eq(roles.code, PABRIK_ROLE_CODE));
+  return fallback?.id ?? null;
+}
 
 export function syntheticEmail(username: string) {
   const local = username
@@ -80,26 +115,62 @@ export async function usersGET() {
   const guard = await requireAdmin();
   if (!guard.ok) return guard.response;
 
-  const rows = await db
-    .select({
-      id: user.id,
-      username: user.username,
-      displayUsername: user.displayUsername,
-      name: user.name,
-      jabatan: user.jabatan,
-      isAdmin: user.isAdmin,
-      factoryId: user.factoryId,
-      factoryName: factories.name,
-      roleId: user.roleId,
-      roleName: roles.name,
-      roleCode: roles.code,
-    })
-    .from(user)
-    .leftJoin(factories, eq(user.factoryId, factories.id))
-    .leftJoin(roles, eq(user.roleId, roles.id))
-    .orderBy(user.createdAt);
+  const [rows, links] = await Promise.all([
+    db
+      .select({
+        id: user.id,
+        username: user.username,
+        displayUsername: user.displayUsername,
+        name: user.name,
+        jabatan: user.jabatan,
+        isAdmin: user.isAdmin,
+        factoryId: user.factoryId,
+        factoryName: factories.name,
+        roleId: user.roleId,
+        roleName: roles.name,
+        roleCode: roles.code,
+      })
+      .from(user)
+      .leftJoin(factories, eq(user.factoryId, factories.id))
+      .leftJoin(roles, eq(user.roleId, roles.id))
+      .orderBy(user.createdAt),
+    db
+      .select({
+        userId: userRoles.userId,
+        roleId: userRoles.roleId,
+        roleName: roles.name,
+        roleCode: roles.code,
+      })
+      .from(userRoles)
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .orderBy(userRoles.roleId),
+  ]);
 
-  return jsonOk(rows);
+  const byUser = new Map<string, Array<{ id: number; name: string; code: string }>>();
+  for (const link of links) {
+    const list = byUser.get(link.userId) ?? [];
+    list.push({ id: link.roleId, name: link.roleName, code: link.roleCode });
+    byUser.set(link.userId, list);
+  }
+
+  return jsonOk(
+    rows.map((row) => {
+      const list = byUser.get(row.id) ?? [];
+      // Akun lama yang belum punya baris `user_roles` tetap menampilkan role
+      // utamanya supaya daftar role tidak kosong.
+      const roleList =
+        list.length > 0
+          ? list
+          : row.roleId && row.roleName
+            ? [{ id: row.roleId, name: row.roleName, code: row.roleCode ?? "" }]
+            : [];
+      return {
+        ...row,
+        roles: roleList,
+        roleIds: roleList.map((item) => item.id),
+      };
+    })
+  );
 }
 
 export async function usersPOST(req: NextRequest) {
@@ -113,15 +184,15 @@ export async function usersPOST(req: NextRequest) {
 
   const { username, password, isAdmin, name, jabatan } = parsed.data;
   const factoryId = isAdmin ? null : parsed.data.factoryId ?? null;
-  let roleId = isAdmin ? null : parsed.data.roleId ?? null;
-  if (!isAdmin && roleId === null) {
-    // Akun baru tanpa role akan terkunci tanpa menu sama sekali, jadi diberi
-    // akses dasar role Pabrik; admin bisa menggantinya kapan saja.
-    const [fallback] = await db
-      .select({ id: roles.id })
-      .from(roles)
-      .where(eq(roles.code, PABRIK_ROLE_CODE));
-    roleId = fallback?.id ?? null;
+  // Satu user boleh punya beberapa group role (tabel user_roles). Akun baru
+  // tanpa role akan terkunci tanpa menu sama sekali, jadi diberi akses dasar
+  // role Pabrik; admin bisa menggantinya kapan saja.
+  let roleIds = isAdmin
+    ? []
+    : parsed.data.roleIds ?? (parsed.data.roleId ? [parsed.data.roleId] : []);
+  if (!isAdmin && roleIds.length === 0) {
+    const fallback = await fallbackRoleId();
+    roleIds = fallback ? [fallback] : [];
   }
 
   if (await usernameTaken(username)) return jsonError("Username sudah ada.", 409);
@@ -134,10 +205,20 @@ export async function usersPOST(req: NextRequest) {
       jabatan,
       isAdmin,
       factoryId,
-      roleId,
+      roleId: roleIds[0] ?? null,
     });
+    const saved = isAdmin ? [] : await setUserRoles(id, roleIds);
     return jsonOk(
-      { id, name, username: normalizeUsername(username), jabatan, isAdmin, factoryId, roleId },
+      {
+        id,
+        name,
+        username: normalizeUsername(username),
+        jabatan,
+        isAdmin,
+        factoryId,
+        roleId: saved[0] ?? null,
+        roleIds: saved,
+      },
       201
     );
   } catch (err) {
@@ -181,9 +262,11 @@ export async function usersPATCH(
       : current.factoryId;
   const roleId = isAdmin
     ? null
-    : parsed.data.roleId !== undefined
-      ? parsed.data.roleId
-      : current.roleId;
+    : parsed.data.roleIds !== undefined
+      ? parsed.data.roleIds[0] ?? null
+      : parsed.data.roleId !== undefined
+        ? parsed.data.roleId
+        : current.roleId;
 
   if (current.isAdmin && !isAdmin && (await adminCount()) <= 1) {
     return jsonError("Minimal harus ada satu admin.", 400);
@@ -212,6 +295,14 @@ export async function usersPATCH(
     })
     .where(eq(user.id, id));
 
+  let savedRoles: number[] | null = null;
+  if (parsed.data.roleIds !== undefined && !isAdmin) {
+    savedRoles = await setUserRoles(id, parsed.data.roleIds);
+  } else if (isAdmin) {
+    await db.delete(userRoles).where(eq(userRoles.userId, id));
+    savedRoles = [];
+  }
+
   if (parsed.data.password) {
     const authCtx = await auth.$context;
     const hash = await authCtx.password.hash(parsed.data.password);
@@ -223,7 +314,16 @@ export async function usersPATCH(
       );
   }
 
-  return jsonOk({ id, name, username, jabatan, isAdmin, factoryId, roleId });
+  return jsonOk({
+    id,
+    name,
+    username,
+    jabatan,
+    isAdmin,
+    factoryId,
+    roleId: savedRoles ? savedRoles[0] ?? null : roleId,
+    roleIds: savedRoles,
+  });
 }
 
 export async function usersDELETE(
