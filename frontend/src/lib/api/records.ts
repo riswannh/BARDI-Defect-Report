@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import type { SessionUser } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import {
+  defectProblemLog,
   defects,
   factories,
   problems,
@@ -456,6 +457,49 @@ export async function defectsPOST(req: NextRequest) {
   return jsonOk(row, 201);
 }
 
+/**
+ * Catat perubahan kolom Problem di `defect_problem_log`.
+ *
+ * Log ini yang dibaca sync Google Sheet untuk menulis kolom "Problem" di sheet
+ * (lihat lib/api/gsheet.ts). Nama Problem ikut disimpan supaya laporan sync
+ * tetap terbaca walau master Problem-nya berubah/dihapus kemudian.
+ */
+async function logProblemChange(input: {
+  defectId: number;
+  codeGaransi: string;
+  fromProblemId: number | null;
+  toProblemId: number;
+  actor: string;
+}) {
+  const ids = [input.fromProblemId, input.toProblemId].filter(
+    (id): id is number => typeof id === "number"
+  );
+  const names =
+    ids.length > 0
+      ? await db
+          .select({ id: problems.id, name: problems.name })
+          .from(problems)
+          .where(inArray(problems.id, ids))
+      : [];
+  const nameOf = (id: number | null) =>
+    id === null ? "" : (names.find((row) => row.id === id)?.name ?? "");
+
+  try {
+    await db.insert(defectProblemLog).values({
+      defectId: input.defectId,
+      codeGaransi: input.codeGaransi,
+      fromProblemId: input.fromProblemId,
+      fromName: nameOf(input.fromProblemId),
+      toProblemId: input.toProblemId,
+      toName: nameOf(input.toProblemId),
+      actor: input.actor,
+    });
+  } catch (error) {
+    // Mencatat jejak tidak boleh menggagalkan penyimpanan defect-nya.
+    console.error("[defects:problem-log]", (error as Error).message);
+  }
+}
+
 export async function defectsPATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
@@ -508,6 +552,21 @@ export async function defectsPATCH(
     .where(eq(defects.id, rowId))
     .returning();
   if (!row) return jsonError("Data tidak ditemukan.", 404);
+
+  // Hanya perubahan Problem yang dicatat: field lain tetap murni sheet -> app.
+  if (
+    parsed.data.problemId !== undefined &&
+    parsed.data.problemId !== current[0].problemId
+  ) {
+    await logProblemChange({
+      defectId: row.id,
+      codeGaransi: row.codeGaransi,
+      fromProblemId: current[0].problemId,
+      toProblemId: parsed.data.problemId,
+      actor: guard.user.username,
+    });
+  }
+
   return jsonOk(row);
 }
 

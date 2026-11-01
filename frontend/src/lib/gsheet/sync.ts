@@ -1,4 +1,11 @@
-import { GSHEET_FIELDS, shortHash, type GsheetField, type RowFields } from "./mapping";
+import {
+  GSHEET_FIELDS,
+  normalizeCode,
+  normalizeName,
+  shortHash,
+  type GsheetField,
+  type RowFields,
+} from "./mapping";
 
 export type DiffField<F extends string = string> = { field: F; sheet: string; app: string };
 
@@ -187,4 +194,93 @@ export function planProblemDetail(input: {
     return { action: input.appText.trim() ? "adopt" : "translate", sourceHash };
   }
   return { action: known === sourceHash ? "skip" : "translate", sourceHash };
+}
+
+/**
+ * Satu perubahan Problem yang siap dikirim ke sheet. `logIds` bisa lebih dari
+ * satu kalau operator mengubah Problem berkali-kali sebelum sync berikutnya —
+ * yang dikirim cukup nilai terakhir, tapi semua log ikut ditandai terkirim.
+ */
+export type ProblemPush = {
+  code: string;
+  sheetRow: number;
+  problemId: number;
+  /** Nama Problem terbaru dari master (fallback: nama saat perubahan dicatat). */
+  name: string;
+  logIds: number[];
+};
+
+export type ProblemLogEntry = {
+  id: number;
+  code: string;
+  problemId: number;
+  name: string;
+};
+
+export type ProblemPushPlan = {
+  /** Ditulis ke kolom "Problem" di sheet. */
+  writes: ProblemPush[];
+  /** Sheet sudah bernilai sama → cukup ditandai terkirim, tanpa menulis. */
+  already: ProblemPush[];
+  /** Code Garansi tidak ada di sheet, jadi tidak ada baris yang bisa ditulis. */
+  missing: { code: string; logIds: number[] }[];
+  /** Melewati batas per-sync; tetap menunggu sync berikutnya. */
+  queued: number;
+};
+
+/**
+ * Rencana pengiriman perubahan Problem (app -> sheet), tanpa efek samping.
+ *
+ * Tempel di sini (bukan di api/gsheet.ts) supaya bisa diuji tanpa Google sama
+ * sekali. Aturannya:
+ * - log dipakai per Code Garansi, nilai TERAKHIR yang menang;
+ * - kalau sheet sudah berisi nama yang sama, tidak perlu menulis apa pun;
+ * - kalau barisnya tidak ada di sheet, log dilaporkan `missing` dan dibiarkan
+ *   menunggu (tidak dihapus) supaya ketahuan saat sync berikutnya;
+ * - sisanya ditulis sebanyak `limit` per sync, lebihnya ditunda.
+ */
+export function planProblemPushes(input: {
+  logs: ProblemLogEntry[];
+  rows: { code: string; sheetRow: number; problem: string }[];
+  limit: number;
+}): ProblemPushPlan {
+  const latest = new Map<string, { entry: ProblemLogEntry; ids: number[] }>();
+  for (const log of input.logs) {
+    const code = normalizeCode(log.code);
+    const current = latest.get(code);
+    if (!current) {
+      latest.set(code, { entry: log, ids: [log.id] });
+      continue;
+    }
+    current.ids.push(log.id);
+    // Nilai terakhir menang walau urutan id di input tidak rapi.
+    if (log.id >= current.entry.id) current.entry = log;
+  }
+
+  const rows = new Map<string, { sheetRow: number; problem: string }>();
+  for (const row of input.rows) rows.set(normalizeCode(row.code), row);
+
+  const plan: ProblemPushPlan = { writes: [], already: [], missing: [], queued: 0 };
+  for (const [code, { entry, ids }] of latest) {
+    const row = rows.get(code);
+    if (!row) {
+      plan.missing.push({ code, logIds: ids });
+      continue;
+    }
+    const push: ProblemPush = {
+      code,
+      sheetRow: row.sheetRow,
+      problemId: entry.problemId,
+      name: entry.name,
+      logIds: ids,
+    };
+    if (normalizeName(row.problem) === normalizeName(entry.name)) {
+      plan.already.push(push);
+    } else if (plan.writes.length < input.limit) {
+      plan.writes.push(push);
+    } else {
+      plan.queued += 1;
+    }
+  }
+  return plan;
 }

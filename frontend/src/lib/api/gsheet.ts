@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray, isNull } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
+  defectProblemLog,
   defects,
   factories,
   problems,
@@ -14,7 +15,7 @@ import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { defectSchema } from "@/lib/api/validation";
 import { GsheetError } from "@/lib/gsheet/auth";
-import { batchGetValues, type SheetCell } from "@/lib/gsheet/values";
+import { batchGetValues, batchUpdateValues, type SheetCell } from "@/lib/gsheet/values";
 import {
   FIELD_LABEL,
   GSHEET_FIELDS,
@@ -25,6 +26,7 @@ import {
   shortHash,
   quoteTab,
   resolveHeaderIndex,
+  sheetColumnLetter,
   type GsheetField,
   type RowFields,
 } from "@/lib/gsheet/mapping";
@@ -32,20 +34,28 @@ import {
   baselineFromSheet,
   parseBaseline,
   planProblemDetail,
+  planProblemPushes,
   planRowSync,
   PROBLEM_DETAIL_SOURCE,
   type FieldChoice,
   type DiffField,
+  type ProblemPush,
   type RowPlan,
 } from "@/lib/gsheet/sync";
 import { normalizeText, translateTexts } from "@/lib/translate";
 
 /**
- * Sync defect dari tab "Big Data" Google Sheet — SATU ARAH: sheet -> app.
+ * Sync defect dengan tab "Big Data" Google Sheet, dua arah tapi sempit.
  *
  * Kolom A:H tab itu diisi `=ARRAYFORMULA('Raw CX Data'!A1:H)` (dan sebagian dari
- * IMPORTRANGE), jadi sheet-nya read-only: tidak ada kode di sini yang menulis
- * ke sheet, dan tidak boleh ada.
+ * IMPORTRANGE); kolom "Keterangan Kendala" (E), "Pabrik" (K), "Offical Name" (L)
+ * juga formula. Blok itu read-only.
+ *
+ * Satu-satunya kolom yang ditulis aplikasi adalah "Problem" (J): setiap
+ * perubahan Problem dari dalam app dicatat di tabel `defect_problem_log`, lalu
+ * di awal sync log yang belum terkirim ditulis ke baris sheet yang cocok lewat
+ * Code Garansi. Setelah itu baris kembali mengikuti aturan normal (sheet -> app),
+ * jadi nilai lain di baris yang sama tetap dari sheet.
  *
  * Kontrak dengan user:
  * - kunci pencocokan baris: Code Garansi (di app unik);
@@ -55,12 +65,16 @@ import { normalizeText, translateTexts } from "@/lib/translate";
  *   pada field yang sama;
  * - kolom "Keterangan Kendala" (Indonesia) diterjemahkan app ke bahasa Inggris
  *   lewat LibreTranslate sebelum disimpan/dibandingkan; kolom `Translate` di
- *   sheet DIABAIKAN dan data lama tidak di-backfill (lihat planProblemDetail).
+ *   sheet DIABAIKAN dan data lama tidak di-backfill (lihat planProblemDetail);
+ * - kolom "Problem": app menang sampai nilainya terkirim ke sheet, sesudahnya
+ *   sheet yang menang (lihat planProblemPushes).
  */
 
 const DEFAULT_SHEET_ID = "1TzJAH7mgIp8OK4l_VsE1GSYAp-IldcyM7TQwmdC8S3U";
 const MAX_CONFLICTS = 300;
 const MAX_ISSUES = 50;
+/** Batas penulisan Problem per sync supaya request tidak menggantung. */
+const MAX_PROBLEM_WRITES_PER_SYNC = 200;
 
 function sheetConfig() {
   return {
@@ -249,6 +263,90 @@ function friendly(error: unknown, fallback: string) {
   return jsonError(fallback, 500);
 }
 
+/**
+ * Kirim perubahan Problem (dari app) ke kolom "Problem" (J) sheet.
+ *
+ * Dipanggil di awal sync, SEBELUM baris dibaca ulang. Nama kolomnya dihitung
+ * dari header yang benar-benar ada (`sheet.resolved.index.problemId`), jadi
+ * tidak pernah menulis ke kolom formula. Baris yang nilainya sudah sama cuma
+ * ditandai terkirim supaya tidak ada request sia-sia; baris yang gagal ditulis
+ * tetap menunggu dan dilaporkan sebagai "pending" di ringkasan sync.
+ */
+async function pushProblemChanges(input: {
+  spreadsheetId: string;
+  tab: string;
+  sheet: Awaited<ReturnType<typeof readSheet>>;
+  masters: Masters;
+}): Promise<{ sent: ProblemPush[]; pending: number }> {
+  const logs = await db
+    .select()
+    .from(defectProblemLog)
+    .where(isNull(defectProblemLog.pushedAt))
+    .orderBy(defectProblemLog.id);
+  if (logs.length === 0) return { sent: [], pending: 0 };
+
+  const plan = planProblemPushes({
+    logs: logs.map((log) => ({
+      id: log.id,
+      code: log.codeGaransi,
+      problemId: log.toProblemId,
+      name: input.masters.toName.problemId.get(log.toProblemId) ?? log.toName,
+    })),
+    rows: input.sheet.rows
+      .filter((row) => row.code)
+      .map((row) => ({
+        code: row.code,
+        sheetRow: row.sheetRow,
+        problem: text(row.cells[input.sheet.resolved.index.problemId]),
+      })),
+    limit: MAX_PROBLEM_WRITES_PER_SYNC,
+  });
+
+  const now = new Date();
+  const markPushed = (items: ProblemPush[]) => {
+    for (const item of items) {
+      db.update(defectProblemLog)
+        .set({ pushedAt: now, sheetRow: item.sheetRow, error: "" })
+        .where(inArray(defectProblemLog.id, item.logIds))
+        .run();
+    }
+  };
+
+  // Sheet sudah bernilai sama: tandai terkirim tanpa request.
+  markPushed(plan.already);
+
+  let failed = 0;
+  if (plan.writes.length > 0) {
+    const column = sheetColumnLetter(input.sheet.resolved.index.problemId);
+    try {
+      await batchUpdateValues(
+        input.spreadsheetId,
+        plan.writes.map((push) => ({
+          range: `${quoteTab(input.tab)}!${column}${push.sheetRow}`,
+          values: [[push.name]],
+        }))
+      );
+      markPushed(plan.writes);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal menulis ke sheet";
+      const ids = plan.writes.flatMap((push) => push.logIds);
+      if (ids.length > 0) {
+        db.update(defectProblemLog)
+          .set({ error: message.slice(0, 300) })
+          .where(inArray(defectProblemLog.id, ids))
+          .run();
+      }
+      console.error("[gsheet:problem-push]", message);
+      failed = plan.writes.length;
+    }
+  }
+
+  return {
+    sent: failed > 0 ? plan.already : [...plan.already, ...plan.writes],
+    pending: plan.queued + plan.missing.length + failed,
+  };
+}
+
 export type ConflictRow = {
   codeGaransi: string;
   sheetRow: number;
@@ -285,6 +383,17 @@ export async function runSync(options: {
   const priceRows = await db.select().from(productPrices);
   const localByCode = new Map(localRows.map((row) => [row.code, row]));
 
+  // Kirim dulu perubahan Problem dari app, lalu pakai nilai barunya saat
+  // membandingkan supaya baris yang barusan dikirim tidak terlihat "berubah di
+  // dua sisi" (dan tidak memunculkan konflik palsu).
+  const problemPush = await pushProblemChanges({ spreadsheetId, tab, sheet, masters });
+  for (const push of problemPush.sent) {
+    const sheetRow = sheet.rows.find((row) => row.code === push.code);
+    if (sheetRow) sheetRow.cells[sheet.resolved.index.problemId] = push.name;
+    const local = localByCode.get(push.code);
+    if (local) local.fields.problemId = push.name;
+  }
+
   const summary = {
     sheetRows: sheet.rows.length,
     localRows: localRows.length,
@@ -298,6 +407,8 @@ export async function runSync(options: {
     appOnlyChanges: 0,
     onlyInApp: 0,
     skipped: 0,
+    problemsPushed: problemPush.sent.length,
+    problemsPushPending: problemPush.pending,
   };
   const issues: { row?: number; code?: string; reason: string }[] = [];
   const conflicts: ConflictRow[] = [];
@@ -584,6 +695,12 @@ export async function runSync(options: {
     });
   }
 
+  if (problemPush.pending > 0) {
+    issues.unshift({
+      reason: `${problemPush.pending} perubahan Problem belum terkirim ke Google Sheet — dicoba lagi sync berikutnya.`,
+    });
+  }
+
   // Nilai defect selalu diturunkan dari Price List (quantity × harga bulan
   // timestamp), jadi baris yang masih memakai harga lama ikut disesuaikan setiap
   // sync — termasuk barisnya sendiri tidak berubah di sheet. Baris yang produknya
@@ -652,6 +769,8 @@ export async function runSync(options: {
       translations: detailTranslated,
       /** Baris yang terjemahannya ditunda (layanan mati / batas per sync). */
       translationsPending: detailPending,
+      /** Code Garansi + Problem yang barusan ditulis ke sheet (untuk laporan). */
+      pushedProblems: problemPush.sent.map((push) => ({ code: push.code, name: push.name })),
     },
     conflicts,
     issues,

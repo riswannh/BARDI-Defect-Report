@@ -48,6 +48,12 @@ export type GsheetSyncSummary = {
   translations?: number;
   /** Baris yang terjemahannya ditunda karena layanan terjemahan tidak tersedia. */
   translationsPending?: number;
+  /** Perubahan Problem dari aplikasi yang berhasil ditulis ke sheet. */
+  problemsPushed?: number;
+  /** Perubahan Problem yang belum terkirim (gagal/batas per sync/baris tak ada). */
+  problemsPushPending?: number;
+  /** Baris yang Problem-nya dikirim sync ini — hanya untuk laporan sync. */
+  pushedProblems?: { code: string; name: string }[];
   /** Jumlah baris yang tidak diimpor (semua kolomnya kosong). */
   skippedRows?: number;
   /** Baris yang tetap diimpor tapi ditandai tidak lengkap. */
@@ -187,6 +193,19 @@ export function GsheetSyncDialog({
               {t("gsheet.translationPending", { count: result.summary.translationsPending })}
             </span>
           ) : null}
+          {result.summary.problemsPushed ? (
+            <Badge
+              variant="outline"
+              className="border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+            >
+              {t("gsheet.problemPushed", { count: result.summary.problemsPushed })}
+            </Badge>
+          ) : null}
+          {result.summary.problemsPushPending ? (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              {t("gsheet.problemPending", { count: result.summary.problemsPushPending })}
+            </span>
+          ) : null}
           {result.summary.incompleteRows ? (
             <span className="text-xs text-amber-600 dark:text-amber-400">
               {t("repair.syncIncomplete", { count: result.summary.incompleteRows })}
@@ -195,6 +214,32 @@ export function GsheetSyncDialog({
         </div>
 
         <div className="flex max-h-[45vh] flex-col gap-3 overflow-y-auto pr-1">
+          {result.summary.pushedProblems && result.summary.pushedProblems.length > 0 && (
+            <div className="rounded-lg border">
+              <div className="border-b bg-muted/40 px-3 py-2">
+                <div className="text-sm font-medium">
+                  {t("gsheet.problemPushedTitle")}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground tabular-nums">
+                    {result.summary.pushedProblems.length}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {t("gsheet.problemPushedHint")}
+                </div>
+              </div>
+              <ul className="max-h-40 divide-y overflow-y-auto text-xs">
+                {result.summary.pushedProblems.map((item) => (
+                  <li
+                    key={item.code}
+                    className="flex items-center justify-between gap-3 px-3 py-1.5"
+                  >
+                    <span className="font-mono text-[11px]">{item.code}</span>
+                    <span className="truncate text-muted-foreground">{item.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {conflictCount === 0 && result.issues.length === 0 ? (
             <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm">
               <Check className="size-4 text-emerald-600 dark:text-emerald-400" />

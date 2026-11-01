@@ -925,3 +925,45 @@ export const translationCache = sqliteTable("translation_cache", {
     .notNull()
     .default(sql`(unixepoch())`),
 });
+
+/**
+ * Jejak perubahan kolom Problem yang dilakukan DI APLIKASI.
+ *
+ * Aplikasi dijadikan sumber kebenaran untuk kolom "Problem" (J) di sheet "Big
+ * Data": setiap perubahan Problem dicatat di sini, lalu saat sync log yang
+ * belum terkirim ditulis ke baris sheet yang cocok lewat Code Garansi. Setelah
+ * itu baris dianggap sinkron, sehingga sync berikutnya kembali menarik data
+ * sheet (arah normal) tanpa menimpa perubahan yang sudah dikirim.
+ *
+ * Log ini sengaja tidak punya layar sendiri — hanya diringkas di dialog hasil
+ * sync, sesuai keputusan user.
+ */
+export const defectProblemLog = sqliteTable(
+  "defect_problem_log",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    defectId: integer("defectId").notNull(),
+    /** Code Garansi saat perubahan dicatat (kunci baris di sheet). */
+    codeGaransi: text("codeGaransi").notNull(),
+    fromProblemId: integer("fromProblemId"),
+    fromName: text("fromName").notNull().default(""),
+    toProblemId: integer("toProblemId").notNull(),
+    /** Nama Problem saat dicatat — cadangan kalau master-nya dihapus. */
+    toName: text("toName").notNull().default(""),
+    /** user.username pelaku perubahan. */
+    actor: text("actor").notNull().default(""),
+    changedAt: integer("changedAt", { mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    /** Null = belum ditulis ke sheet (masih menunggu sync berikutnya). */
+    pushedAt: integer("pushedAt", { mode: "timestamp" }),
+    /** Nomor baris sheet tempat nilai ini ditulis. */
+    sheetRow: integer("sheetRow"),
+    /** Alasan kegagalan penulisan terakhir, kosong kalau sukses. */
+    error: text("error").notNull().default(""),
+  },
+  (t) => [
+    index("defect_problem_log_pending_idx").on(t.pushedAt, t.id),
+    index("defect_problem_log_code_idx").on(t.codeGaransi),
+  ]
+);

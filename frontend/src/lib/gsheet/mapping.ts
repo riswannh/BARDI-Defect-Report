@@ -154,6 +154,17 @@ export function parseSheetTimestamp(value: unknown): string {
   return "";
 }
 
+/**
+ * Nama kolom alternatif yang tetap diterima saat membaca header.
+ *
+ * Kolom "Status" di sheet sudah lama diganti namanya menjadi "Status" saja
+ * (dulu "Status Defect"), dan app harus tetap bisa sync tanpa menyentuh sheet
+ * dulu. Urutan penting: nama utama di `SHEET_COLUMN` dicoba lebih dulu.
+ */
+export const SHEET_ALIASES: Partial<Record<GsheetField, string[]>> = {
+  statusId: ["Status"],
+};
+
 /** Indeks kolom (0-based) untuk tiap field, dibaca dari baris header sheet. */
 export function resolveHeaderIndex(header: string[]): {
   index: Record<GsheetField, number>;
@@ -167,11 +178,31 @@ export function resolveHeaderIndex(header: string[]): {
   const index = {} as Record<GsheetField, number>;
   const missing: string[] = [];
   for (const field of GSHEET_FIELDS) {
-    const i = found.get(normalizeName(SHEET_COLUMN[field]));
+    const names = [SHEET_COLUMN[field], ...(SHEET_ALIASES[field] ?? [])];
+    let i: number | undefined;
+    for (const name of names) {
+      const hit = found.get(normalizeName(name));
+      if (hit !== undefined) {
+        i = hit;
+        break;
+      }
+    }
     if (i === undefined) missing.push(SHEET_COLUMN[field]);
     index[field] = i ?? -1;
   }
   return { index, missing };
+}
+
+/** Huruf kolom A1 untuk indeks 0-based (0 -> A, 9 -> J). */
+export function sheetColumnLetter(index: number): string {
+  let n = index + 1;
+  let out = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    out = String.fromCharCode(65 + rem) + out;
+    n = Math.floor((n - 1) / 26);
+  }
+  return out || "A";
 }
 
 /** Bungkus nama tab supaya aman dipakai di range A1 (mis. Big Data -> 'Big Data'). */

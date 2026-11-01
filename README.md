@@ -80,7 +80,7 @@ Keberhasilan diukur dari kebiasaan pengguna mengisi **Data Defect** dan **Data S
 | + | Build image Docker untuk deploy (`bardi-defect-report:latest`, diuji jalan dengan data asli) | ✅ Selesai |
 | + | Image Docker dirampingkan (multi-stage: dependensi produksi saja, tanpa tool build) | ✅ Selesai |
 | + | Value Defect: satu isian nilai, `productPriceId` dikosongkan, isian awal dari harga master | ✅ Selesai |
-| + | **Sync Google Sheet** (tab "Big Data") satu arah sheet → aplikasi, konflik per field lewat popup | ✅ Selesai |
+| + | **Sync Google Sheet** (tab "Big Data") sheet → aplikasi, konflik per field lewat popup; kolom `Problem` bisa dikirim app → sheet lewat log edit | ✅ Selesai |
 | + | **Sync Google Sheet** (tab "Data Penjualan") untuk menu Sales: tabel lebar 12 bulan, acuan kolom Official Name | ✅ Selesai |
 | + | **Allowance Defect** (limit tahunan, admin saja) — kartu Sisa Allowance di Report, limit diprorata mengikuti filter | ✅ Selesai + deploy |
 | + | **Repair Data** (`/repairs`, admin saja) — cermin tab "Data Reparasi" sheet Reparasi RFB: CRUD, filter, Saving Value = Quantity × harga RW, sync Google Sheet satu arah, Excel | ✅ Selesai |
@@ -815,9 +815,14 @@ Respons import: `{ module, totalRows, inserted, skipped, errors[], skippedDetail
 ### Sync Google Sheet (Defect)
 
 Menarik perubahan dari spreadsheet `Data Garansi Produk`, tab **Big Data**.
-**Satu arah: sheet → aplikasi.** Kolom A:H tab itu diisi
-`=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat IMPORTRANGE), jadi aplikasi
-hanya membaca — tidak ada jalur tulis ke sheet sama sekali.
+Alirannya **sheet → aplikasi**, dengan satu pengecualian sempit: kolom
+**`Problem` (J)** boleh ditulis aplikasi ketika operator mengubah Problem sebuah
+defect di aplikasi (lihat "Problem dari aplikasi" di bawah). Kolom lain tidak
+pernah ditulis: A:H diisi `=ARRAYFORMULA('Raw CX Data'!A1:H)` (sebagian lewat
+IMPORTRANGE), `Month` (I) formula, `Pabrik` (K) dan `Offical Name` (L) XLOOKUP
+ke tab `Data Produk`, `Translate` (M) `GOOGLETRANSLATE`. Penulisan dijaga
+`assertWritableRange()` di `lib/gsheet/values.ts`: range harus satu kolom di
+luar A–H, kalau tidak request ditolak sebelum keluar.
 
 Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
@@ -850,16 +855,33 @@ membalas `_` untuk "BARANG BARU MATI TOTAL") — **ditolak** `isUsableTranslatio
 dan diperlakukan seperti layanan mati: barisnya ditunda, sampahnya tidak masuk
 `defects.problemDetail` maupun `translation_cache`.
 
+**Problem dari aplikasi (dua arah sempit).** Operator bisa mengganti Problem
+sebuah defect di form app. Perubahan itu dicatat di tabel
+`defect_problem_log` (satu baris per edit: nilai lama, nilai baru, pelaku,
+waktu), lalu **saat sync berikutnya** app menulis nilai terakhir ke kolom
+`Problem` baris yang sama (dicocokkan lewat `Code Garansi`) dan menandai log
+`pushedAt` + `sheetRow`. Sesudah terkirim, baris itu kembali mengikuti aturan
+normal: sheet → app. Jadi app menang hanya untuk perubahan yang belum
+terkirim, dan tidak pernah menimpa kolom lain. Penulisan dibatasi 200 baris per
+sync; sisanya tetap menunggu dengan status "belum terkirim" di dialog. Kalau
+penulisan gagal (jaringan/Google menolak), log dibuat ulang sebagai pending
+(`error` diisi) dan tidak ada nilai yang hilang. Log ini **tidak** punya layar
+sendiri — ringkasannya hanya muncul di dialog hasil sync (jumlah terkirim,
+jumlah menunggu, dan daftar `Code Garansi` + nama Problem yang baru ditulis).
+Header sheet live sekarang memakai `Status` (dulu `Status Defect`); `SHEET_ALIASES`
+di `mapping.ts` menerima keduanya supaya sync tidak mati karena header berubah.
+
 | Method | Path | Akses | Body |
 |---|---|---|---|
 | POST | `/api/defects/gsheet/sync` | admin | `{}` |
 | POST | `/api/defects/gsheet/resolve` | admin | `{ defaultChoice?: "sheet"\|"app", items?: [{ codeGaransi, choices: {field: "sheet"\|"app"} }] }` |
 | POST | `/api/translate` | user login | `{ q: string \| string[], source?: "id", target?: "en" }` |
 
-Respons: `{ ok, tab, summary, conflicts[], issues[], conflictsTruncated }` dengan
-`summary = { sheetRows, localRows, matched, inserted, appliedFields, rowsUpdated,
-conflicts, conflictsResolved, unchanged, appOnlyChanges, onlyInApp, skipped,
-translations, translationsPending }`.
+Respons: `{ ok, tab, summary, conflicts[], issues[], conflictsTruncated,
+pushedProblems[] }` dengan `summary = { sheetRows, localRows, matched,
+inserted, appliedFields, rowsUpdated, conflicts, conflictsResolved, unchanged,
+appOnlyChanges, onlyInApp, skipped, translations, translationsPending,
+problemsPushed, problemsPushPending }`.
 
 Aturannya:
 
@@ -869,7 +891,11 @@ Aturannya:
   `Open` (status), sama seperti jalur impor Excel.
 - Perubahan yang hanya ada di sheet langsung dipakai di aplikasi. Perubahan yang
   hanya ada di aplikasi **tidak dikirim ke sheet** — cuma dihitung dan
-  ditampilkan sebagai informasi.
+  ditampilkan sebagai informasi — kecuali kolom `Problem` yang punya log edit
+  (lihat bagian "Problem dari aplikasi").
+- Baris yang Problem-nya baru dikirim ke sheet tidak lagi dianggap konflik:
+  nilai sheet di memori diganti nilai baru sebelum pembandingan, jadi operator
+  tidak ditanya hal yang sudah dia putuskan di app.
 - Perubahan di **dua** sisi untuk field yang sama → muncul di `conflicts[]` dan
   ditampilkan popup pilihan per field (Sheet / App), lengkap dengan tombol borong
   **Semua dari Sheet** / **Semua dari App**. Field yang masih bentrok tidak
@@ -887,11 +913,16 @@ Aturannya:
 
 Uji tanpa VPS: `cmd /c "npx tsx scripts/translate-check.ts"` menjalankan klien
 terjemahan melawan server tiruan (`node:http` di 127.0.0.1) dengan DB sementara —
-24 pemeriksaan cache, batch, dan penanganan 503/429/400. Untuk menilai mutu
-terjemahan sungguhan dari data lokal, jalankan
-`cmd /c "npx tsx scripts/translate-samples.ts 20"` di VPS setelah
-`docker compose up -d` (script mencetak 20 `problemDetail` acak beserta versi
-Inggrisnya).
+30 pemeriksaan cache, batch, penolakan hasil rusak, dan penanganan 503/429/400.
+`cmd /c "npx tsx scripts/gsheet-sync-check.ts"` menguji planner sync, alias
+header, guard tulis, dan pengiriman Problem (butuh salinan DB produksi + kunci
+service account; kalau tidak ada, uji dilewati). Untuk menilai mutu terjemahan
+sungguhan dari data lokal, jalankan `cmd /c "npx tsx scripts/translate-samples.ts 20"`
+di VPS (script mencetak 20 `problemDetail` acak beserta versi Inggrisnya).
+Layanan LibreTranslate di VPS sekarang permanen (`bardi-libretranslate`, port
+hanya loopback `127.0.0.1:5001`); dari laptop akses lewat
+`ssh -N -L 5150:127.0.0.1:5001 root@76.13.182.114` lalu set
+`TRANSLATE_URL=http://127.0.0.1:5150`.
 
 ### Sync Google Sheet (Sales)
 
@@ -999,7 +1030,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 ### 8.3 Data Defect
 
 - Ringkasan total quantity & value defect (value hanya admin).
-- Tabel: Code Garansi, Timestamp, Produk, Pabrik, Problem, Status, Qty, Value (admin).
+- Tabel: Code Garansi, Timestamp, Produk, Pabrik, Problem, Qty, Value (admin).
 - **Klik baris** → dialog detail defect.
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
@@ -1013,7 +1044,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
   - Menutup dialog yang masih berisi isian **meminta konfirmasi** lebih dulu.
 - **Bulk**: checkbox baris → **Ubah massal** (dialog edit berurutan per data, judul `(1/N)`; Perbarui = simpan & lanjut ke data berikutnya) dan **Hapus massal**.
 - **Excel**: import (duplikat `codeGaransi` di-skip), export, template.
-- **Sync Google Sheet** (admin, tombol di samping Impor/Export): menarik perubahan dari tab **Big Data** spreadsheet `Data Garansi Produk`. **Satu arah sheet → aplikasi** — kolom A:H tab itu formula (`ARRAYFORMULA`/`IMPORTRANGE`) sehingga aplikasi tidak pernah menulis ke sheet. Perubahan di sheet langsung masuk; perubahan yang hanya ada di aplikasi cuma dihitung sebagai informasi; field yang berubah di dua sisi ditanyakan lewat popup (pilih **Sheet** atau **App**, ada tombol borong). Setiap sync juga **menghitung ulang `value` seluruh baris** dari Price List (quantity × harga master bulan `timeStamp`) supaya angka di aplikasi sama dengan sheet; jumlah baris yang disesuaikan muncul sebagai catatan di daftar issue. Detail aturan + pemetaan kolom: §7 *Sync Google Sheet*.
+- **Sync Google Sheet** (admin, tombol di samping Impor/Export): menarik perubahan dari tab **Big Data** spreadsheet `Data Garansi Produk`. **Aliran sheet → aplikasi**, dengan satu pengecualian: kolom **`Problem`** yang diubah operator di app dikirim ke sheet saat sync berikutnya lewat log edit `defect_problem_log` (kolom formula A:H/K/L tetap tidak pernah ditulis; lihat §7 *Sync Google Sheet*). Perubahan di sheet langsung masuk; perubahan lain yang hanya ada di aplikasi cuma dihitung sebagai informasi; field yang berubah di dua sisi ditanyakan lewat popup (pilih **Sheet** atau **App**, ada tombol borong). Setiap sync juga **menghitung ulang `value` seluruh baris** dari Price List (quantity × harga master bulan `timeStamp`) supaya angka di aplikasi sama dengan sheet; jumlah baris yang disesuaikan muncul sebagai catatan di daftar issue.
 
 ### 8.4 Data Sales
 

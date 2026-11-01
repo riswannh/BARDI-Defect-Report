@@ -7,6 +7,7 @@ import {
   baselineFromSheet,
   parseBaseline,
   planProblemDetail,
+  planProblemPushes,
   planRowSync,
   PROBLEM_DETAIL_SOURCE,
   type RowPlan,
@@ -16,8 +17,10 @@ import {
   parseSheetNumber,
   parseSheetTimestamp,
   resolveHeaderIndex,
+  sheetColumnLetter,
   shortHash,
 } from "../src/lib/gsheet/mapping";
+import { assertWritableRange } from "../src/lib/gsheet/values";
 import { defectValueFromMaster } from "../src/lib/defect-value";
 import type { ProductPrice } from "../src/lib/types";
 
@@ -353,6 +356,63 @@ assert.equal(
   "teks sheet berubah -> terjemahkan ulang"
 );
 
+// 16. Kolom Problem: perubahan dari app dikirim ke sheet lewat log. Nilai
+//     TERAKHIR yang menang, baris yang sudah sama hanya ditandai terkirim,
+//     Code Garansi yang tidak ada di sheet ditunda (tidak dihapus), dan sisanya
+//     dibatasi `limit` per sync.
+const pushPlan = planProblemPushes({
+  logs: [
+    { id: 1, code: "ABC123", problemId: 7, name: "Death After Usage" },
+    { id: 2, code: "abc123", problemId: 9, name: "Not Clear" },
+    { id: 3, code: "DEF456", problemId: 9, name: "Not Clear" },
+    { id: 4, code: "GHI789", problemId: 7, name: "Death After Usage" },
+    { id: 5, code: "MNO345", problemId: 9, name: "Not Clear" },
+  ],
+  rows: [
+    { code: "ABC123", sheetRow: 2, problem: "Death After Usage" },
+    { code: "DEF456", sheetRow: 3, problem: "Not Clear" },
+    { code: "MNO345", sheetRow: 5, problem: "Death After Usage" },
+  ],
+  limit: 1,
+});
+assert.equal(pushPlan.writes.length, 1, "batas per sync dipatuhi");
+assert.deepEqual(pushPlan.writes[0].logIds, [1, 2], "semua log baris yang sama ikut terkirim");
+assert.equal(pushPlan.writes[0].name, "Not Clear", "nilai terakhir menang");
+assert.deepEqual(
+  pushPlan.already.map((row) => row.code),
+  ["DEF456"],
+  "sheet sudah bernilai sama -> tidak perlu menulis"
+);
+assert.deepEqual(
+  pushPlan.missing.map((row) => row.code),
+  ["GHI789"],
+  "Code Garansi tidak ada di sheet -> ditunda"
+);
+assert.equal(pushPlan.queued, 1, "baris yang lolos batas tetap menunggu");
+
+const emptyPush = planProblemPushes({ logs: [], rows: [], limit: 10 });
+assert.deepEqual(emptyPush, { writes: [], already: [], missing: [], queued: 0 });
+
+// 17. Huruf kolom untuk range tulis A1.
+assert.equal(sheetColumnLetter(9), "J");
+assert.equal(sheetColumnLetter(0), "A");
+assert.equal(sheetColumnLetter(26), "AA");
+
+// 18. Nama header alternatif: sheet sudah memakai "Status", kode lama menuntut
+//     "Status Defect" — dua-duanya harus diterima supaya sync tidak mati.
+const aliasOnly = resolveHeaderIndex(["Code Garansi", "Status"]);
+assert.equal(aliasOnly.index.statusId, 1, "header 'Status' dikenali");
+assert.equal(resolveHeaderIndex(["Code Garansi", "Status Defect"]).index.statusId, 1);
+
+// 19. Guard tulis: kolom A–H (blok ARRAYFORMULA) harus ditolak, kolom J boleh.
+assert.throws(
+  () => assertWritableRange("'Big Data'!A5"),
+  /tidak boleh menulis/i,
+  "kolom formula ditolak"
+);
+assert.doesNotThrow(() => assertWritableRange("'Big Data'!J5"), "kolom Problem boleh ditulis");
+assert.throws(() => assertWritableRange("bukan-range"), /tidak dikenali/i);
+
 console.log(
-  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 6 pemeriksaan terjemahan Keterangan Kendala"
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 6 pemeriksaan terjemahan Keterangan Kendala + 11 pemeriksaan kirim Problem"
 );

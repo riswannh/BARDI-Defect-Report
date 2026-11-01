@@ -26,8 +26,8 @@ services:
       BETTER_AUTH_URL: https://${DOMAIN}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       # Kunci service account Google untuk fitur "Sync Google Sheet" (tab
-      # "Big Data"). Aplikasi hanya MEMBACA sheet itu — kolom A:H diisi
-      # ARRAYFORMULA, jadi tidak ada jalur tulis sama sekali.
+      # "Big Data"). Aplikasi membaca sheet itu, dan hanya menulis SATU kolom:
+      # "Problem" (J). Kolom A:H, K, L diisi formula dan tidak pernah ditulis.
       GOOGLE_SERVICE_ACCOUNT_FILE: /run/secrets/gsheet-sa.json
       # Layanan terjemahan (service `libretranslate` di bawah) untuk kolom
       # "Keterangan Kendala": teks Indonesia diterjemahkan ke Inggris sebelum
@@ -54,8 +54,10 @@ services:
   # Terjemahan Indonesia -> Inggris (LibreTranslate self-host, mesin Argos).
   # Dipakai sync Google Sheet; nanti juga gelembung chat tiket.
   #
-  # Sengaja TIDAK punya "ports:" — hanya dijangkau app lewat jaringan internal
-  # Docker, jadi tidak ada yang bisa menyalahgunakannya dari luar.
+  # Dijalankan PERMANEN di VPS (bukan container sementara saat uji). Port hanya
+  # di-bind ke loopback server supaya bisa diuji dari laptop lewat tunnel SSH:
+  #   ssh -N -L 5150:127.0.0.1:5001 root@<vps>
+  # Tidak pernah terbuka ke internet; app memakai jaringan internal Docker.
   # Model diunduh sekali ke volume (butuh internet saat start pertama).
   libretranslate:
     image: libretranslate/libretranslate:latest
@@ -69,6 +71,8 @@ services:
       LT_DISABLE_WEB_UI: "true"
       LT_UPDATE_MODELS: "false"
       ARGOS_CHUNK_TYPE: MINISBD
+    ports:
+      - "127.0.0.1:5001:5000"
     volumes:
       - libretranslate_models:/home/libretranslate/.local
     mem_limit: 1.2g

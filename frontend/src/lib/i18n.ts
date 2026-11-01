@@ -1523,14 +1523,34 @@ const translations = {
     zh: "不会回写到工作表（{fields}）",
   },
   "gsheet.readOnly": {
-    id: "Sheet hanya dibaca (kolomnya formula)",
-    en: "Sheet is read-only (its columns are formulas)",
-    zh: "表格只读（列为公式）",
+    id: "Kolom formula di sheet tidak ditulis (kecuali kolom Problem)",
+    en: "Formula columns in the sheet are never written (except Problem)",
+    zh: "表格中的公式列不会被写入（Problem 列除外）",
   },
   "gsheet.skippedBadge": {
     id: "{count} baris dilewati",
     en: "{count} rows skipped",
     zh: "{count} 行已跳过",
+  },
+  "gsheet.problemPushed": {
+    id: "{count} Problem ditulis ke Google Sheet",
+    en: "{count} Problems written to Google Sheets",
+    zh: "{count} 个 Problem 已写入表格",
+  },
+  "gsheet.problemPending": {
+    id: "{count} Problem menunggu dikirim — coba sync lagi nanti",
+    en: "{count} Problems waiting to be sent — try syncing again later",
+    zh: "{count} 个 Problem 等待发送 — 稍后再同步",
+  },
+  "gsheet.problemPushedTitle": {
+    id: "Problem yang dikirim ke sheet",
+    en: "Problems sent to the sheet",
+    zh: "已发送到表格的 Problem",
+  },
+  "gsheet.problemPushedHint": {
+    id: "Perubahan Problem dari aplikasi ditulis ke baris sheet lewat Code Garansi.",
+    en: "Problem changes made in the app are written to sheet rows by Code Garansi.",
+    zh: "应用中的 Problem 修改会按 Code Garansi 写入表格对应行。",
   },
   "gsheet.translatedBadge": {
     id: "{count} baris diterjemahkan",

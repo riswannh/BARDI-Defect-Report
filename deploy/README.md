@@ -301,12 +301,25 @@ Migrasi schema dijalankan otomatis saat start. Backup sebelum update penting
 kalau perubahan schema ternyata bermasalah.
 
 > **Dari 1 Nov 2026 compose ikut menjalankan `libretranslate`** (penerjemah
-> "Keterangan Kendala" saat sync Google Sheet). Service ini **tidak** membuka
-> port ke host — hanya dijangkau app lewat jaringan internal Docker dengan
-> `TRANSLATE_URL: http://libretranslate:5000`. Start pertamanya mengunduh model
-> `en` + `id` (±65 MB) dan memakan 1–2 menit; healthcheck diberi `start_period`
-> 180 detik. Batas memori `1.2g` (VPS tanpa swap), `LT_THREADS=2`,
-> `LT_LOAD_ONLY=en,id`. Cara memeriksanya:
+> "Keterangan Kendala" saat sync Google Sheet). Service ini **permanen** — sudah
+> berjalan di VPS `76.13.182.114` sebagai container `bardi-libretranslate`
+> (healthy sejak 1 Nov 2026), bukan lagi container sementara untuk uji. Port
+> dibuka **hanya di loopback** (`127.0.0.1:5001`), jadi tidak bisa diakses dari
+> internet; app memakai jaringan internal Docker dengan
+> `TRANSLATE_URL: http://libretranslate:5000`. Untuk menguji dari laptop, pakai
+> tunnel SSH:
+>
+> ```bash
+> ssh -N -L 5150:127.0.0.1:5001 root@76.13.182.114
+> curl -s -X POST http://127.0.0.1:5150/translate \
+>   -H 'content-type: application/json' \
+>   -d '{"q":"Lampu tidak menyala","source":"id","target":"en"}'
+> ```
+>
+> Start pertamanya mengunduh model `en` + `id` (±65 MB) ke volume
+> `libretranslate_models` dan memakan 1–2 menit; healthcheck diberi
+> `start_period` 180 detik. Batas memori `1.2g` (VPS tanpa swap),
+> `LT_THREADS=2`, `LT_LOAD_ONLY=en,id`. Cara memeriksanya:
 >
 > ```bash
 > docker compose ps                          # libretranslate harus healthy

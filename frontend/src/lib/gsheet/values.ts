@@ -66,9 +66,10 @@ export async function getSpreadsheetMeta(spreadsheetId: string) {
 /**
  * Baca beberapa range sekaligus; default nilai seperti yang tampil di sheet.
  *
- * Modul ini sengaja TIDAK punya fungsi tulis: tab "Big Data" kolom A:H diisi
- * ARRAYFORMULA dari tab lain, jadi menulis ke sana merusak formula (pernah
- * terjadi dan harus dipulihkan manual).
+ * Contoh baca saja untuk hampir semua modul: file ini sengaja hanya punya SATU
+ * fungsi tulis (`batchUpdateValues`), karena tab "Big Data" kolom A:H diisi
+ * ARRAYFORMULA dari tab lain — menulis ke sana merusak formula (pernah terjadi
+ * dan harus dipulihkan manual).
  */
 export async function batchGetValues(
   spreadsheetId: string,
@@ -84,4 +85,42 @@ export async function batchGetValues(
   );
   const valueRanges = (body.valueRanges ?? []) as { range?: string; values?: SheetValues }[];
   return valueRanges.map((vr) => ({ range: vr.range ?? "", values: vr.values ?? [] }));
+}
+
+/** Kolom A–H (indeks 0–7) diisi ARRAYFORMULA; aplikasi tidak boleh menulis ke sana. */
+const FORMULA_COLUMNS_END = 8;
+
+/** Dipakai juga oleh self-check (scripts/gsheet-sync-check.ts) tanpa jaringan. */
+export function assertWritableRange(range: string) {
+  const match = /^'[^']+'!([A-Z]+)\d+$/.exec(range);
+  if (!match) {
+    throw new GsheetError("write-guard", `Range tidak dikenali: ${range}`);
+  }
+  let column = 0;
+  for (const ch of match[1]) column = column * 26 + (ch.charCodeAt(0) - 64);
+  if (column <= FORMULA_COLUMNS_END) {
+    throw new GsheetError(
+      "write-guard",
+      `Kolom ${match[1]} diisi formula dari tab lain; aplikasi tidak boleh menulis ke sana.`
+    );
+  }
+}
+
+/**
+ * Tulis beberapa sel sekaligus (dipakai sync untuk mengirim kolom Problem yang
+ * sudah diubah di aplikasi). Hanya kolom di luar A:H yang diizinkan — guard di
+ * atas sengaja melempar error kalau ada yang mencoba menimpa blok formula.
+ */
+export async function batchUpdateValues(
+  spreadsheetId: string,
+  data: { range: string; values: string[][] }[],
+  valueInputOption: "RAW" | "USER_ENTERED" = "RAW"
+): Promise<void> {
+  if (data.length === 0) return;
+  for (const item of data) assertWritableRange(item.range);
+  await call(`/${encodeURIComponent(spreadsheetId)}/values:batchUpdate`, {
+    method: "POST",
+    body: JSON.stringify({ valueInputOption, data }),
+    what: "menulis data",
+  });
 }
