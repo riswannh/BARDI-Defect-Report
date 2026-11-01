@@ -56,7 +56,12 @@ import {
   resolveSparePart,
   repairSavingValue,
 } from "@/lib/gsheet/repair-mapping";
-import { normalizeCode, normalizeName } from "@/lib/gsheet/mapping";
+import {
+  normalizeCode,
+  normalizeName,
+  PROBLEM_DEFAULT_NAME,
+  problemDefaultName,
+} from "@/lib/gsheet/mapping";
 import { MONTHS } from "@/lib/format";
 import type { ImportIssue, ImportResult, ProductPrice } from "@/lib/types";
 
@@ -811,20 +816,17 @@ async function importDefects(sheet: SheetRow[]) {
 
     const productId = productMap.get(productName.toLowerCase());
 
-    // Problem kosong tetap bisa diimport → dipetakan ke problem "Kosong"
-    let problemId: number | undefined;
-    if (rawProblemName) {
-      problemId = problemMap.get(rawProblemName.toLowerCase());
-    } else {
-      problemId = problemMap.get("kosong");
-      if (!problemId) {
-        const [created] = await db
-          .insert(problems)
-          .values({ name: "Kosong" })
-          .returning();
-        problemId = created.id;
-        problemMap.set("kosong", created.id);
-      }
+    // Problem kosong (atau nilai lama "Kosong") dipetakan ke problem "-"
+    // (keputusan user 1 Nov 2026), sama seperti jalur sync Google Sheet.
+    const problemName = problemDefaultName(rawProblemName);
+    let problemId = problemMap.get(problemName.toLowerCase());
+    if (!problemId && problemName === PROBLEM_DEFAULT_NAME) {
+      const [created] = await db
+        .insert(problems)
+        .values({ name: PROBLEM_DEFAULT_NAME })
+        .returning();
+      problemId = created.id;
+      problemMap.set(PROBLEM_DEFAULT_NAME, created.id);
     }
 
     const factoryId = factoryMap.get(factoryName.toLowerCase());

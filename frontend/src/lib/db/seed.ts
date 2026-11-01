@@ -69,6 +69,8 @@ async function main() {
     .values([
       // Daftar Problem memakai bahasa Inggris (keputusan 1 Nov 2026): semua label
       // master ditulis Inggris, yang berbahasa Indonesia diterjemahkan manual.
+      // "-" adalah nilai default saat sel Problem di Google Sheet kosong.
+      { name: "-" },
       { name: "Paint Defect" },
       { name: "Dent" },
       { name: "Broken Component" },

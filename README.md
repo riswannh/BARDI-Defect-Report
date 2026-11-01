@@ -459,9 +459,12 @@ berbahasa Indonesia hasil tambah manual operator diterjemahkan manual
 ("Tidak merekam" → "Not Recording", "Baterai cepat habis" → "Battery Drains
 Fast", dst), dua duplikat persis digabung ke entri lama ("Mekanisme Eror" →
 Mechanism Error, "Stuck Indikator" → Stuck Indicator) dan baris repair yang
-memakainya ikut dipindahkan. Pengecualian: **"Kosong"** tetap — itu nilai
-default untuk sel Problem kosong di Google Sheet (403 baris) dan dipakai 685
-defect. Jangan menambah entri Problem berbahasa Indonesia lagi.
+memakainya ikut dipindahkan. Nilai default saat sel Problem di Google Sheet
+kosong adalah **`-`** (bukan lagi "Kosong"): baris lama yang bernama "Kosong"
+sudah di-rename jadi `-`, dan sel sheet yang masih berisi "Kosong" dibaca
+sebagai `-` lewat `PROBLEM_ALIASES` di `src/lib/api/gsheet.ts` — jangan
+menghapus alias itu selama sheet lama masih dipakai. Jangan menambah entri
+Problem berbahasa Indonesia lagi.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
@@ -937,7 +940,8 @@ Aturannya:
 
 - Baris dicocokkan lewat **Code Garansi** (tanpa peduli huruf besar/kecil).
 - Nama master (Problem, Offical Name) dicocokkan ke Data
-  Master dan ditulis memakai ejaan master; sel kosong jadi `Kosong` (problem),
+  Master dan ditulis memakai ejaan master; sel kosong jadi `-` (problem, juga
+  untuk sel lama yang masih berisi "Kosong"),
   sama seperti jalur impor Excel. Status tidak lagi dicocokkan sama sekali.
   Pabrik tidak dicocokkan dari sheet (kolomnya sudah dihapus); baris baru memakai
   kaitan produk → pabrik di User Management, dan dilewati bila kaitan itu belum

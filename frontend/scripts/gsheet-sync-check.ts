@@ -14,6 +14,7 @@ import {
   normalizeCode,
   parseSheetNumber,
   parseSheetTimestamp,
+  problemDefaultName,
   resolveHeaderIndex,
   sheetColumnLetter,
 } from "../src/lib/gsheet/mapping";
@@ -382,6 +383,13 @@ assert.throws(
 assert.doesNotThrow(() => assertWritableRange("'Big Data'!J5"), "kolom Problem boleh ditulis");
 assert.throws(() => assertWritableRange("bukan-range"), /tidak dikenali/i);
 
+// 20. Nilai Problem default: sel kosong (dan nilai lama "Kosong") jadi "-"
+//     (keputusan user 1 Nov 2026), nama lain dibiarkan apa adanya.
+assert.equal(problemDefaultName(""), "-", "sel kosong -> '-'");
+assert.equal(problemDefaultName("   "), "-", "sel spasi saja -> '-'");
+assert.equal(problemDefaultName("KOSONG"), "-", "nilai lama 'Kosong' tetap dikenali");
+assert.equal(problemDefaultName("  Not   Clear "), "Not Clear", "nama lain tidak diubah");
+
 console.log(
-  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 11 pemeriksaan kirim Problem"
+  "SEMUA LULUS: 13 pemeriksaan logika sync satu arah + 25 pemeriksaan mapping + 6 pemeriksaan nilai defect + 11 pemeriksaan kirim Problem + 4 pemeriksaan nilai Problem default"
 );

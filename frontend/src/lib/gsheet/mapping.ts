@@ -68,6 +68,22 @@ export const normalizeCode = (value: string): string =>
 export const normalizeName = (value: string): string =>
   String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
 
+/** Nama Problem default ketika sel di Google Sheet kosong (keputusan user 1 Nov 2026). */
+export const PROBLEM_DEFAULT_NAME = "-";
+
+/**
+ * Sel Problem kosong, atau sel yang masih berisi "Kosong" (nilai lama sebelum
+ * diganti strip), dipetakan ke nama default `-`. Dipakai jalur sync Google Sheet
+ * DAN impor Excel supaya keduanya memakai aturan yang sama.
+ */
+const PROBLEM_ALIASES: Record<string, string> = { kosong: PROBLEM_DEFAULT_NAME };
+
+export function problemDefaultName(raw: string): string {
+  const value = String(raw ?? "").replace(/\s+/g, " ").trim();
+  if (!value) return PROBLEM_DEFAULT_NAME;
+  return PROBLEM_ALIASES[normalizeName(value)] ?? value;
+}
+
 /**
  * Angka dari sheet bisa tampil "123,120" (format tampilan) atau 123120 (mentah).
  * Nilai di sheet ini rupiah, jadi pemisah ribuan dibuang dan desimal dibulatkan

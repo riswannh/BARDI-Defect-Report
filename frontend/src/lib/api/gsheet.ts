@@ -23,6 +23,8 @@ import {
   normalizeName,
   parseSheetNumber,
   parseSheetTimestamp,
+  PROBLEM_DEFAULT_NAME,
+  problemDefaultName,
   shortHash,
   quoteTab,
   resolveHeaderIndex,
@@ -123,15 +125,18 @@ const isNameField = (field: GsheetField): field is NameField =>
 const NAME_FIELDS: NameField[] = ["problemId", "productId"];
 
 /** Sel kosong di sheet dipetakan ke master bawaan app (sama seperti jalur impor Excel). */
-const NAME_DEFAULT: Partial<Record<NameField, string>> = { problemId: "Kosong" };
+const NAME_DEFAULT: Partial<Record<NameField, string>> = { problemId: PROBLEM_DEFAULT_NAME };
 
 /**
  * Rapikan nama master dari sheet ke ejaan master app (dan isi default untuk sel
  * kosong). Dipakai untuk MEMBANDINGKAN juga, bukan cuma menulis: tanpa ini,
- * " Open " atau "kosong" akan selalu terlihat "beda" dari "Open"/"Kosong".
+ * " Open " atau "kosong" akan selalu terlihat "beda" dari "Open"/"-".
  */
 function canonicalName(masters: Masters, field: NameField, raw: string, fallback?: string): string {
-  const value = String(raw ?? "").replace(/\s+/g, " ").trim();
+  const value =
+    field === "problemId"
+      ? problemDefaultName(raw)
+      : String(raw ?? "").replace(/\s+/g, " ").trim();
   if (!value) return fallback ?? "";
   const id = masters.toId[field].get(normalizeName(value));
   if (id === undefined) return value;
