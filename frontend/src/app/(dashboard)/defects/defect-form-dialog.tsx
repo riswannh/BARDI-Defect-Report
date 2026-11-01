@@ -53,7 +53,6 @@ interface DefectFormDialogProps {
   /** Pabrik yang dikaitkan ke produk (auto-isi kolom Pabrik). */
   factoryForProduct?: (productId: string) => number | null;
   problemOptions: SelectOption[];
-  statusOptions: SelectOption[];
   /** Semua harga produk (semua periode) untuk menghitung value. */
   productPrices: ProductPrice[];
 }
@@ -72,7 +71,6 @@ export function DefectFormDialog({
   productOptions,
   factoryForProduct,
   problemOptions,
-  statusOptions,
   productPrices,
 }: DefectFormDialogProps) {
   const { t } = useLanguage();
@@ -306,27 +304,6 @@ export function DefectFormDialog({
                     {problemOptions.map((p) => (
                       <SelectItem key={p.value} value={p.value}>
                         {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("common.status")}</Label>
-                <Select
-                  value={form.statusId}
-                  onValueChange={(v) =>
-                    onFormChange((f) => ({ ...f, statusId: String(v) }))
-                  }
-                  items={statusOptions}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

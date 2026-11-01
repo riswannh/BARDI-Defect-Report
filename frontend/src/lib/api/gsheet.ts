@@ -8,9 +8,9 @@ import {
   problems,
   productPrices,
   products,
-  statuses,
 } from "@/lib/db/schema";
 import { requireMenu } from "@/lib/api/guard";
+import { defaultStatusId } from "@/lib/api/defect-status";
 import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { defectSchema } from "@/lib/api/validation";
@@ -100,7 +100,7 @@ type LocalRow = {
   };
 };
 
-type NameField = "problemId" | "statusId" | "factoryId" | "productId";
+type NameField = "problemId" | "factoryId" | "productId";
 
 type Masters = {
   toName: Record<NameField, Map<number, string>>;
@@ -108,12 +108,12 @@ type Masters = {
 };
 
 const isNameField = (field: GsheetField): field is NameField =>
-  field === "problemId" || field === "statusId" || field === "factoryId" || field === "productId";
+  field === "problemId" || field === "factoryId" || field === "productId";
 
-const NAME_FIELDS: NameField[] = ["problemId", "statusId", "factoryId", "productId"];
+const NAME_FIELDS: NameField[] = ["problemId", "factoryId", "productId"];
 
 /** Sel kosong di sheet dipetakan ke master bawaan app (sama seperti jalur impor Excel). */
-const NAME_DEFAULT: Partial<Record<NameField, string>> = { problemId: "Kosong", statusId: "Open" };
+const NAME_DEFAULT: Partial<Record<NameField, string>> = { problemId: "Kosong" };
 
 /**
  * Rapikan nama master dari sheet ke ejaan master app (dan isi default untuk sel
@@ -129,9 +129,8 @@ function canonicalName(masters: Masters, field: NameField, raw: string, fallback
 }
 
 async function loadMasters(): Promise<Masters> {
-  const [problemRows, statusRows, factoryRows, productRows] = await Promise.all([
+  const [problemRows, factoryRows, productRows] = await Promise.all([
     db.select({ id: problems.id, name: problems.name }).from(problems),
-    db.select({ id: statuses.id, name: statuses.name }).from(statuses),
     db.select({ id: factories.id, name: factories.name }).from(factories),
     db.select({ id: products.id, name: products.name }).from(products),
   ]);
@@ -140,12 +139,11 @@ async function loadMasters(): Promise<Masters> {
     toId: new Map(rows.map((r) => [normalizeName(r.name), r.id] as const)),
   });
   const p = build(problemRows);
-  const s = build(statusRows);
   const f = build(factoryRows);
   const pr = build(productRows);
   return {
-    toName: { problemId: p.toName, statusId: s.toName, factoryId: f.toName, productId: pr.toName },
-    toId: { problemId: p.toId, statusId: s.toId, factoryId: f.toId, productId: pr.toId },
+    toName: { problemId: p.toName, factoryId: f.toName, productId: pr.toName },
+    toId: { problemId: p.toId, factoryId: f.toId, productId: pr.toId },
   };
 }
 
@@ -198,7 +196,6 @@ function localFieldsFromRow(
     problemDetail: string | null;
     productId: number;
     quantity: number;
-    statusId: number;
     factoryId: number;
     value: number;
   },
@@ -213,7 +210,6 @@ function localFieldsFromRow(
     problemDetail: row.problemDetail ?? "",
     productId: masters.toName.productId.get(row.productId) ?? "",
     quantity: String(row.quantity ?? 0),
-    statusId: masters.toName.statusId.get(row.statusId) ?? "",
     factoryId: masters.toName.factoryId.get(row.factoryId) ?? "",
   };
 }
@@ -230,7 +226,6 @@ async function loadLocalRows(masters: Masters): Promise<LocalRow[]> {
       problemDetail: defects.problemDetail,
       productId: defects.productId,
       quantity: defects.quantity,
-      statusId: defects.statusId,
       factoryId: defects.factoryId,
       priceType: defects.priceType,
       value: defects.value,
@@ -546,7 +541,6 @@ export async function runSync(options: {
         problemDetail: sheetFields.problemDetail,
         productId: insertProductId ?? undefined,
         quantity: insertQuantity,
-        statusId: masters.toId.statusId.get(normalizeName(sheetFields.statusId ?? "")),
         factoryId: masters.toId.factoryId.get(normalizeName(sheetFields.factoryId ?? "")),
         value: insertValue,
       });
@@ -580,6 +574,7 @@ export async function runSync(options: {
       pendingInsertCodes.add(insertCode);
       inserts.push({
         ...rest,
+        statusId: await defaultStatusId(),
         timeStamp: timestamp,
         productPriceId: null,
         value: insertValue,

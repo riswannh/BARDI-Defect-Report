@@ -230,7 +230,9 @@ Sumber: `frontend/src/lib/db/schema.ts`.
 
 **`problems`** — `id` (PK auto), `name` (unik), `createdAt`
 
-**`statuses`** — `id` (PK auto), `name` (unik), `createdAt`
+**`statuses`** — `id` (PK auto), `name` (unik), `createdAt`. Tabel ini tetap ada
+karena `defects.statusId` masih `NOT NULL`, tetapi **tidak lagi dikelola di Data
+Master** dan tidak dipakai UI sejak 1 Nov 2026.
 
 **`product_prices`** — harga produk per bulan dan tahun, **selalu Rupiah**
 
@@ -376,7 +378,7 @@ duplikat (keputusan pemilik produk).
 | `problemDetail` | text (default "") | |
 | `productId` | FK → products | |
 | `quantity` | integer (default 0) | |
-| `statusId` | FK → statuses | |
+| `statusId` | FK → statuses | **warisan** — tidak dipakai UI/API sejak 1 Nov 2026; kolom NOT NULL sengaja tidak di-drop, semua insert mengisinya lewat `defaultStatusId()` |
 | `factoryId` | FK → factories | |
 | `value` | integer (default 0) | IDR. **Total baris** = **Harga Price List** × Quantity (harga master bulan `timeStamp`, jatuh ke harga bulan terdekat sebelumnya kalau bulan itu kosong). Dihitung di form, dan **dihitung ulang di server** saat sync Google Sheet maupun impor Excel (`src/lib/defect-value.ts`); kolom `Value` di sheet sudah tidak dibaca. Produk tanpa baris harga → nilai lama/berkas dipertahankan. **Disembunyikan untuk role Pabrik** |
 | `priceType` | text, notNull, default `"Regional Warehouse"` | **Jenis harga** master yang dipakai baris ini (7 nilai tetap — lihat §7 · Harga Produk). Hanya jejak jenis yang dipakai form saat mengisi `value`; **disembunyikan untuk role Pabrik** |
@@ -412,7 +414,7 @@ Constraint unik: `(productId, factoryId, month)` — kunci deteksi duplikat impo
 |---|---|
 | Defect | `codeGaransi` sudah ada |
 | Sales | kombinasi `productId + factoryId + month` sudah ada |
-| Produk / Problem / Status / Factory | `name` sudah ada |
+| Produk / Problem / Factory | `name` sudah ada |
 | Produk (tambahan) | `sku` sudah dipakai produk lain — baris dilewati dengan alasan "SKU sudah dipakai", termasuk bila bentrok dengan baris lain di berkas yang sama |
 | User | `username` sudah ada |
 
@@ -426,7 +428,7 @@ erDiagram
     PRODUCTS ||--o{ DEFECTS : "produk defect"
     PRODUCTS ||--o{ SALES : "produk terjual"
     PROBLEMS ||--o{ DEFECTS : "jenis problem"
-    STATUSES ||--o{ DEFECTS : "status defect"
+    STATUSES ||--o{ DEFECTS : "status bawaan (warisan)"
 ```
 
 ---
@@ -449,7 +451,7 @@ Semua endpoint ada di `frontend/src/app/api/`. Auth via cookie session Better Au
 
 ### Data Master (CRUD)
 
-Berlaku untuk `products`, `problems`, `statuses`, `factories`:
+Berlaku untuk `products`, `problems`, `factories`:
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
@@ -476,7 +478,7 @@ Berlaku untuk `products`, `problems`, `statuses`, `factories`:
 
 **Produk punya `sku` di samping `name`** — dikelola di tab **Produk** (Data Master), ikut diekspor
 dan diimpor lewat Excel (`template-produk.xlsx` memuat kolom `Nama` + `SKU`). Master lain
-(problem/status/pabrik) tetap hanya nama. SKU kosong dikirim sebagai string kosong dan disimpan
+(problem/pabrik) tetap hanya nama. SKU kosong dikirim sebagai string kosong dan disimpan
 sebagai `NULL`.
 
 ### Records
@@ -485,7 +487,7 @@ sebagai `NULL`.
 
 | Method | Path | Akses | Keterangan |
 |---|---|---|---|
-| GET | `/api/defects` | user login | daftar + `factoryName`, `problemName`, `statusName`; role Pabrik ter-scope & tanpa `value`/`priceType`/`productPrice*` |
+| GET | `/api/defects` | user login | daftar + `factoryName`, `problemName`; role Pabrik ter-scope & tanpa `value`/`priceType`/`productPrice*` |
 | POST | `/api/defects` | admin | tambah (validasi zod, cek `codeGaransi` unik) |
 | PATCH | `/api/defects/{id}` | admin | ubah |
 | DELETE | `/api/defects/{id}` | admin | hapus |
@@ -531,7 +533,7 @@ harga yang sama tetapi menyimpan **rujukan** harga (§8.10).
 | GET | `/api/report` | user login | `period` (`daily/weekly/monthly/yearly/custom`), `month`, `year`, `day`, `weekEnd`, `from`, `to`, `factoryId` (admin) |
 
 Respons berisi: `period`, `defects`, `sales`, `replacementPos`, `recap`, `buckets`, `salesYearly`,
-`salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `statuses`, `factories`.
+`salesYearlyRecap`, `totals`, `years`, `products`, `problems`, `factories`.
 Semua perhitungan (rekap, bucket grafik, total) dilakukan **di server**.
 
 `replacementPos` adalah baris PO berketerangan **`Replacement`** pada periode terpilih, dan
@@ -777,7 +779,7 @@ seperti harga produk (yang sudah ada di periode tujuan dilewati).
 
 ### Excel
 
-Module: `products`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`,
+Module: `products`, `problems`, `factories`, `defects`, `sales`, `users`,
 `purchase-orders`, `prices`, `sparepart-prices`.
 
 **Harga Produk** (`prices`) memakai kolom `Produk`, `Jenis Harga`, `Bulan`, `Tahun`, `Harga`
@@ -835,12 +837,13 @@ Pemetaan kolom: `Code Garansi` → `codeGaransi` (kunci baris), `Time Stamp` →
 `timeStamp`, `Foto Kendala` → `photosLink`, `Video Kendala` → `videosLink`,
 `Problem` → `problemId`, `Keterangan Kendala` → `problemDetail` (lihat bagian
 penerjemahan di bawah), `Offical Name` → `productId`, `Quantity` → `quantity`,
-`Status Defect` → `statusId`, `Pabrik` → `factoryId`. Kolom `Translate`,
-`Produk`, `Status`, `Month`, dan kolom **`Value`** (sejak 12 Okt 2026 dipindah
-user ke kolom paling kanan, O) **tidak dipakai** — nilai defect tidak lagi
-diambil dari sheet, tapi dihitung server dari Price List
-(`defectValueFromMaster()`, §8.8). Header `Value` boleh ada, boleh tidak;
-ketiadaannya tidak membuat sync gagal.
+`Pabrik` → `factoryId`. Kolom `Translate`, `Produk`, `Status` / `Status Defect`,
+`Month`, dan kolom **`Value`** (sejak 12 Okt 2026 dipindah user ke kolom paling
+kanan, O) **tidak dipakai** — nilai defect tidak lagi diambil dari sheet, tapi
+dihitung server dari Price List (`defectValueFromMaster()`, §8.8). Kolom status
+diabaikan total sejak 1 Nov 2026 (keputusan user): tidak dibaca dari sheet dan
+tidak ditulis balik, jadi header `Status` boleh tetap ada di sheet. Header
+`Value` boleh ada, boleh tidak; ketiadaannya tidak membuat sync gagal.
 
 **Penerjemahan "Keterangan Kendala".** Isi kolom `Keterangan Kendala` di sheet
 masih bahasa Indonesia, sedangkan `defects.problemDetail` menyimpan versi
@@ -875,8 +878,9 @@ penulisan gagal (jaringan/Google menolak), log dibuat ulang sebagai pending
 (`error` diisi) dan tidak ada nilai yang hilang. Log ini **tidak** punya layar
 sendiri — ringkasannya hanya muncul di dialog hasil sync (jumlah terkirim,
 jumlah menunggu, dan daftar `Code Garansi` + nama Problem yang baru ditulis).
-Header sheet live sekarang memakai `Status` (dulu `Status Defect`); `SHEET_ALIASES`
-di `mapping.ts` menerima keduanya supaya sync tidak mati karena header berubah.
+Header sheet live sekarang memakai `Status` (dulu `Status Defect`) — keduanya
+diabaikan. `SHEET_ALIASES` di `mapping.ts` sudah **dihapus** bersama `statusId`
+dari `GSHEET_FIELDS`; jangan menghidupkan lagi pencocokan kolom status.
 
 | Method | Path | Akses | Body |
 |---|---|---|---|
@@ -893,9 +897,11 @@ problemsPushed, problemsPushPending }`.
 Aturannya:
 
 - Baris dicocokkan lewat **Code Garansi** (tanpa peduli huruf besar/kecil).
-- Nama master (Problem, Status Defect, Pabrik, Offical Name) dicocokkan ke Data
-  Master dan ditulis memakai ejaan master; sel kosong jadi `Kosong` (problem) /
-  `Open` (status), sama seperti jalur impor Excel.
+- Nama master (Problem, Pabrik, Offical Name) dicocokkan ke Data
+  Master dan ditulis memakai ejaan master; sel kosong jadi `Kosong` (problem),
+  sama seperti jalur impor Excel. Status tidak lagi dicocokkan sama sekali.
+  Baris baru dari sheet memakai status bawaan dari tabel `statuses` (kolom DB
+  `defects.statusId` masih `NOT NULL`, jadi diisi lewat `defaultStatusId()`).
 - Perubahan yang hanya ada di sheet langsung dipakai di aplikasi. Perubahan yang
   hanya ada di aplikasi **tidak dikirim ke sheet** — cuma dihitung dan
   ditampilkan sebagai informasi — kecuali kolom `Problem` yang punya log edit
@@ -1039,13 +1045,13 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - Ringkasan total quantity & value defect (value hanya admin).
 - Tabel: Code Garansi, Timestamp, Produk, Pabrik, Problem, Qty, Value (admin).
 - **Klik baris** → dialog detail defect.
-- **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, status, pabrik + **pencarian**.
+- **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
-- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Status, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
-- **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/status/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
+- **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).
+- **Jenis Harga + Harga + Total Value (susunan sama dengan form PO)**: **Jenis Harga** dipilih lebih dulu — 7 nilai tetap (§7 · Harga Produk), default `Regional Warehouse` — lalu **Harga** (dropdown harga master produk **untuk jenis itu**) otomatis terisi harga bulan/tahun `timestamp` defect, atau **harga bulan terdekat sebelumnya jenis itu** kalau periode tersebut belum punya harga. Mengganti jenis mengisi ulang daftar sekaligus nilai harganya; operator tetap bisa memilih baris harga lain dari dropdown yang sama. Di sebelahnya ada **Total Value** = Harga × Quantity sebagai kolom baca-saja dengan keterangan `harga × qty`, dan **itulah** yang dikirim ke `defects.value`; server menyimpannya apa adanya, mencatat jenisnya di `defects.priceType`, dan tidak mengisi `productPriceId`. Tombol **Tambah** selalu membuka form kosong; yang membawa produk/pabrik/harga ke entri berikutnya adalah **Simpan & tambah lagi**.
 - **Alur input cepat** (untuk pengisian beruntun satu shift):
   - **Timestamp otomatis** diisi waktu sekarang saat menambah; tetap bisa diubah.
-  - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk, Pabrik, dan Status dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
+  - **Simpan & tambah lagi** menyimpan lalu langsung membuka entri berikutnya dengan **Produk dan Pabrik dibawa** dari entri sebelumnya; kode, qty, value, dan detail dikosongkan.
   - **Saran kode garansi**: prefiks diambil dari kode yang sudah ada di pabrik tersebut (mis. `WJKT-` untuk Pabrik Jakarta), lalu nomor urut berikutnya disarankan (mis. `WJKT-0004`). Tombol di samping kolom mengisinya sekali klik.
   - **Fokus otomatis** ke kolom Code Garansi saat dialog dibuka; **Ctrl/Cmd+Enter** menyimpan.
   - Menutup dialog yang masih berisi isian **meminta konfirmasi** lebih dulu.
@@ -1065,13 +1071,14 @@ cuma dihitung sebagai informasi), dengan tambahan:
 ### 8.5 Data Master
 
 - Tab (urutan tampil): **Produk**, **Harga Produk**, **Sparepart**, **Harga Sparepart**, **Problem**,
-  **Status**, **Allowance Defect**
+  **Allowance Defect** — tab **Status** dihapus 1 Nov 2026 (keputusan user: status tidak dipakai
+  lagi di app maupun sheet)
   (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga, `allowance-tab.tsx`
   untuk limit tahunan).
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
-- **Tab Produk, Problem, dan Status punya kotak pencarian** di atas daftarnya: menyaring berdasarkan
+- **Tab Produk dan Problem punya kotak pencarian** di atas daftarnya: menyaring berdasarkan
   nama (tab Produk juga mencocokkan SKU), tidak peka huruf besar/kecil, dan cocok sebagian kata.
   Penyaringan dilakukan di `master/page.tsx` supaya jumlah halaman ikut hasil pencarian, dan bila
   tidak ada yang cocok muncul pesan "Tidak ada yang cocok dengan pencarian." (prop `emptyLabel` di
@@ -1124,17 +1131,17 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 ### 8.7 Excel (Impor/Ekspor/Template)
 
-- Tersedia di modul: `products`, `spareparts`, `problems`, `statuses`, `factories`, `defects`, `sales`, `users`, `purchase-orders`, `prices`, `sparepart-prices`.
+- Tersedia di modul: `products`, `spareparts`, `problems`, `factories`, `defects`, `sales`, `users`, `purchase-orders`, `prices`, `sparepart-prices`.
   `spareparts` memakai kolom `Nama` + `SKU` seperti `products`.
   **Harga Produk** (`prices`) dan **Harga Sparepart** (`sparepart-prices`) sudah punya Template/Import/Export:
   kolom `Produk` + `Jenis Harga` + `Bulan` + `Tahun` + `Harga`, dan `Sparepart` + `Bulan` + `Tahun` + `Harga`.
   Impor mencocokkan **nama** ke Data Master; nama tak dikenal ditolak dengan alasan (master tidak dibuat otomatis),
   `Jenis Harga` kosong memakai `Regional Warehouse`, baris duplikat dilewati, dan tabel harga langsung dimuat ulang setelah impor.
-- Import: validasi per baris, referensi nama → id (produk/pabrik/problem/status harus ada), duplikat di-skip, hasil detail + CSV.
+- Import: validasi per baris, referensi nama → id (produk/pabrik/problem harus ada), duplikat di-skip, hasil detail + CSV.
 - Export role Pabrik: kolom value tidak ikut.
 - **Excel Defect & PO belum punya kolom jenis harga**: baris hasil impor memakai default
   `Regional Warehouse` — jenis harga hanya bisa ditentukan lewat form (§7 · Harga Produk, §8.3, §8.10).
-- Nama file export: `produk.xlsx`, `problem.xlsx`, `status.xlsx`, `pabrik.xlsx`, `defect.xlsx`, `sales.xlsx`, `users.xlsx`; template: `template-{modul}.xlsx`.
+- Nama file export: `produk.xlsx`, `problem.xlsx`, `pabrik.xlsx`, `defect.xlsx`, `sales.xlsx`, `users.xlsx`; template: `template-{modul}.xlsx`.
 
 ### 8.8 Hapus Semua Data (Delete All)
 
@@ -1498,7 +1505,7 @@ Memeriksa dari VPS: `tail -n 5 /opt/bardi/data/client-errors.log`.
 1. Admin login.
 2. Buka **User Management** → tambah **Pabrik**.
 3. Buat akun: Admin (tanpa pabrik) dan Pabrik (terhubung ke pabrik).
-4. Buka **Data Master** → atur **Produk** (nama + SKU), **Problem**, **Status**.
+4. Buka **Data Master** → atur **Produk** (nama + SKU), **Problem**.
 5. Buka tab **Harga Produk** → pilih **Jenis Harga** lalu isi harga tiap produk untuk bulan/tahun
    berjalan — satu produk boleh punya beberapa jenis harga di periode yang sama, jadi isi jenis yang
    dipakai (default `Regional Warehouse`). Untuk bulan

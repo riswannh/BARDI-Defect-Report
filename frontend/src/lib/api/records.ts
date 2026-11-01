@@ -11,11 +11,11 @@ import {
   products,
   purchaseOrders,
   sales,
-  statuses,
 } from "@/lib/db/schema";
 import { requireMenu, scopedFactoryId } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
+import { defaultStatusId } from "@/lib/api/defect-status";
 import {
   defectSchema,
   defectUpdateSchema,
@@ -154,7 +154,6 @@ const defectSelect = {
   problemDetail: defects.problemDetail,
   productId: defects.productId,
   quantity: defects.quantity,
-  statusId: defects.statusId,
   factoryId: defects.factoryId,
   value: defects.value,
   /** Jenis harga yang dipakai form (Website/Reseller/…/Regional Warehouse). */
@@ -170,7 +169,6 @@ const defectSelect = {
   productName: products.name,
   factoryName: factories.name,
   problemName: problems.name,
-  statusName: statuses.name,
 };
 
 const saleSelect = {
@@ -226,7 +224,6 @@ export function defectConditions(
 ): SQL[] {
   const factory = scopedFactoryId(user, numParam(params.get("factoryId")));
   const productId = numParam(params.get("productId"));
-  const statusId = numParam(params.get("statusId"));
   const problemId = numParam(params.get("problemId"));
   const from = params.get("from");
   const to = params.get("to");
@@ -235,7 +232,6 @@ export function defectConditions(
   const conditions: SQL[] = [];
   if (factory !== null) conditions.push(eq(defects.factoryId, factory));
   if (productId !== null) conditions.push(eq(defects.productId, productId));
-  if (statusId !== null) conditions.push(eq(defects.statusId, statusId));
   if (problemId !== null) conditions.push(eq(defects.problemId, problemId));
   if (from) conditions.push(gte(defects.timeStamp, from));
   if (to) conditions.push(lte(defects.timeStamp, `${to}T23:59`));
@@ -245,7 +241,6 @@ export function defectConditions(
       like(defects.problemDetail, `%${q}%`),
       like(products.name, `%${q}%`),
       like(problems.name, `%${q}%`),
-      like(statuses.name, `%${q}%`),
       like(factories.name, `%${q}%`)
     );
     if (searchClause) conditions.push(searchClause);
@@ -388,7 +383,6 @@ export async function listDefectRows(
     .leftJoin(products, eq(defects.productId, products.id))
     .leftJoin(factories, eq(defects.factoryId, factories.id))
     .leftJoin(problems, eq(defects.problemId, problems.id))
-    .leftJoin(statuses, eq(defects.statusId, statuses.id))
     .leftJoin(productPrices, eq(defects.productPriceId, productPrices.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(defects.timeStamp), desc(defects.id));
@@ -448,6 +442,8 @@ export async function defectsPOST(req: NextRequest) {
     .insert(defects)
     .values({
       ...rest,
+      // Status sudah dihapus dari UI; kolom NOT NULL di DB tetap diisi nilai bawaan.
+      statusId: parsed.data.statusId ?? (await defaultStatusId()),
       priceType,
       timeStamp: timestamp,
       productPriceId: null,

@@ -109,7 +109,6 @@ export const defectFields = {
   problemDetail: z.string().trim(),
   productId: z.coerce.number().int().positive(),
   quantity: z.coerce.number().int().min(0),
-  statusId: z.coerce.number().int().positive(),
   factoryId: z.coerce.number().int().positive(),
   /**
    * Nilai defect (Rupiah), disimpan APA ADANYA — dari isian operator maupun kolom
@@ -129,6 +128,13 @@ export const defectSchema = buildCreate(defectFields, {
   quantity: z.coerce.number().int().min(0).default(0),
   value: z.coerce.number().int().min(0).default(0),
   priceType: z.string().trim().default(DEFAULT_PRICE_TYPE),
+}).extend({
+  /**
+   * WARISAN MySQL/SQLite lama: kolom `defects.statusId` masih NOT NULL, tapi
+   * status sudah dihapus dari aplikasi (1 Nov 2026). Klien tidak perlu mengirim
+   * apa pun; handler mengisi status bawaan lewat `defaultStatusId()`.
+   */
+  statusId: z.coerce.number().int().positive().optional(),
 });
 
 export const defectUpdateSchema = buildUpdate(defectFields);

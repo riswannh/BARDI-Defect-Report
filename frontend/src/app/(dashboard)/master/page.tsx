@@ -11,7 +11,6 @@ import type {
   Product,
   ProductPrice,
   SparePart,
-  Status,
 } from "@/lib/types";
 import { MONTHS_FULL } from "@/lib/format";
 import {
@@ -55,7 +54,6 @@ import { SparePartPricesTab } from "./sparepart-prices-tab";
 const DELETE_ALL_ENDPOINTS: Record<string, string> = {
   products: "/api/products",
   problems: "/api/problems",
-  statuses: "/api/statuses",
   prices: "/api/product-prices",
   spareparts: "/api/spare-parts",
   "sparepart-prices": "/api/spare-part-prices",
@@ -107,8 +105,6 @@ export default function MasterPage() {
     useApi<Product[]>("/api/products");
   const { data: problemData, reload: reloadProblems } =
     useApi<Problem[]>("/api/problems");
-  const { data: statusData, reload: reloadStatuses } =
-    useApi<Status[]>("/api/statuses");
   const { data: priceData, reload: reloadPrices } =
     useApi<ProductPrice[]>("/api/product-prices");
   const { data: sparePartData, reload: reloadSpareParts } =
@@ -116,7 +112,6 @@ export default function MasterPage() {
 
   const products = productData ?? [];
   const problems = problemData ?? [];
-  const statuses = statusData ?? [];
   const prices = priceData ?? [];
   const spareParts = sparePartData ?? [];
   const [linkProduct, setLinkProduct] = useState<{
@@ -125,11 +120,10 @@ export default function MasterPage() {
   } | null>(null);
   const [linkSparePart, setLinkSparePart] = useState<SparePart | null>(null);
 
-  // Pencarian tab Produk/Problem/Status. Penyaringan ada di halaman ini karena
+  // Pencarian tab Produk/Problem. Penyaringan ada di halaman ini karena
   // paging juga dihitung di sini — jumlah halaman harus ikut hasil pencarian.
   const [productSearch, setProductSearch] = useState("");
   const [problemSearch, setProblemSearch] = useState("");
-  const [statusSearch, setStatusSearch] = useState("");
   const [sparePartSearch, setSparePartSearch] = useState("");
 
   const matchSearch = (query: string, ...fields: (string | null | undefined)[]) => {
@@ -141,9 +135,6 @@ export default function MasterPage() {
   );
   const filteredProblems = problems.filter((item) =>
     matchSearch(problemSearch, item.name)
-  );
-  const filteredStatuses = statuses.filter((item) =>
-    matchSearch(statusSearch, item.name)
   );
   const filteredSpareParts = spareParts.filter((item) =>
     matchSearch(sparePartSearch, item.name, item.sku)
@@ -210,9 +201,9 @@ export default function MasterPage() {
     setPageState({ signature: tab, page: next });
 
   // Daftar yang sedang tampil menentukan jumlah halaman. Tab "prices" WAJIB ikut
-  // di sini: dulu dia jatuh ke `statuses` (cuma 1 baris di produksi), sehingga
-  // totalPages selalu 1 dan tombol "Berikutnya" tidak pernah bisa pindah.
-  // Tab "sparepart-prices" menghitung pagingnya sendiri (lihat SparePartPricesTab).
+  // di sini, karena dulu ia jatuh ke daftar lain sehingga totalPages selalu 1 dan
+  // tombol "Berikutnya" tidak pernah bisa pindah. Tab "sparepart-prices"
+  // menghitung pagingnya sendiri (lihat SparePartPricesTab).
   const activeCount =
     tab === "products"
       ? filteredProducts.length
@@ -222,14 +213,13 @@ export default function MasterPage() {
           ? filteredPrices.length
           : tab === "spareparts"
             ? filteredSpareParts.length
-            : filteredStatuses.length;
+            : 0;
   const totalPages = Math.max(1, Math.ceil(activeCount / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
   const end = start + pageSize;
   const pagedProducts = filteredProducts.slice(start, end);
   const pagedProblems = filteredProblems.slice(start, end);
-  const pagedStatuses = filteredStatuses.slice(start, end);
   const pagedSpareParts = filteredSpareParts.slice(start, end);
   const pagedPrices = filteredPrices.slice(start, end);
   /** `PriceList` memakai `refId`/`name` supaya bisa dipakai produk maupun sparepart. */
@@ -304,7 +294,6 @@ export default function MasterPage() {
       );
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
-      if (tab === "statuses") reloadStatuses();
       if (tab === "prices") reloadPrices();
       // Tabel harga sparepart memuat datanya sendiri di dalam tab itu.
       if (tab === "sparepart-prices") setSparePartPriceVersion((v) => v + 1);
@@ -318,11 +307,10 @@ export default function MasterPage() {
     products: t("common.product"),
     problems: t("common.problem"),
     prices: t("price.tab"),
-    statuses: t("common.status"),
     spareparts: t("sparePart.tab"),
     "sparepart-prices": t("sparePartPrice.tab"),
   };
-  const tabLabel = tabLabels[tab] ?? t("common.status");
+  const tabLabel = tabLabels[tab] ?? "";
 
   // Harga produk: satu baris = produk + nominal + periode, jadi handler-nya
   // terpisah dari master yang hanya nama. `refId` diisi dari `productId`.
@@ -391,7 +379,6 @@ export default function MasterPage() {
       setDeleteAllOpen(false);
       if (tab === "products") reloadProducts();
       if (tab === "problems") reloadProblems();
-      if (tab === "statuses") reloadStatuses();
       if (tab === "spareparts") reloadSpareParts();
       if (tab === "prices") reloadPrices();
     } catch (err) {
@@ -464,7 +451,6 @@ export default function MasterPage() {
             {t("sparePartPrice.tab")}
           </TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
-          <TabsTrigger value="statuses">{t("common.status")}</TabsTrigger>
           <TabsTrigger value="allowances">{t("allowance.tab")}</TabsTrigger>
         </TabsList>
 
@@ -721,45 +707,6 @@ export default function MasterPage() {
             </TabsContent>
             <TabsContent value="sparepart-prices">
               <SparePartPricesTab reloadToken={sparePartPriceVersion} />
-            </TabsContent>
-            <TabsContent value="statuses">
-              <SearchBox
-                id="master-search-statuses"
-                value={statusSearch}
-                onChange={(value) => {
-                  setStatusSearch(value);
-                  setPage(1);
-                }}
-                placeholder={t("masterList.searchName")}
-              />
-              <MasterList
-                items={pagedStatuses}
-                addPlaceholder={t("master.newStatus")}
-                emptyLabel={
-                  statusSearch.trim() ? t("masterList.emptyFiltered") : undefined
-                }
-                onAdd={(name) => addItem("/api/statuses", name, reloadStatuses)}
-                onRename={(id, name) =>
-                  renameItem("/api/statuses", id, name, reloadStatuses)
-                }
-                onDelete={(id) =>
-                  deleteItem("/api/statuses", id, reloadStatuses)
-                }
-              />
-              {filteredStatuses.length > 0 && (
-                <div className="mt-4">
-                  <Pagination
-                    totalItems={filteredStatuses.length}
-                    page={currentPage}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={(size) => {
-                      setPageSize(size);
-                      setPage(1);
-                    }}
-                  />
-                </div>
-              )}
             </TabsContent>
             <TabsContent value="allowances">
               <AllowanceTab />

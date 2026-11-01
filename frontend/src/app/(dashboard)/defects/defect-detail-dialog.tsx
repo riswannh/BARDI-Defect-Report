@@ -8,11 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatIDR, formatNumber } from "@/lib/format";
 import { Camera, Video } from "lucide-react";
 import type { DefectRow } from "./defect-form";
-import type { Factory, Problem, Status } from "@/lib/types";
+import type { Factory, Problem } from "@/lib/types";
 
 export function DefectDetailDialog({
   defect,
@@ -20,7 +19,6 @@ export function DefectDetailDialog({
   productName,
   factories,
   problems,
-  statuses,
   isAdmin,
 }: {
   defect: DefectRow | null;
@@ -28,7 +26,6 @@ export function DefectDetailDialog({
   productName: string;
   factories: Factory[];
   problems: Problem[];
-  statuses: Status[];
   isAdmin: boolean;
 }) {
   const { t } = useLanguage();
@@ -79,16 +76,6 @@ export function DefectDetailDialog({
               </dt>
               <dd>
                 {problems.find((p) => p.id === defect.problemId)?.name ?? "-"}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <dt className="text-xs text-muted-foreground">
-                {t("common.status")}
-              </dt>
-              <dd>
-                <Badge variant="secondary">
-                  {statuses.find((s) => s.id === defect.statusId)?.name ?? "-"}
-                </Badge>
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">

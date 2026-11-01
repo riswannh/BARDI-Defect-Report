@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useLanguage } from "@/lib/i18n";
 import { buildChartBuckets } from "@/lib/analytics";
 import { formatDateTime, formatIDR, formatNumber } from "@/lib/format";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +64,6 @@ export function ProductDetailDialog({
   // bawah selalu dianggap usang. Array tetap dipakai supaya memo benar-benar
   // hanya dihitung ulang saat datanya berubah.
   const problems = useMemo(() => report?.problems ?? [], [report]);
-  const statuses = report?.statuses ?? [];
   const product =
     productId === null ? null : products.find((p) => p.id === productId) ?? null;
 
@@ -218,7 +216,6 @@ export function ProductDetailDialog({
                   <TableHead>{t("common.codeGaransi")}</TableHead>
                   <TableHead>{t("common.timestamp")}</TableHead>
                   <TableHead>{t("common.problem")}</TableHead>
-                  <TableHead>{t("common.status")}</TableHead>
                   <TableHead className="text-right">{t("common.qty")}</TableHead>
                   {isAdmin && (
                     <TableHead className="text-right">
@@ -241,11 +238,6 @@ export function ProductDetailDialog({
                     <TableCell>{formatDateTime(d.timestamp)}</TableCell>
                     <TableCell>
                       {problems.find((p) => p.id === d.problemId)?.name ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">
-                        {statuses.find((s) => s.id === d.statusId)?.name ?? "-"}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatNumber(d.quantity)}
@@ -320,7 +312,6 @@ export function ProductDetailDialog({
             productName={product?.name ?? "-"}
             factories={report?.factories ?? []}
             problems={problems}
-            statuses={statuses}
             isAdmin={isAdmin}
           />
         </div>

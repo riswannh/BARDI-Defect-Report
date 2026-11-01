@@ -21,7 +21,6 @@ import type {
   Problem,
   Product,
   ProductPrice,
-  Status,
 } from "@/lib/types";
 import { productName } from "@/lib/analytics";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
@@ -88,7 +87,6 @@ export default function DefectsPage() {
     useApi<DefectRow[]>("/api/defects");
   const { data: productData } = useApi<Product[]>("/api/products");
   const { data: problemData } = useApi<Problem[]>("/api/problems");
-  const { data: statusData } = useApi<Status[]>("/api/statuses");
   const { data: factoryData } = useApi<Factory[]>("/api/factories");
   // Harga master per bulan/tahun: dipakai form defect untuk menghitung value
   // (quantity × harga), sama seperti Value RW di PO Product.
@@ -96,7 +94,6 @@ export default function DefectsPage() {
 
   const products = productData ?? [];
   const problems = problemData ?? [];
-  const statuses = statusData ?? [];
   const factories = factoryData ?? [];
 
   const productOptions = products.map((p) => ({
@@ -106,10 +103,6 @@ export default function DefectsPage() {
   const problemOptions = problems.map((p) => ({
     value: String(p.id),
     label: p.name,
-  }));
-  const statusOptions = statuses.map((s) => ({
-    value: String(s.id),
-    label: s.name,
   }));
   const factoryOptions = factories.map((f) => ({
     value: String(f.id),
@@ -135,7 +128,6 @@ export default function DefectsPage() {
 
   const [filterProduct, setFilterProduct] = useState("all");
   const [filterFactory, setFilterFactory] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
   const [filterProblem, setFilterProblem] = useState("all");
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState<PeriodType>("monthly");
@@ -164,7 +156,6 @@ export default function DefectsPage() {
   const filterSignature = [
     filterProduct,
     filterFactory,
-    filterStatus,
     filterProblem,
     search,
     period,
@@ -188,7 +179,6 @@ export default function DefectsPage() {
     const defects = defectData ?? [];
     const products = productData ?? [];
     const problems = problemData ?? [];
-    const statuses = statusData ?? [];
     const factories = factoryData ?? [];
     const f: PeriodFilter = {
       period,
@@ -205,8 +195,6 @@ export default function DefectsPage() {
         return false;
       if (filterFactory !== "all" && d.factoryId !== Number(filterFactory))
         return false;
-      if (filterStatus !== "all" && d.statusId !== Number(filterStatus))
-        return false;
       if (filterProblem !== "all" && d.problemId !== Number(filterProblem))
         return false;
       if (!matchesDefectPeriod(d.timestamp, f)) return false;
@@ -216,7 +204,6 @@ export default function DefectsPage() {
           d.problemDetail,
           productName(products, d.productId),
           problems.find((p) => p.id === d.problemId)?.name ?? "",
-          statuses.find((s) => s.id === d.statusId)?.name ?? "",
           factories.find((fx) => fx.id === d.factoryId)?.name ?? "",
         ]
           .join(" ")
@@ -229,11 +216,9 @@ export default function DefectsPage() {
     defectData,
     productData,
     problemData,
-    statusData,
     factoryData,
     filterProduct,
     filterFactory,
-    filterStatus,
     filterProblem,
     search,
     period,
@@ -335,7 +320,6 @@ export default function DefectsPage() {
       problemDetail: form.problemDetail.trim(),
       productId: Number(form.productId),
       quantity: Number(form.quantity) || 0,
-      statusId: Number(form.statusId),
       factoryId: Number(form.factoryId),
       // Jenis harga yang dipakai sebagai asal angka Harga di form.
       priceType: form.priceType,
@@ -578,7 +562,6 @@ export default function DefectsPage() {
           products.find((p) => String(p.id) === id)?.factoryId ?? null
         }
         problemOptions={problemOptions}
-        statusOptions={statusOptions}
         productPrices={priceData ?? []}
       />
 
@@ -737,29 +720,6 @@ export default function DefectsPage() {
                 {problems.map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label>{t("common.status")}</Label>
-            <Select
-              value={filterStatus}
-              onValueChange={(v) => setFilterStatus(String(v))}
-              items={[
-                { value: "all", label: t("defects.allStatuses") },
-                ...statusOptions,
-              ]}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("defects.allStatuses")}</SelectItem>
-                {statuses.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -973,7 +933,6 @@ export default function DefectsPage() {
         }
         factories={factories}
         problems={problems}
-        statuses={statuses}
         isAdmin={isAdmin}
       />
 

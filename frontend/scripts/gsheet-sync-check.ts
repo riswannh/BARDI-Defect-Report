@@ -33,7 +33,6 @@ const base = {
   problemDetail: "Totally dead",
   productId: "BARDI Smart Tag",
   quantity: "1",
-  statusId: "Open",
   factoryId: "Pabrik A",
 };
 const baseline = baselineFromSheet(base);
@@ -229,8 +228,10 @@ assert.equal(resolved.index.codeGaransi, 0);
 assert.equal(resolved.index.problemId, 9);
 assert.equal(resolved.index.productId, 11);
 assert.equal(resolved.index.problemDetail, 4);
-assert.equal(resolved.index.statusId, 13);
-assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 9);
+// Kolom status di sheet ("Status" / "Status Defect") sengaja DIABAIKAN sejak
+// 1 Nov 2026: status tidak lagi dibaca dari sheet maupun ditulis balik.
+assert.equal("statusId" in resolved.index, false);
+assert.deepEqual(resolveHeaderIndex(["Code Garansi"]).missing.length, 8);
 
 // Timestamp: sel tanggal di "Big Data" format tampilannya campur, jadi semua
 // bentuk yang pernah muncul harus dikenali (dan yang aneh -> kosong, bukan jam ngawur).
@@ -398,11 +399,15 @@ assert.equal(sheetColumnLetter(9), "J");
 assert.equal(sheetColumnLetter(0), "A");
 assert.equal(sheetColumnLetter(26), "AA");
 
-// 18. Nama header alternatif: sheet sudah memakai "Status", kode lama menuntut
-//     "Status Defect" — dua-duanya harus diterima supaya sync tidak mati.
+// 18. Kolom status di sheet diabaikan: header "Status" maupun "Status Defect"
+//     sama-sama tidak dipetakan lagi (keputusan user 1 Nov 2026).
 const aliasOnly = resolveHeaderIndex(["Code Garansi", "Status"]);
-assert.equal(aliasOnly.index.statusId, 1, "header 'Status' dikenali");
-assert.equal(resolveHeaderIndex(["Code Garansi", "Status Defect"]).index.statusId, 1);
+assert.equal("statusId" in aliasOnly.index, false, "header 'Status' diabaikan");
+assert.equal(
+  "statusId" in resolveHeaderIndex(["Code Garansi", "Status Defect"]).index,
+  false,
+  "header 'Status Defect' diabaikan"
+);
 
 // 19. Guard tulis: kolom A–H (blok ARRAYFORMULA) harus ditolak, kolom J boleh.
 assert.throws(

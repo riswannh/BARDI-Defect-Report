@@ -7,7 +7,6 @@ import {
   products,
   sparePartPrices,
   spareParts,
-  statuses,
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
@@ -22,8 +21,7 @@ export type MasterTable =
   | typeof factories
   | typeof products
   | typeof spareParts
-  | typeof problems
-  | typeof statuses;
+  | typeof problems;
 
 /**
  * Master yang punya kolom SKU: produk dan sparepart. Keduanya memakai schema

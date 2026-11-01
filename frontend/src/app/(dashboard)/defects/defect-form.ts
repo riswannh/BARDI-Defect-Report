@@ -11,7 +11,6 @@ export interface DefectRow extends Omit<Defect, "value"> {
   productName?: string | null;
   factoryName?: string | null;
   problemName?: string | null;
-  statusName?: string | null;
 }
 
 export interface DefectForm {
@@ -23,7 +22,6 @@ export interface DefectForm {
   problemDetail: string;
   productId: string;
   quantity: string;
-  statusId: string;
   factoryId: string;
   /**
    * Harga RW = harga satuan (Rupiah per pcs), bukan nilai barisnya.
@@ -71,7 +69,6 @@ export function emptyForm(): DefectForm {
     problemDetail: "",
     productId: "",
     quantity: "",
-    statusId: "",
     factoryId: "",
     priceRw: "",
     priceType: DEFAULT_PRICE_TYPE,
@@ -81,16 +78,15 @@ export function emptyForm(): DefectForm {
 /**
  * Form untuk entri berikutnya setelah "Simpan & tambah lagi".
  *
- * Produk, Pabrik, dan Status dibawa dari entri sebelumnya karena satu shift
- * biasanya mencatat beberapa defect pada produk/pabrik yang sama. Kode garansi,
- * timestamp, qty, dan detail dikosongkan supaya tidak ikut terduplikasi.
+ * Produk dan Pabrik dibawa dari entri sebelumnya karena satu shift biasanya
+ * mencatat beberapa defect pada produk/pabrik yang sama. Kode garansi, timestamp,
+ * qty, dan detail dikosongkan supaya tidak ikut terduplikasi.
  */
 export function carryOverForm(previous: DefectForm): DefectForm {
   return {
     ...emptyForm(),
     productId: previous.productId,
     factoryId: previous.factoryId,
-    statusId: previous.statusId,
     // Produknya sama dan periodenya biasanya masih sama, jadi harga tadi dibawa
     // sebagai isian awal entri berikutnya (masih bisa diubah), termasuk jenis
     // harganya supaya operator tidak perlu memilih ulang.
@@ -104,7 +100,6 @@ export function formHasContent(form: DefectForm): boolean {
     form.codeGaransi.trim() !== "" ||
     form.problemId !== "" ||
     form.productId !== "" ||
-    form.statusId !== "" ||
     form.factoryId !== "" ||
     form.quantity.trim() !== "" ||
     form.priceRw.trim() !== "" ||
@@ -126,7 +121,6 @@ export function rowToForm(d: DefectRow): DefectForm {
     problemDetail: d.problemDetail,
     productId: String(d.productId),
     quantity: String(d.quantity),
-    statusId: String(d.statusId),
     factoryId: String(d.factoryId),
     // Harga per pcs direkonstruksi dari nilai baris ÷ quantity. ponytail: baris
     // hasil impor Excel yang nilainya bukan kelipatan qty bisa membulat beberapa

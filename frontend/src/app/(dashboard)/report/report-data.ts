@@ -6,7 +6,6 @@ import type {
   Problem,
   Product,
   Sale,
-  Status,
 } from "@/lib/types";
 import type { PeriodFilter } from "@/lib/period";
 /**
@@ -89,7 +88,6 @@ export interface ReportResponse {
   allowanceYear?: string;
   products: Product[];
   problems: Problem[];
-  statuses: Status[];
   factories: Factory[];
 }
 

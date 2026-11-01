@@ -13,11 +13,11 @@ import {
   sales,
   sparePartPrices,
   spareParts,
-  statuses,
   user,
 } from "@/lib/db/schema";
 import { requireMenu, requireUser } from "@/lib/api/guard";
 import type { MenuKey } from "@/lib/permissions";
+import { defaultStatusId } from "@/lib/api/defect-status";
 import { defectValueFromMaster } from "@/lib/defect-value";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import {
@@ -188,7 +188,6 @@ const MASTER_MODULES = {
   products: { table: products, file: "produk", label: "Produk" },
   spareparts: { table: spareParts, file: "sparepart", label: "Sparepart" },
   problems: { table: problems, file: "problem", label: "Problem" },
-  statuses: { table: statuses, file: "status", label: "Status" },
   factories: { table: factories, file: "pabrik", label: "Pabrik" },
 } as const;
 
@@ -207,7 +206,6 @@ const DEFECT_HEADERS = [
   "Problem Detail",
   "Produk",
   "Quantity",
-  "Status",
   "Pabrik",
   "Value",
 ];
@@ -419,7 +417,6 @@ export async function excelExport(moduleName: string, req: NextRequest) {
       "Problem Detail": row.problemDetail,
       Produk: row.productName ?? "",
       Quantity: row.quantity,
-      Status: row.statusName ?? "",
       Pabrik: row.factoryName ?? "",
       ...(currentUser.isAdmin ? { Value: row.value } : {}),
     }));
@@ -758,11 +755,10 @@ async function importMaster(moduleName: MasterModule, sheet: SheetRow[]) {
 }
 
 async function importDefects(sheet: SheetRow[]) {
-  const [productRows, problemRows, statusRows, factoryRows, defectRows, priceRows] =
+  const [productRows, problemRows, factoryRows, defectRows, priceRows] =
     await Promise.all([
       db.select().from(products),
       db.select().from(problems),
-      db.select().from(statuses),
       db.select().from(factories),
       db.select({ codeGaransi: defects.codeGaransi }).from(defects),
       db.select().from(productPrices),
@@ -774,13 +770,13 @@ async function importDefects(sheet: SheetRow[]) {
   const problemMap = new Map(
     problemRows.map((row) => [row.name.toLowerCase(), row.id])
   );
-  const statusMap = new Map(
-    statusRows.map((row) => [row.name.toLowerCase(), row.id])
-  );
   const factoryMap = new Map(
     factoryRows.map((row) => [row.name.toLowerCase(), row.id])
   );
   const existing = new Set(defectRows.map((row) => row.codeGaransi));
+  // Status sudah tidak ada di berkas maupun di UI; kolom NOT NULL di DB diisi
+  // nilai bawaan sekali di sini.
+  const statusId = await defaultStatusId();
 
   const result = newImportResult("defects", sheet.length);
   for (let i = 0; i < sheet.length; i++) {
@@ -807,7 +803,6 @@ async function importDefects(sheet: SheetRow[]) {
 
     const productName = cellString(row.Produk);
     const rawProblemName = cellString(row.Problem);
-    const statusName = cellString(row.Status);
     const factoryName = cellString(row.Pabrik);
 
     const productId = productMap.get(productName.toLowerCase());
@@ -828,13 +823,11 @@ async function importDefects(sheet: SheetRow[]) {
       }
     }
 
-    const statusId = statusMap.get(statusName.toLowerCase());
     const factoryId = factoryMap.get(factoryName.toLowerCase());
 
     const missing: string[] = [];
     if (!productId) missing.push(`Produk "${productName || "(kosong)"}"`);
     if (!problemId) missing.push(`Problem "${rawProblemName}"`);
-    if (!statusId) missing.push(`Status "${statusName || "(kosong)"}"`);
     if (!factoryId) missing.push(`Pabrik "${factoryName || "(kosong)"}"`);
     if (missing.length > 0) {
       result.errors.push({
@@ -877,7 +870,7 @@ async function importDefects(sheet: SheetRow[]) {
         problemDetail: cellString(row["Problem Detail"]),
         productId: productId as number,
         quantity,
-        statusId: statusId as number,
+        statusId,
         factoryId: factoryId as number,
         value,
       });
@@ -1598,7 +1591,6 @@ export async function excelTemplate(moduleName: string) {
       "Problem Detail": "Cat terkelupas di bagian depan",
       Produk: "Kulkas 2 Pintu",
       Quantity: 3,
-      Status: "Open",
       Pabrik: "Pabrik Jakarta",
       Value: 4500000,
     };

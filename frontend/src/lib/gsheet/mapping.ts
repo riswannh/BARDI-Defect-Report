@@ -17,7 +17,6 @@ export const GSHEET_FIELDS = [
   "problemDetail",
   "productId",
   "quantity",
-  "statusId",
   "factoryId",
 ] as const;
 
@@ -38,7 +37,6 @@ export const SHEET_COLUMN: Record<GsheetField, string> = {
   problemDetail: "Keterangan Kendala",
   productId: "Offical Name",
   quantity: "Quantity",
-  statusId: "Status Defect",
   factoryId: "Pabrik",
 };
 
@@ -52,7 +50,6 @@ export const FIELD_LABEL: Record<GsheetField, string> = {
   problemDetail: "Keterangan Kendala (diterjemahkan)",
   productId: "Produk (Offical Name)",
   quantity: "Quantity",
-  statusId: "Status Defect",
   factoryId: "Pabrik",
 };
 
@@ -155,17 +152,12 @@ export function parseSheetTimestamp(value: unknown): string {
 }
 
 /**
- * Nama kolom alternatif yang tetap diterima saat membaca header.
+ * Indeks kolom (0-based) untuk tiap field, dibaca dari baris header sheet.
  *
- * Kolom "Status" di sheet sudah lama diganti namanya menjadi "Status" saja
- * (dulu "Status Defect"), dan app harus tetap bisa sync tanpa menyentuh sheet
- * dulu. Urutan penting: nama utama di `SHEET_COLUMN` dicoba lebih dulu.
+ * Kolom "Status" di sheet sengaja TIDAK dipakai lagi: status defect sudah
+ * dihapus dari aplikasi (1 Nov 2026), jadi kolom itu dibiarkan ada di sheet
+ * dan tidak pernah dibaca maupun ditulis.
  */
-export const SHEET_ALIASES: Partial<Record<GsheetField, string[]>> = {
-  statusId: ["Status"],
-};
-
-/** Indeks kolom (0-based) untuk tiap field, dibaca dari baris header sheet. */
 export function resolveHeaderIndex(header: string[]): {
   index: Record<GsheetField, number>;
   missing: string[];
@@ -178,15 +170,7 @@ export function resolveHeaderIndex(header: string[]): {
   const index = {} as Record<GsheetField, number>;
   const missing: string[] = [];
   for (const field of GSHEET_FIELDS) {
-    const names = [SHEET_COLUMN[field], ...(SHEET_ALIASES[field] ?? [])];
-    let i: number | undefined;
-    for (const name of names) {
-      const hit = found.get(normalizeName(name));
-      if (hit !== undefined) {
-        i = hit;
-        break;
-      }
-    }
+    const i = found.get(normalizeName(SHEET_COLUMN[field]));
     if (i === undefined) missing.push(SHEET_COLUMN[field]);
     index[field] = i ?? -1;
   }

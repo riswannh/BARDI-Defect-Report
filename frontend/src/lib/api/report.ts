@@ -28,7 +28,6 @@ import {
   purchaseOrders,
   repairs,
   sales,
-  statuses,
   warrantyClaims,
 } from "@/lib/db/schema";
 import { countsForRepairValue } from "@/lib/repair-value";
@@ -102,13 +101,12 @@ export async function reportGET(req: NextRequest) {
   const saleWhere: SQL | undefined =
     factory !== null ? eq(sales.factoryId, factory) : undefined;
 
-  const [defectRows, saleRows, productRows, problemRows, statusRows, factoryRows, poRows, allowanceRows, repairRows, claimRows, productFactoryRows] =
+  const [defectRows, saleRows, productRows, problemRows, factoryRows, poRows, allowanceRows, repairRows, claimRows, productFactoryRows] =
     await Promise.all([
       db.select().from(defects),
       db.select().from(sales).where(saleWhere),
       db.select().from(products),
       db.select().from(problems),
-      db.select().from(statuses),
       db.select().from(factories),
       // Harga master ikut di-join supaya Value RW (quantity × harga) bisa
       // dihitung di sini tanpa query tambahan.
@@ -185,7 +183,6 @@ export async function reportGET(req: NextRequest) {
     problemDetail: row.problemDetail,
     productId: row.productId,
     quantity: row.quantity,
-    statusId: row.statusId,
     factoryId: row.factoryId,
     value: row.value,
   }));
@@ -408,7 +405,6 @@ export async function reportGET(req: NextRequest) {
     years,
     products: productRows.map((row) => ({ id: row.id, name: row.name })),
     problems: problemRows.map((row) => ({ id: row.id, name: row.name })),
-    statuses: statusRows.map((row) => ({ id: row.id, name: row.name })),
     factories: factoryRows.map((row) => ({ id: row.id, name: row.name })),
   });
 }

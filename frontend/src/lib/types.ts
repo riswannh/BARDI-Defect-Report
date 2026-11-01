@@ -239,7 +239,6 @@ export interface Defect {
   problemDetail: string;
   productId: number;
   quantity: number;
-  statusId: number;
   factoryId: number;
   value: number;
   /**
