@@ -300,6 +300,26 @@ docker compose logs -f app
 Migrasi schema dijalankan otomatis saat start. Backup sebelum update penting
 kalau perubahan schema ternyata bermasalah.
 
+> **Dari 1 Nov 2026 compose ikut menjalankan `libretranslate`** (penerjemah
+> "Keterangan Kendala" saat sync Google Sheet). Service ini **tidak** membuka
+> port ke host — hanya dijangkau app lewat jaringan internal Docker dengan
+> `TRANSLATE_URL: http://libretranslate:5000`. Start pertamanya mengunduh model
+> `en` + `id` (±65 MB) dan memakan 1–2 menit; healthcheck diberi `start_period`
+> 180 detik. Batas memori `1.2g` (VPS tanpa swap), `LT_THREADS=2`,
+> `LT_LOAD_ONLY=en,id`. Cara memeriksanya:
+>
+> ```bash
+> docker compose ps                          # libretranslate harus healthy
+> docker exec bardi-libretranslate curl -s http://localhost:5000/languages
+> docker exec bardi-libretranslate curl -s -X POST http://localhost:5000/translate \
+>   -H 'content-type: application/json' \
+>   -d '{"q":"Lampu tidak menyala","source":"id","target":"en"}'
+> ```
+>
+> Kalau service ini mati, sync tetap jalan tetapi baris baru dengan teks
+> kendala **ditunda** (badge kuning "menunggu terjemahan") sampai sync
+> berikutnya — aplikasi tidak pernah menyimpan teks Indonesia ke kolom Inggris.
+
 ---
 
 ## Perintah harian yang berguna
@@ -325,3 +345,4 @@ kalau perubahan schema ternyata bermasalah.
 | Container `unhealthy` | Lihat `docker compose logs app` — biasanya database terkunci atau schema gagal |
 | Data hilang setelah update | Database ditimpa; pulihkan dari `backups/` |
 | Halaman lambat | Cek `docker stats` — kalau RAM penuh, lihat log untuk OOM |
+| Sync sheet bilang "belum diterjemahkan" | `libretranslate` tidak sehat / model belum selesai diunduh — `docker compose logs libretranslate`, lalu sync lagi |
