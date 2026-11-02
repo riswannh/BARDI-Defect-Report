@@ -15,7 +15,6 @@ import {
   addDays,
   dateToISO,
   formatTaskDate,
-  isWithin,
   isoWeekday,
   monthGrid,
   monthNames,
@@ -28,7 +27,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { ownerColor, WEEKDAY_LABEL_KEYS, type TaskOwner, type TaskRow } from "./task-types";
+import {
+  calendarBarEnd,
+  ownerColor,
+  WEEKDAY_LABEL_KEYS,
+  type TaskOwner,
+  type TaskRow,
+} from "./task-types";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -123,15 +128,17 @@ function layoutWeek(tasks: TaskRow[], days: string[], maxLanes: number) {
   const laneEnds: number[] = [];
   const segments: BarSegment[] = [];
   const candidates = tasks
-    .filter((task) => task.startDate <= weekEnd && task.dueDate >= weekStart)
+    .filter((task) => task.startDate <= weekEnd && calendarBarEnd(task) >= weekStart)
     .sort(
       (a, b) =>
-        a.startDate.localeCompare(b.startDate) || a.dueDate.localeCompare(b.dueDate)
+        a.startDate.localeCompare(b.startDate) ||
+        calendarBarEnd(a).localeCompare(calendarBarEnd(b))
     );
 
   for (const task of candidates) {
+    const end = calendarBarEnd(task);
     const startIdx = task.startDate <= weekStart ? 0 : days.indexOf(task.startDate);
-    const endIdx = task.dueDate >= weekEnd ? 6 : days.indexOf(task.dueDate);
+    const endIdx = end >= weekEnd ? 6 : days.indexOf(end);
     if (startIdx < 0 || endIdx < 0) continue;
     let lane = laneEnds.findIndex((end) => end < startIdx);
     if (lane === -1) {
@@ -232,6 +239,8 @@ function WeekStrip({
       {segments.map((segment) => {
         const done = segment.task.status === "Selesai";
         const overdue = !done && segment.task.dueDate < today;
+        const barEnd = calendarBarEnd(segment.task);
+        const finishedEarly = done && barEnd !== segment.task.dueDate;
         return (
           <button
             key={segment.task.id}
@@ -239,7 +248,11 @@ function WeekStrip({
             data-task-bar
             data-type-color={colorFor(segment.task.userId)}
             onClick={() => onSelect(segment.task)}
-            title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate, language)} – ${formatTaskDate(segment.task.dueDate, language)}`}
+            title={`${segment.task.title} · ${formatTaskDate(segment.task.startDate, language)} – ${formatTaskDate(segment.task.dueDate, language)}${
+              finishedEarly
+                ? ` · ${t("tasks.detailCompleted")} ${formatTaskDate(barEnd, language)}`
+                : ""
+            }`}
             className={[
               "absolute flex h-[18px] items-center gap-1 truncate rounded-sm border-l-[4px] px-1 text-left text-[10px] leading-none",
               done
@@ -661,7 +674,10 @@ export function TaskCalendar({
               )}
               {visibleOwners.map((owner) => {
                 const dayTasks = visibleTasks.filter(
-                  (task) => task.userId === owner.id && isWithin(anchor, task.startDate, task.dueDate)
+                  (task) =>
+                    task.userId === owner.id &&
+                    anchor >= task.startDate &&
+                    anchor <= calendarBarEnd(task)
                 );
                 return (
                   <div

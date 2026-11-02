@@ -21,6 +21,20 @@ export function isTaskArchived(task: TaskRow): boolean {
   return Math.round((today.getTime() - done.getTime()) / 86_400_000) > ARCHIVE_AFTER_DAYS;
 }
 
+/**
+ * Ujung batang task di kalender. Task yang sudah selesai sebelum due date
+ * berhenti di tanggal selesainya (permintaan user 2 Nov 2026), dan ujungnya
+ * tidak pernah lebih awal dari tanggal mulai. Task yang belum selesai (atau
+ * selesai tepat/lewat due date) tetap memakai due date.
+ */
+export function calendarBarEnd(task: TaskRow): string {
+  if (task.status !== "Selesai" || !task.completedAt) return task.dueDate;
+  const done = task.completedAt.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(done)) return task.dueDate;
+  if (done >= task.dueDate) return task.dueDate;
+  return done < task.startDate ? task.startDate : done;
+}
+
 export interface TaskRow {
   id: number;
   userId: string;

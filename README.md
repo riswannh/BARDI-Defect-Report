@@ -1335,6 +1335,12 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   baris popup tidak lagi menampilkan `@username` di bawah nama (`fetchItems` di
   `src/components/rich-text/mention.ts` mengisi `detail` kosong untuk orang). Chip mention di dokumen
   tetap seperti bawaan Tiptap (`@Nama`); tidak ada perubahan pada HTML yang tersimpan.
+- **Batang task di Kalender berhenti di tanggal selesai** (permintaan user 2 Nov 2026): task berstatus
+  `Selesai` yang selesai lebih awal digambar hanya sampai `completedAt` (tidak menunggu due date).
+  Aturannya di `calendarBarEnd()` (`src/app/(dashboard)/tasks/task-types.ts`) — dipakai tampilan Hari,
+  Minggu, dan Bulan, jadi batang, hitungan "lebih banyak", dan daftar task per hari tetap konsisten.
+  Tooltip batang tetap menyebut rentang rencana lalu menambah "Selesai pada <tanggal>" bila berhenti
+  lebih awal. Task yang selesai tepat/lewat due date tetap digambar sampai due date.
 
 ### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
 
