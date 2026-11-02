@@ -1323,11 +1323,17 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   daftar akun di bawah kolom itu (bisa disaring dengan mengetik, navigasi panah, Enter untuk memilih).
   Daftar akunnya sama dengan pilihan **pemilik task** dan **panel kalender** — akun yang punya izin
   tulis di menu Rencana Kerja (admin selalu ikut). Nama terpilih ditulis sebagai `@Nama` di deskripsi;
-  menyebut nama yang sama di beberapa task tetap satu notifikasi per task. Menghapus `@Nama` dari
-  deskripsi berarti orang itu tidak lagi dianggap disebut saat disimpan.
+  sebutan yang sudah cocok dengan akun **disorot** di atas kolom (lapisan `MentionOverlay`,
+  `src/app/(dashboard)/tasks/mention-overlay.tsx`) supaya kelihatan berhasil dipasang — sorotan tidak
+  menangkap klik, kursor tetap di Textarea. Menyebut nama yang sama di beberapa task tetap satu
+  notifikasi per task. Menghapus `@Nama` dari deskripsi berarti orang itu tidak lagi dianggap disebut
+  saat disimpan.
 - Popup `@` di **editor Docs Tasks** memakai aturan daftar yang sama: `GET /api/tasks/mentions`
   hanya menyarankan akun yang boleh menulis Rencana Kerja (admin selalu ikut), dihitung dari
   `user_roles` + kolom lama `user.roleId`. Saran judul task tetap seperti sebelumnya.
+- **Chip mention di dokumen hanya menampilkan nama**, tanpa awalan `@` (permintaan user 2 Nov 2026):
+  `renderHTML` di `src/components/rich-text/mention.ts` menulis label saja, atribut `data-*` tetap.
+  Dokumen lama yang sudah tersimpan dengan teks `@Nama` tetap terbaca; chip baru ditulis sebagai nama.
 
 ### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
 

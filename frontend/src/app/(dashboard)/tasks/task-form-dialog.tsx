@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { mentionedIdsFromText } from "./task-mentions";
+import { MentionOverlay } from "./mention-overlay";
 import {
   DIFFICULTIES,
   PRIORITIES,
@@ -69,6 +70,8 @@ export function TaskFormDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  /** Posisi gulir Textarea, supaya sorotan @ ikut bergeser bersama teks. */
+  const [descScroll, setDescScroll] = useState(0);
   /**
    * Penyebutan @user langsung di dalam deskripsi (tanpa dropdown terpisah).
    * Saat mengetik "@" muncul daftar akun yang bisa disebut; daftar akunnya sama
@@ -237,33 +240,37 @@ export function TaskFormDialog({
 
           <div className="relative flex flex-col gap-1.5">
             <Label>{t("tasks.fieldDescription")}</Label>
-            <Textarea
-              value={description}
-              onChange={(event) => {
-                const value = event.target.value;
-                setDescription(value);
-                syncMentionList(value, event.target.selectionStart);
-              }}
-              onKeyDown={(event) => {
-                if (!mention || mentionMatches.length === 0) return;
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  setMentionIndex((current) => (current + 1) % mentionMatches.length);
-                } else if (event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setMentionIndex(
-                    (current) => (current - 1 + mentionMatches.length) % mentionMatches.length
-                  );
-                } else if (event.key === "Enter" || event.key === "Tab") {
-                  event.preventDefault();
-                  pickMention(mentionMatches[Math.min(mentionIndex, mentionMatches.length - 1)]);
-                } else if (event.key === "Escape") {
-                  event.stopPropagation();
-                  setMention(null);
-                }
-              }}
-              rows={3}
-            />
+            <div className="relative">
+              <Textarea
+                value={description}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDescription(value);
+                  syncMentionList(value, event.target.selectionStart);
+                }}
+                onScroll={(event) => setDescScroll(event.currentTarget.scrollTop)}
+                onKeyDown={(event) => {
+                  if (!mention || mentionMatches.length === 0) return;
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setMentionIndex((current) => (current + 1) % mentionMatches.length);
+                  } else if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setMentionIndex(
+                      (current) => (current - 1 + mentionMatches.length) % mentionMatches.length
+                    );
+                  } else if (event.key === "Enter" || event.key === "Tab") {
+                    event.preventDefault();
+                    pickMention(mentionMatches[Math.min(mentionIndex, mentionMatches.length - 1)]);
+                  } else if (event.key === "Escape") {
+                    event.stopPropagation();
+                    setMention(null);
+                  }
+                }}
+                rows={3}
+              />
+              <MentionOverlay text={description} users={users} scrollTop={descScroll} />
+            </div>
             {mention && mentionMatches.length > 0 && (
               <div
                 className="absolute top-full left-0 z-50 mt-1 w-56 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 shadow-md"

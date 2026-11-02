@@ -58,6 +58,18 @@ export const mentionExtension = Mention.extend({
       },
     };
   },
+  /**
+   * Chip hanya menampilkan NAMA, tanpa awalan "@" (permintaan user 2 Nov
+   * 2026). Tiptap bawaannya menulis "@nama"; atribut `data-*` tetap sama
+   * supaya pembaca dokumen dan popup detail tidak berubah.
+   */
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "span",
+      { "data-type": "mention", ...HTMLAttributes },
+      String(node.attrs.label ?? node.attrs.id ?? ""),
+    ];
+  },
 }).configure({
   HTMLAttributes: { class: "mention-chip" },
   suggestion: {
