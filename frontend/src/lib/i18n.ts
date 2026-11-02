@@ -2145,25 +2145,20 @@ const translations = {
     zh: "系统角色：名称和描述锁定，只能修改权限。",
   },
   "users.noRole": { id: "Tanpa role", en: "No role", zh: "无角色" },
-  "users.roleGroup": {
-    id: "Group role",
-    en: "Group roles",
-    zh: "角色组",
+  "users.adminHint": {
+    id: "semua menu, tanpa batas pabrik",
+    en: "all menus, no factory limit",
+    zh: "全部菜单，无工厂限制",
   },
-  "users.roleAdd": {
-    id: "Tambah role",
-    en: "Add role",
-    zh: "添加角色",
-  },
-  "users.roleRemove": {
-    id: "Hapus role {name}",
-    en: "Remove role {name}",
-    zh: "移除角色 {name}",
+  "users.adminRoleHint": {
+    id: "Admin sudah punya akses ke semua menu; group role tidak dipakai.",
+    en: "Admin already has every menu; group roles are ignored.",
+    zh: "管理员已拥有全部菜单；角色组不再使用。",
   },
   "users.roleMultiHint": {
-    id: "Satu user boleh punya beberapa role; hak akses menunya digabung (yang paling longgar menang).",
-    en: "One user can have several roles; menu access is combined (the most permissive wins).",
-    zh: "一个用户可以拥有多个角色；菜单权限会合并（以最宽松的为准）。",
+    id: "Boleh centang lebih dari satu group role; hak akses menunya digabung (yang paling longgar menang).",
+    en: "Pick one or more group roles; menu access is combined (the most permissive wins).",
+    zh: "可以勾选多个角色组；菜单权限会合并（以最宽松的为准）。",
   },
   "users.roleHint": {
     id: "Menu yang bisa dibuka ditentukan role. Role Pabrik otomatis menyembunyikan nilai Rupiah.",

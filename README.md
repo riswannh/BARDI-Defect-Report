@@ -1220,9 +1220,12 @@ cuma dihitung sebagai informasi), dengan tambahan:
   Dialog **hanya memilih** produk master yang sudah ada; produk baru dibuat di tab Produk
   (Data Master), bukan dari dialog ini.
 - User: username (boleh berisi spasi, validator `/^[a-zA-Z0-9 _.-]+$/`), password (hash), Pabrik, status Admin.
-- **Multi group role**: satu user boleh punya beberapa role sekaligus. Di form User pilih **Group role**
-  lalu tambahkan role satu per satu (chip); role pertama menjadi role utama (`user.roleId`) untuk tampilan.
-  Daftar role tersimpan di tabel `user_roles`.
+- **Multi group role**: satu user boleh punya beberapa role sekaligus. Di form User, kolom **Peran** berisi
+  daftar centang **Admin** + semua group role — centang langsung sebanyak yang dibutuhkan (tanpa dropdown
+  terpisah); role pertama yang dicentang menjadi role utama (`user.roleId`) untuk tampilan. Daftar role
+  tersimpan di tabel `user_roles`.
+- **Pilih Pabrik hanya muncul kalau group role Pabrik dicentang** (pabrik pertama otomatis terpilih).
+  Akun admin tidak terikat pabrik, jadi pilihan itu disembunyikan.
 - **Izin beberapa role digabung union paling longgar**: kalau salah satu role boleh **baca** menu, user boleh
   baca; kalau salah satu role boleh **tulis**, user boleh tulis. Nilai uang tetap disembunyikan bila salah
   satu role berkode `pabrik`.

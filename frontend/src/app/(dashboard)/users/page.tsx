@@ -11,6 +11,7 @@ import {
   downloadUrl,
 } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
+import { PABRIK_ROLE_CODE } from "@/lib/permissions";
 import type { Factory, ImportResult } from "@/lib/types";
 import { AdminGuard } from "@/components/admin-guard";
 import { DeleteAllDialog } from "@/components/delete-all-dialog";
@@ -76,8 +77,8 @@ interface UserForm {
   jabatan: string;
   password: string;
   factoryId: string;
-  /** "admin" (super admin), "role" (satu atau beberapa group role), "none". */
-  role: string;
+  /** Super admin: semua menu, tidak terikat pabrik. */
+  isAdmin: boolean;
   /** Group role terpilih; izinnya digabung (union) di server. */
   roleIds: number[];
 }
@@ -88,7 +89,7 @@ const emptyUserForm: UserForm = {
   jabatan: "",
   password: "",
   factoryId: "",
-  role: "admin",
+  isAdmin: false,
   roleIds: [],
 };
 
@@ -120,19 +121,33 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(emptyUserForm);
 
-  // Pilihan akses: Admin (super admin) atau satu/beberapa group role. "Tanpa
-  // Role" hanya muncul untuk akun lama yang belum punya role sama sekali.
-  const roleOptions = [
-    { value: "admin", label: t("common.admin") },
-    { value: "role", label: t("users.roleGroup") },
-    ...(form.role === "none"
-      ? [{ value: "none", label: t("users.noRole") }]
-      : []),
-  ];
+  // Akses akun: satu baris "Admin" plus daftar group role, semuanya bisa
+  // dicentang langsung (multiple). Pilihan pabrik hanya relevan kalau akun
+  // memegang group role Pabrik.
   const pickedRoles = roles.filter((role) => form.roleIds.includes(role.id));
-  const addableRoles = roles
-    .filter((role) => !form.roleIds.includes(role.id))
-    .map((role) => ({ value: String(role.id), label: role.name }));
+  const hasFactoryRole = pickedRoles.some(
+    (role) => role.code === PABRIK_ROLE_CODE || /pabrik|factory/i.test(role.name)
+  );
+
+  function toggleRole(roleId: number, checked: boolean) {
+    setForm((f) => {
+      const roleIds = checked
+        ? [...f.roleIds, roleId]
+        : f.roleIds.filter((id) => id !== roleId);
+      // Begitu group role Pabrik dicentang dan pabriknya belum dipilih, isi
+      // dengan pabrik pertama supaya akun tidak tersimpan tanpa pabrik.
+      const isFactoryRole = roles.some(
+        (role) =>
+          role.id === roleId &&
+          (role.code === PABRIK_ROLE_CODE || /pabrik|factory/i.test(role.name))
+      );
+      const factoryId =
+        checked && isFactoryRole && !f.factoryId && factories.length > 0
+          ? String(factories[0].id)
+          : f.factoryId;
+      return { ...f, roleIds, factoryId };
+    });
+  }
 
   const sortedUsers = useMemo(() => {
     const users = userData ?? [];
@@ -168,11 +183,7 @@ export default function UsersPage() {
       jabatan: u.jabatan ?? "",
       password: "",
       factoryId: u.factoryId ? String(u.factoryId) : "",
-      role: u.isAdmin
-        ? "admin"
-        : (u.roleIds?.length ?? 0) > 0 || u.roleId
-          ? "role"
-          : "none",
+      isAdmin: u.isAdmin,
       roleIds:
         u.roleIds && u.roleIds.length > 0
           ? u.roleIds
@@ -185,9 +196,10 @@ export default function UsersPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const isAdmin = form.role === "admin";
-    const factoryId = isAdmin ? null : Number(form.factoryId) || null;
-    const roleIds = isAdmin || form.role === "none" ? [] : form.roleIds;
+    const isAdmin = form.isAdmin;
+    // Pabrik hanya disimpan kalau akun memang memegang group role Pabrik.
+    const factoryId = isAdmin || !hasFactoryRole ? null : Number(form.factoryId) || null;
+    const roleIds = isAdmin ? [] : form.roleIds;
     if (!form.name.trim() || !form.username.trim()) return;
 
     // Nama dan username dua hal terpisah: nama tampilan boleh spasi, username
@@ -548,88 +560,52 @@ export default function UsersPage() {
                 placeholder="••••••••"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
               <Label>{t("common.role")}</Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, role: String(v) }))
-                }
-                items={roleOptions}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="max-h-44 overflow-y-auto overscroll-contain rounded-xl border border-input p-1">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={form.isAdmin}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        isAdmin: e.target.checked,
+                        roleIds: e.target.checked ? [] : f.roleIds,
+                      }))
+                    }
+                  />
+                  <span className="font-medium">{t("common.admin")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("users.adminHint")}
+                  </span>
+                </label>
+                {roles.map((role) => (
+                  <label
+                    key={role.id}
+                    className={
+                      form.isAdmin
+                        ? "flex cursor-not-allowed items-center gap-2 rounded-lg px-2 py-1.5 text-sm opacity-50"
+                        : "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      disabled={form.isAdmin}
+                      checked={form.roleIds.includes(role.id)}
+                      onChange={(e) => toggleRole(role.id, e.target.checked)}
+                    />
+                    <span>{role.name}</span>
+                  </label>
+                ))}
+              </div>
               <p className="text-xs text-muted-foreground">
-                {t("users.roleHint")}
+                {form.isAdmin ? t("users.adminRoleHint") : t("users.roleMultiHint")}
               </p>
             </div>
-            {form.role === "role" && (
-              <div className="flex flex-col gap-1.5 sm:col-span-2">
-                <Label>{t("users.roleGroup")}</Label>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {pickedRoles.map((role) => (
-                    <span
-                      key={role.id}
-                      className="flex items-center gap-1 rounded-full bg-primary/10 py-0.5 pr-1 pl-2 text-xs text-primary"
-                    >
-                      {role.name}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((f) => ({
-                            ...f,
-                            roleIds: f.roleIds.filter((id) => id !== role.id),
-                          }))
-                        }
-                        className="rounded-full px-1 text-primary/70 hover:text-primary"
-                        aria-label={t("users.roleRemove", { name: role.name })}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {addableRoles.length > 0 && (
-                    <Select
-                      value=""
-                      onValueChange={(v) =>
-                        setForm((f) => ({
-                          ...f,
-                          roleIds: [...f.roleIds, Number(v)],
-                        }))
-                      }
-                      items={addableRoles}
-                    >
-                      <SelectTrigger
-                        className="h-7 w-auto min-w-32 gap-1 px-2 text-xs"
-                        aria-label={t("users.roleAdd")}
-                      >
-                        <SelectValue placeholder={t("users.roleAdd")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {addableRoles.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("users.roleMultiHint")}
-                </p>
-              </div>
-            )}
-            {form.role !== "admin" && (
+            {!form.isAdmin && hasFactoryRole && (
               <div className="flex flex-col gap-1.5">
                 <Label>{t("common.factory")}</Label>
                 <Select
