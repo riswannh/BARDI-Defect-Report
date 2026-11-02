@@ -12,7 +12,13 @@ import {
 import { requireMenu, type SessionUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { notifyMentions, validMentionIds } from "@/lib/api/notifications";
-import { calendarColorSchema, taskCreateSchema, taskUpdateSchema, taskViewSchema } from "@/lib/api/validation";
+import {
+  calendarColorSchema,
+  taskCreateSchema,
+  taskUpdateSchema,
+  taskViewSchema,
+  todayDateISO,
+} from "@/lib/api/validation";
 import { nextOccurrence } from "@/lib/task-dates";
 
 type TaskRow = typeof tasks.$inferSelect;
@@ -30,7 +36,6 @@ interface TaskValues {
   description: string;
   progress: number;
   priority: string;
-  difficulty: string;
   issueType: string;
   boardOrder: number;
   status: string;
@@ -46,7 +51,6 @@ const DIFF_FIELDS = [
   "description",
   "progress",
   "priority",
-  "difficulty",
   "issueType",
   "boardOrder",
   "status",
@@ -198,9 +202,6 @@ export async function tasksGET(req: NextRequest) {
   const priority = params.get("priority")?.trim();
   if (priority) conditions.push(eq(tasks.priority, priority));
 
-  const difficulty = params.get("difficulty")?.trim();
-  if (difficulty) conditions.push(eq(tasks.difficulty, difficulty));
-
   const search = params.get("q")?.trim();
   if (search) {
     const clause = or(
@@ -283,14 +284,14 @@ export async function tasksPOST(req: NextRequest) {
     title: raw.title,
     description: raw.description ?? "",
     priority: raw.priority ?? "Normal",
-    difficulty: raw.difficulty ?? "Sedang",
     issueType: raw.issueType ?? "task",
     // Kartu baru masuk paling bawah kolom papan (urutan naik = Date.now()).
     boardOrder:
       Number(raw.boardOrder ?? 0) > 0 ? Number(raw.boardOrder) : Date.now(),
     status: synced.status,
     progress: synced.progress,
-    startDate: raw.startDate,
+    // Tanggal mulai tidak diisi di form: task baru mulai hari ini.
+    startDate: raw.startDate ?? todayDateISO(),
     dueDate: raw.dueDate,
     repeatRule: raw.repeatRule ?? "",
     repeatWeekday: raw.repeatWeekday ?? null,
@@ -392,7 +393,6 @@ export async function tasksPATCH(
     description: patch.description ?? current.description,
     progress: patch.progress ?? current.progress,
     priority: patch.priority ?? current.priority,
-    difficulty: patch.difficulty ?? current.difficulty,
     issueType: patch.issueType ?? current.issueType,
     boardOrder: patch.boardOrder ?? current.boardOrder,
     status: patch.status ?? current.status,
@@ -488,7 +488,6 @@ export async function tasksPATCH(
           description: merged.description,
           progress: 0,
           priority: merged.priority,
-          difficulty: merged.difficulty,
           issueType: merged.issueType,
           boardOrder: Date.now(),
           status: "Belum",

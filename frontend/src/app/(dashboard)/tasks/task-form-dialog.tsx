@@ -26,9 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { mentionedIdsFromText } from "./task-mentions";
 import { MentionOverlay } from "./mention-overlay";
 import {
-  DIFFICULTIES,
   PRIORITIES,
-  TASK_STATUSES,
   WEEKDAY_LABEL_KEYS,
   typeName,
   typesOfOwner,
@@ -81,11 +79,8 @@ export function TaskFormDialog({
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [issueType, setIssueType] = useState(task?.issueType ?? ownerTypes[0]?.code ?? "task");
-  const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
-  const [difficulty, setDifficulty] = useState(task?.difficulty ?? "Sedang");
-  const [status, setStatus] = useState(task?.status ?? "Belum");
-  const [startDate, setStartDate] = useState(task?.startDate ?? today);
+  const [startDate] = useState(task?.startDate ?? today);
   const [dueDate, setDueDate] = useState(task?.dueDate ?? today);
   const [repeatRule, setRepeatRule] = useState(task?.repeatRule ?? "");
   const [repeatWeekday, setRepeatWeekday] = useState(
@@ -99,12 +94,6 @@ export function TaskFormDialog({
     value,
     label: t(`tasks.priority${value === "Urgent" ? "Urgent" : value === "Segera" ? "Segera" : "Normal"}`),
   }));
-  const difficultyOptions = DIFFICULTIES.map((value) => ({
-    value,
-    label: t(
-      `tasks.difficulty${value === "Mudah" ? "Easy" : value === "Sedang" ? "Medium" : "Hard"}`
-    ),
-  }));
   // Tipe dari master milik pemilik task; kalau task lama memakai kode yang
   // sudah dihapus, tetap ditampilkan supaya tidak berubah tanpa disengaja.
   const typeCodes = ownerTypes.some((item) => item.code === issueType)
@@ -113,10 +102,6 @@ export function TaskFormDialog({
   const issueOptions = typeCodes.map((value) => ({
     value,
     label: typeName(types, value, isAdmin ? ownerId : me.id),
-  }));
-  const statusOptions = TASK_STATUSES.map((value) => ({
-    value,
-    label: t(value === "Selesai" ? "tasks.statusDone" : value === "Proses" ? "tasks.statusProses" : "tasks.statusOpen"),
   }));
   const repeatOptions = [
     { value: NONE, label: t("tasks.repeatNone") },
@@ -190,9 +175,7 @@ export function TaskFormDialog({
       title: title.trim(),
       description: description.trim(),
       priority,
-      difficulty,
       issueType,
-      startDate,
       dueDate,
       repeatRule,
       repeatWeekday: repeatRule === "weekly" ? Number(repeatWeekday) : null,
@@ -201,9 +184,10 @@ export function TaskFormDialog({
       ownerId: isAdmin ? ownerId : undefined,
       mentionedUserIds: mentionedIdsFromText(description, users),
     };
-    // Status & progres hanya diisi saat membuat task. Setelah task ada, dua
-    // field itu diubah lewat tombol Progres / Selesai agar tidak bentrok.
-    const body = task ? payload : { ...payload, progress: Number(progress) || 0, status };
+    // Tanggal mulai & status tidak diisi di form: task baru mulai hari ini dan
+    // berstatus Belum dengan progres 0 (default server). Task lama tidak diubah
+    // tanggal mulainya saat disunting.
+    const body = task ? payload : { ...payload, startDate };
 
     setSaving(true);
     try {
@@ -367,37 +351,6 @@ export function TaskFormDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldDifficulty")}</Label>
-              <Select
-                value={difficulty}
-                onValueChange={(value) => setDifficulty(String(value))}
-                items={difficultyOptions}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {difficultyOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldStart")}</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                disabled
-              />
-              <p className="text-xs text-muted-foreground">{t("tasks.startFixedHint")}</p>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
               <Label>{t("tasks.fieldDue")}</Label>
               <Input
                 type="date"
@@ -405,41 +358,6 @@ export function TaskFormDialog({
                 onChange={(e) => setDueDate(e.target.value)}
               />
             </div>
-
-            {!task && (
-              <>
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldStatus")}</Label>
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus(String(value))}
-                items={statusOptions}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldProgress")}</Label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={progress}
-                onChange={(e) => setProgress(e.target.value)}
-              />
-            </div>
-              </>
-            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

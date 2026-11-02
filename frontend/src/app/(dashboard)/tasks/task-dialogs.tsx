@@ -22,7 +22,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ACTION_LABEL_KEYS,
-  DIFFICULTY_LABEL_KEYS,
   PRIORITY_LABEL_KEYS,
   REPEAT_LABEL_KEYS,
   WEEKDAY_LABEL_KEYS,
@@ -241,7 +240,6 @@ export function TaskDetailDialog({ task, onClose }: { task: TaskRow; onClose: ()
     { label: t("tasks.colOwner"), value: task.ownerName || "—" },
     { label: t("tasks.fieldStatus"), value: t(task.status === "Selesai" ? "tasks.statusDone" : "tasks.statusOpen") },
     { label: t("tasks.fieldPriority"), value: t(PRIORITY_LABEL_KEYS[task.priority] ?? "tasks.priorityNormal") },
-    { label: t("tasks.fieldDifficulty"), value: t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium") },
     { label: t("tasks.fieldStart"), value: formatTaskDate(task.startDate, language) },
     { label: t("tasks.fieldDue"), value: formatTaskDate(task.dueDate, language) },
     { label: t("tasks.fieldRepeat"), value: repeatDetail },

@@ -54,8 +54,6 @@ import { TaskBoardView, TaskSummaryView, matchesQuickFilter, type QuickFilterKey
 import { TaskDocsView } from "./task-docs-view";
 import { TaskSettingsView } from "./task-settings-view";
 import {
-  DIFFICULTIES,
-  DIFFICULTY_LABEL_KEYS,
   isTaskArchived,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
@@ -133,7 +131,6 @@ export default function TasksPage() {
   const [ownerFilter, setOwnerFilter] = useState<string[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
-  const [difficultyFilter, setDifficultyFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   /** Filter cepat dari kartu KPI Ringkasan; null = tidak aktif. */
   const [quickFilter, setQuickFilter] = useState<QuickFilterKey | null>(null);
@@ -180,9 +177,6 @@ export default function TasksPage() {
       }
       if (pickedStatus.length > 0 && !pickedStatus.includes(task.status)) return false;
       if (priorityFilter.length > 0 && !priorityFilter.includes(task.priority)) return false;
-      if (difficultyFilter.length > 0 && !difficultyFilter.includes(task.difficulty)) {
-        return false;
-      }
       if (typeFilter.length > 0 && !typeFilter.includes(task.issueType || "task")) return false;
       if (quickFilter && !matchesQuickFilter(task, quickFilter)) return false;
       // Arsip hanya memengaruhi tab Tugas; Kalender & Ringkasan tetap memuatnya.
@@ -203,7 +197,6 @@ export default function TasksPage() {
     });
   }, [
     activeRows,
-    difficultyFilter,
     ownerFilter,
     priorityFilter,
     quickFilter,
@@ -287,7 +280,6 @@ export default function TasksPage() {
     setOwnerFilter(null);
     setStatusFilter(patch.status ? [patch.status] : []);
     setPriorityFilter(patch.priority ? [patch.priority] : []);
-    setDifficultyFilter([]);
     setTypeFilter(patch.type ? [patch.type] : []);
     setQuickFilter(patch.quick ?? null);
     setPage(1);
@@ -376,8 +368,7 @@ export default function TasksPage() {
                     {formatTaskDate(task.dueDate, language)}
                   </span>
                   <div className="text-[11px] text-muted-foreground">
-                    {formatTaskDate(task.startDate, language)} ·{" "}
-                    {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}
+                    {formatTaskDate(task.startDate, language)}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -531,19 +522,6 @@ export default function TasksPage() {
           selected={priorityFilter}
           onChange={(next) => {
             setPriorityFilter(next);
-            setPage(1);
-          }}
-        />
-        <MultiFilter
-          label={t("tasks.fieldDifficulty")}
-          emptyLabel={t("tasks.allDifficulty")}
-          options={DIFFICULTIES.map((value) => ({
-            value,
-            label: t(DIFFICULTY_LABEL_KEYS[value]),
-          }))}
-          selected={difficultyFilter}
-          onChange={(next) => {
-            setDifficultyFilter(next);
             setPage(1);
           }}
         />

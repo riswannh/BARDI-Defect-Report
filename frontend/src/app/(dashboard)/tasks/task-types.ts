@@ -43,7 +43,6 @@ export interface TaskRow {
   description: string;
   progress: number;
   priority: string;
-  difficulty: string;
   /** task / bug / feature / subtask. */
   issueType: string;
   boardOrder: number;
@@ -96,7 +95,6 @@ export interface TaskOwner {
 export type TaskView = "list" | "board";
 
 export const PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
-export const DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
 
@@ -166,12 +164,6 @@ export const PRIORITY_LABEL_KEYS: Record<string, TranslationKey> = {
   Urgent: "tasks.priorityUrgent",
   Segera: "tasks.prioritySegera",
   Normal: "tasks.priorityNormal",
-};
-
-export const DIFFICULTY_LABEL_KEYS: Record<string, TranslationKey> = {
-  Mudah: "tasks.difficultyEasy",
-  Sedang: "tasks.difficultyMedium",
-  Sulit: "tasks.difficultyHard",
 };
 
 export const WEEKDAY_LABEL_KEYS: TranslationKey[] = [

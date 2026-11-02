@@ -581,14 +581,12 @@ export const roleUpdateSchema = z.object({
  * ============================================================ */
 
 export const TASK_PRIORITIES = ["Urgent", "Segera", "Normal"] as const;
-export const TASK_DIFFICULTIES = ["Mudah", "Sedang", "Sulit"] as const;
 export const TASK_STATUSES = ["Belum", "Proses", "Selesai"] as const;
 /** Tipe isu kini daftar dinamis di tabel `task_types`; kolom menyimpan `code`. */
 export const TASK_ISSUE_TYPE_MAX = 60;
 export const TASK_REPEAT_RULES = ["", "daily", "weekly", "monthly"] as const;
 
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
-export type TaskDifficulty = (typeof TASK_DIFFICULTIES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 export type TaskRepeatRule = (typeof TASK_REPEAT_RULES)[number];
 
@@ -633,6 +631,11 @@ const isoDateField = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/);
 
+/** Tanggal hari ini di zona aplikasi; default tanggal mulai task baru. */
+export function todayDateISO(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+}
+
 /**
  * Bentuk field task. Dipakai `taskCreateSchema` (dengan default) dan
  * `taskUpdateSchema` (tanpa default, lewat `buildUpdate`) — pola yang sama
@@ -645,7 +648,6 @@ const taskFields = {
   description: z.string().trim().max(2000),
   progress: z.coerce.number().int().min(0).max(100),
   priority: z.enum(TASK_PRIORITIES),
-  difficulty: z.enum(TASK_DIFFICULTIES),
   issueType: z.string().trim().min(1).max(TASK_ISSUE_TYPE_MAX),
   boardOrder: z.coerce.number(),
   status: z.enum(TASK_STATUSES),
@@ -665,10 +667,11 @@ export const taskCreateSchema = buildCreate(taskFields, {
   description: z.string().trim().max(2000).default(""),
   progress: z.coerce.number().int().min(0).max(100).default(0),
   priority: z.enum(TASK_PRIORITIES).default("Normal"),
-  difficulty: z.enum(TASK_DIFFICULTIES).default("Sedang"),
   issueType: z.string().trim().min(1).max(TASK_ISSUE_TYPE_MAX).default("task"),
   boardOrder: z.coerce.number().default(0),
   status: z.enum(TASK_STATUSES).default("Belum"),
+  /** Tanggal mulai diisi otomatis hari ini; form tidak menampilkannya. */
+  startDate: isoDateField.default(todayDateISO),
   repeatRule: z.enum(TASK_REPEAT_RULES).default(""),
   repeatWeekday: z.coerce.number().int().min(1).max(7).nullable().default(null),
   repeatDay: z.coerce.number().int().min(1).max(31).nullable().default(null),

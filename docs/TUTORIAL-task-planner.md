@@ -128,8 +128,7 @@ Tab **Ringkasan** adalah dasbor singkat. Isinya:
 - **Kotak cari** — mencari judul dan keterangan tugas.
 - **Filter Pemilik** — khusus admin.
 - **Filter Status** — `Belum`, `Proses`, `Selesai`, dan `Arsip`.
-- **Filter Tipe**, **Filter Prioritas**, **Filter Kesulitan** — bisa memilih lebih dari
-  satu nilai.
+- **Filter Tipe** dan **Filter Prioritas** — bisa memilih lebih dari satu nilai.
 - **Chip filter cepat** — sisa filter dari kartu Ringkasan; klik **Hapus filter kartu**
   untuk membersihkan.
 - **Pilih tampilan** — mengganti antara **Daftar** dan **Papan**. Pilihan ini disimpan
@@ -143,7 +142,7 @@ Kolom yang ditampilkan: **Judul Tugas**, **Tipe**, **Pembuat** (admin), **Priori
 - Klik **baris** untuk membuka Rincian Tugas.
 - **Ikon centang** menandai tugas `Selesai` (klik lagi untuk **Buka lagi**).
 - **Kemajuan** tampil sebagai bilah dan angka persen. Klik tombol kecil di sebelahnya
-  untuk membuka dialog **Ubah kemajuan**.
+  untuk membuka dialog **Perbarui Kemajuan**.
 - **Menu aksi** berisi **Ubah** dan **Hapus**.
 - Tugas yang sudah selesai lebih dari 7 hari otomatis diberi badge **Arsip** dan
   disembunyikan dari daftar biasa (lihat bagian 4.5).
@@ -177,14 +176,16 @@ Klik **Tambah Tugas**. Isi form berikut:
 | **Keterangan** | Penjelasan pekerjaan. Bisa menyebut orang dengan `@` (bagian 7). |
 | **Pemilik task** | Hanya admin. Menentukan siapa yang memegang tugas ini, dan tipe mana yang muncul di pilihan **Tipe**. |
 | **Tipe** | Diambil dari daftar tipe milik pemilik tugas. Kosong berarti pemilik belum mengatur tipe. |
-| **Prioritas** | Rendah / Sedang / Tinggi / Kritis. |
-| **Tingkat Kesulitan** | Menandai bobot pekerjaan. |
-| **Tanggal Mulai** | Terisi otomatis **hari ini** dan tidak bisa diubah saat membuat tugas. Hint: "Tanggal mulai otomatis hari ini." |
+| **Prioritas** | Mendesak / Segera / Normal. |
 | **Tenggat** | Tanggal selesai yang diharapkan. Tidak boleh lebih awal dari tanggal mulai. |
-| **Status** | Awalnya `Belum`. |
-| **Kemajuan (%)** | Angka 0–100. |
 | **Pengulangan** | Tidak berulang / Harian / Mingguan / Bulanan. Bila dipilih **Mingguan**, muncul pilihan **Hari Pengulangan**; bila **Bulanan**, muncul **Tanggal Pengulangan**. |
-| **Catatan** | Catatan pendek yang ikut tersimpan. |
+
+Tiga hal **tidak perlu diisi** dan tidak muncul di form:
+
+- **Tanggal Mulai** — otomatis **hari ini**.
+- **Status** — otomatis `Belum`.
+- **Kemajuan** — otomatis **0%** dan diubah setelah tugas berjalan lewat dialog
+  **Perbarui Kemajuan** atau tombol centang.
 
 Klik **Simpan** untuk menyimpan, atau **Batal** untuk membatalkan.
 
@@ -210,7 +211,6 @@ pada tugas tersebut. Akun lain hanya dapat membaca.
 ### Menyelesaikan
 
 - Klik **ikon centang** di baris daftar, atau
-- ubah **Status** menjadi `Selesai` di form Ubah, atau
 - tekan panah **→** di tampilan Papan sampai kolom `Selesai`.
 
 Saat status berubah menjadi `Selesai`, tanggal selesai dicatat dan dipakai Kalender
@@ -267,8 +267,8 @@ menambahkan sebutan baru tidak mengirim notifikasi lagi.
 
 Klik baris/kartu tugas untuk membukanya. Ada dua tab:
 
-1. **Informasi** — judul, keterangan, tipe, pemilik, prioritas, kesulitan, tanggal
-   mulai, tenggat, status, kemajuan, catatan, serta **Dibuat**, **Diperbarui**, dan
+1. **Informasi** — judul, keterangan, tipe, pemilik, prioritas, tanggal mulai, tenggat,
+   status, pengulangan, catatan terakhir, serta **Dibuat**, **Diperbarui**, dan
    **Selesai pada** (bila sudah selesai).
 2. **Log aktivitas** — riwayat perubahan tugas tersebut: siapa, melakukan apa, kapan.
 

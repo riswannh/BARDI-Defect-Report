@@ -1348,6 +1348,14 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   Minggu, dan Bulan, jadi batang, hitungan "lebih banyak", dan daftar task per hari tetap konsisten.
   Tooltip batang tetap menyebut rentang rencana lalu menambah "Selesai pada <tanggal>" bila berhenti
   lebih awal. Task yang selesai tepat/lewat due date tetap digambar sampai due date.
+- **Tingkat Kesulitan dihapus** (permintaan user 2 Nov 2026): tidak ada lagi di form, filter,
+  kolom daftar, card papan, dialog detail, maupun ekspor Excel. Prioritas TETAP ada. Kolom DB
+  `tasks.difficulty` sengaja dibiarkan `NOT NULL DEFAULT 'Sedang'` (pola sama seperti
+  `defects.statusId`) supaya baris lama tetap valid; API tidak lagi membaca/menulis kolom itu.
+- **Form Tambah Tugas tidak menanyakan Tanggal Mulai, Status, dan Kemajuan** (permintaan user
+  2 Nov 2026): task baru otomatis mulai **hari ini** (`todayDateISO()` di `src/lib/api/validation.ts`
+  jadi default `startDate` di `taskCreateSchema`), berstatus `Belum`, dan progres `0`. Saat menyunting,
+  `startDate` tidak ikut dikirim sehingga tanggal mulai tugas lama tidak berubah.
 
 ### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
 

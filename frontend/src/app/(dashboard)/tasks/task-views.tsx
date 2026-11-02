@@ -29,7 +29,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   typeName,
-  DIFFICULTY_LABEL_KEYS,
   PRIORITIES,
   PRIORITY_LABEL_KEYS,
   STATUS_LABEL_KEYS,
@@ -533,8 +532,7 @@ export function TaskBoardView({
                     </span>
                     <span className="line-clamp-2 text-sm font-medium">{task.title}</span>
                     <span className="truncate text-[11px] text-muted-foreground">
-                      {typeName(types, task.issueType, task.userId)} ·{" "}
-                      {t(DIFFICULTY_LABEL_KEYS[task.difficulty] ?? "tasks.difficultyMedium")}
+                      {typeName(types, task.issueType, task.userId)}
                     </span>
                   </div>
                   {(onEdit || onDelete) && (
