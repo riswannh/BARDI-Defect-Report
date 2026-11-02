@@ -1354,6 +1354,8 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - Daftar tipe tetap **milik masing-masing akun** (`task_types.userId`); filter Tipe di daftar Task
   digabung per **kode** supaya nama yang sama tidak muncul berulang mengikuti jumlah akun.
 - Tipe yang masih dipakai task tidak bisa dihapus (409); tipe milik akun lain hanya bisa diubah admin.
+- Panduan pengguna langkah demi langkah untuk seluruh modul Rencana Kerja (termasuk kewajiban
+  mengatur tab Pengaturan lebih dulu) ada di [`docs/TUTORIAL-task-planner.md`](docs/TUTORIAL-task-planner.md).
 
 ---
 

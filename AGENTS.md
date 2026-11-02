@@ -67,6 +67,9 @@ jangan dinegosiasi ulang per tugas:
 **Documentation**
 - `README.md` (single source of truth) dan `AGENTS.md` diperbarui bila perilaku,
   skema, atau API berubah.
+- Panduan pengguna per modul ada di `docs/` (mis. `docs/TUTORIAL-task-planner.md` untuk
+  Rencana Kerja). Bila perilaku UI modul tersebut berubah, perbarui panduannya juga,
+  bukan hanya README.
 - Keputusan yang tidak terlihat dari kode dicatat beserta alasannya.
 
 **Ship-readiness**
