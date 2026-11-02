@@ -1322,6 +1322,9 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   tulis di menu Rencana Kerja (admin selalu ikut). Nama terpilih ditulis sebagai `@Nama` di deskripsi;
   menyebut nama yang sama di beberapa task tetap satu notifikasi per task. Menghapus `@Nama` dari
   deskripsi berarti orang itu tidak lagi dianggap disebut saat disimpan.
+- Popup `@` di **editor Docs Tasks** memakai aturan daftar yang sama: `GET /api/tasks/mentions`
+  hanya menyarankan akun yang boleh menulis Rencana Kerja (admin selalu ikut), dihitung dari
+  `user_roles` + kolom lama `user.roleId`. Saran judul task tetap seperti sebelumnya.
 
 ---
 
