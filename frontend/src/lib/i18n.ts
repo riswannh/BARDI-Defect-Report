@@ -313,20 +313,10 @@ const translations = {
   "tasks.updateProgress": { id: "Perbarui Kemajuan", en: "Update Progress", zh: "更新进度" },
   "tasks.fieldTitle": { id: "Judul Tugas", en: "Task Title", zh: "任务标题" },
   "tasks.fieldDescription": { id: "Keterangan", en: "Description", zh: "说明" },
-  "tasks.mentionAdd": {
-    id: "@ sebut orang",
-    en: "@ mention someone",
-    zh: "@ 提及某人",
-  },
   "tasks.mentionHint": {
-    id: "Orang yang disebut menerima notifikasi dan task ini muncul di daftar mereka.",
-    en: "Mentioned people get a notification and this task shows up in their list.",
-    zh: "被提及的人会收到通知，并且这个任务会出现在他们的列表中。",
-  },
-  "tasks.mentionRemove": {
-    id: "Hapus sebutan {name}",
-    en: "Remove mention of {name}",
-    zh: "移除对 {name} 的提及",
+    id: "Ketik @ di deskripsi untuk menyebut orang. Mereka menerima notifikasi dan task ini muncul di daftar mereka.",
+    en: "Type @ in the description to mention someone. They get a notification and this task shows up in their list.",
+    zh: "在描述中输入 @ 来提及某人。对方会收到通知，此任务也会出现在他们的列表中。",
   },
   "tasks.fieldProgress": { id: "Kemajuan (%)", en: "Progress (%)", zh: "进度（%）" },
   "tasks.fieldPriority": { id: "Prioritas", en: "Priority", zh: "优先级" },

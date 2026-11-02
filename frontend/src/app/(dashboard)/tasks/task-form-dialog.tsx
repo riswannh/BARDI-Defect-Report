@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { mentionedIdsFromText } from "./task-mentions";
 import {
   DIFFICULTIES,
   PRIORITIES,
@@ -68,14 +69,14 @@ export function TaskFormDialog({
 
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
-  /** Akun yang disebut (@) di deskripsi — menerima lonceng + boleh mengubah. */
-  const [mentioned, setMentioned] = useState<Array<{ id: string; name: string }>>(
-    () =>
-      (task?.mentionedUserIds ?? [])
-        .map((id) => users.find((item) => item.id === id))
-        .filter((item): item is { id: string; name: string } => Boolean(item))
-  );
-  const [mentionPick, setMentionPick] = useState("");
+  /**
+   * Penyebutan @user langsung di dalam deskripsi (tanpa dropdown terpisah).
+   * Saat mengetik "@" muncul daftar akun yang bisa disebut; daftar akunnya sama
+   * dengan pilihan pemilik task dan panel kalender (akun yang boleh menulis
+   * Rencana Kerja).
+   */
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const [issueType, setIssueType] = useState(task?.issueType ?? ownerTypes[0]?.code ?? "task");
   const [progress, setProgress] = useState(String(task?.progress ?? 0));
   const [priority, setPriority] = useState(task?.priority ?? "Normal");
@@ -129,31 +130,46 @@ export function TaskFormDialog({
     label: String(index + 1),
   }));
 
-  const mentionOptions = users
-    .filter((item) => !mentioned.some((row) => row.id === item.id))
-    .map((item) => ({ value: item.id, label: item.name }));
+  /** Pilihan akun untuk penyebutan @, disaring dari kata yang sedang diketik. */
+  const mentionMatches = mention
+    ? users.filter((item) =>
+        item.name.toLowerCase().includes(mention.query.trim().toLowerCase())
+      )
+    : [];
 
-  /** Tambah mention: chip muncul dan namanya ikut ditulis di deskripsi. */
-  function addMention(userId: string) {
-    const person = users.find((item) => item.id === userId);
-    if (!person || mentioned.some((row) => row.id === person.id)) return;
-    setMentioned((current) => [...current, person]);
-    setDescription((current) =>
-      current.includes(`@${person.name}`)
-        ? current
-        : current.trim()
-          ? `${current.trimEnd()} @${person.name}`
-          : `@${person.name}`
-    );
-    setMentionPick("");
+  /** Buka/tutup daftar akun berdasarkan teks sebelum kursor. */
+  function syncMentionList(value: string, caret: number | null) {
+    if (caret === null) {
+      setMention(null);
+      return;
+    }
+    const before = value.slice(0, caret);
+    const match = /(^|\s)@([\p{L}\p{N}._-]*(?: [\p{L}\p{N}._-]+)?)$/u.exec(before);
+    if (!match) {
+      setMention(null);
+      return;
+    }
+    const query = match[2] ?? "";
+    // Spasi hanya boleh satu di dalam nama; kalau sudah lebih, anggap selesai.
+    if (query.split(" ").length > 3) {
+      setMention(null);
+      return;
+    }
+    setMention({ start: before.length - query.length - 1, query });
+    setMentionIndex(0);
   }
 
-  function removeMention(userId: string) {
-    const person = mentioned.find((row) => row.id === userId);
-    setMentioned((current) => current.filter((row) => row.id !== userId));
-    if (person) {
-      setDescription((current) => current.replace(`@${person.name}`, "").replace(/\s{2,}/g, " ").trim());
-    }
+  /** Pasang nama terpilih menggantikan "@kata" yang sedang diketik. */
+  function pickMention(person: { id: string; name: string }) {
+    if (!mention) return;
+    setDescription((current) => {
+      const caret = mention.start + mention.query.length + 1;
+      const before = current.slice(0, mention.start);
+      const after = current.slice(caret);
+      const trailing = after.startsWith(" ") ? after.slice(1) : after;
+      return `${before}@${person.name} ${trailing}`;
+    });
+    setMention(null);
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -180,7 +196,7 @@ export function TaskFormDialog({
       repeatDay: repeatRule === "monthly" ? Number(repeatDay) : null,
       // Hanya admin yang boleh membuat/memindahkan task ke akun lain.
       ownerId: isAdmin ? ownerId : undefined,
-      mentionedUserIds: mentioned.map((item) => item.id),
+      mentionedUserIds: mentionedIdsFromText(description, users),
     };
     // Status & progres hanya diisi saat membuat task. Setelah task ada, dua
     // field itu diubah lewat tombol Progres / Selesai agar tidak bentrok.
@@ -219,52 +235,55 @@ export function TaskFormDialog({
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="relative flex flex-col gap-1.5">
             <Label>{t("tasks.fieldDescription")}</Label>
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDescription(value);
+                syncMentionList(value, event.target.selectionStart);
+              }}
+              onKeyDown={(event) => {
+                if (!mention || mentionMatches.length === 0) return;
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setMentionIndex((current) => (current + 1) % mentionMatches.length);
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setMentionIndex(
+                    (current) => (current - 1 + mentionMatches.length) % mentionMatches.length
+                  );
+                } else if (event.key === "Enter" || event.key === "Tab") {
+                  event.preventDefault();
+                  pickMention(mentionMatches[Math.min(mentionIndex, mentionMatches.length - 1)]);
+                } else if (event.key === "Escape") {
+                  event.stopPropagation();
+                  setMention(null);
+                }
+              }}
               rows={3}
             />
-            <div className="flex flex-wrap items-center gap-1.5">
-              {mentioned.map((item) => (
-                <span
-                  key={item.id}
-                  className="flex items-center gap-1 rounded-full bg-primary/10 py-0.5 pr-1 pl-2 text-xs text-primary"
-                >
-                  @{item.name}
+            {mention && mentionMatches.length > 0 && (
+              <div
+                className="absolute top-full left-0 z-50 mt-1 w-56 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 shadow-md"
+                style={{ maxHeight: "12rem" }}
+              >
+                {mentionMatches.map((person, index) => (
                   <button
+                    key={person.id}
                     type="button"
-                    onClick={() => removeMention(item.id)}
-                    className="rounded-full px-1 text-primary/70 hover:text-primary"
-                    aria-label={t("tasks.mentionRemove", { name: item.name })}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => pickMention(person)}
+                    className={`flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm ${
+                      index === mentionIndex ? "bg-accent text-accent-foreground" : ""
+                    }`}
                   >
-                    ×
+                    {person.name}
                   </button>
-                </span>
-              ))}
-              {mentionOptions.length > 0 && (
-                <Select
-                  value={mentionPick}
-                  onValueChange={(value) => addMention(String(value))}
-                  items={mentionOptions}
-                >
-                  <SelectTrigger
-                    className="h-7 w-auto min-w-32 gap-1 px-2 text-xs"
-                    aria-label={t("tasks.mentionAdd")}
-                  >
-                    <SelectValue placeholder={t("tasks.mentionAdd")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mentionOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">{t("tasks.mentionHint")}</p>
           </div>
 

@@ -1316,8 +1316,12 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - **Akun yang di-@ boleh mengubah task** itu (bukan hanya melihat): progres, status, dan isian lain
   — selain pemilik dan admin. Untuk itu `PATCH /api/tasks/[id]` memakai izin **baca** menu Task lalu
   memeriksa hak per baris; hapus task tetap milik pembuat/admin.
-- Di form Task, tombol `@` menambah orang sebagai chip dan menyisipkan `@Nama` ke deskripsi; chip juga
-  bisa dilepas. Daftar orang diambil dari user aktif.
+- Di form Task, penyebutan dilakukan langsung di kolom **Keterangan**: mengetik `@` memunculkan
+  daftar akun di bawah kolom itu (bisa disaring dengan mengetik, navigasi panah, Enter untuk memilih).
+  Daftar akunnya sama dengan pilihan **pemilik task** dan **panel kalender** — akun yang punya izin
+  tulis di menu Rencana Kerja (admin selalu ikut). Nama terpilih ditulis sebagai `@Nama` di deskripsi;
+  menyebut nama yang sama di beberapa task tetap satu notifikasi per task. Menghapus `@Nama` dari
+  deskripsi berarti orang itu tidak lagi dianggap disebut saat disimpan.
 
 ---
 
