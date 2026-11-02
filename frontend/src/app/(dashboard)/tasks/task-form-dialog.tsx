@@ -312,22 +312,30 @@ export function TaskFormDialog({
 
           <div className="flex flex-col gap-1.5">
             <Label>{t("tasks.fieldIssueType")}</Label>
-            <Select
-              value={issueType}
-              onValueChange={(value) => setIssueType(String(value))}
-              items={issueOptions}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {issueOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {ownerTypes.length === 0 ? (
+              // Akun baru tidak diberi tipe bawaan; pemiliknya menambah sendiri
+              // di tab Pengaturan Rencana Kerja.
+              <div className="flex h-9 items-center rounded-lg border border-dashed px-3 text-xs text-muted-foreground">
+                {t("tasks.typeEmptyHint")}
+              </div>
+            ) : (
+              <Select
+                value={issueType}
+                onValueChange={(value) => setIssueType(String(value))}
+                items={issueOptions}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {issueOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

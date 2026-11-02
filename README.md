@@ -1329,6 +1329,19 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   hanya menyarankan akun yang boleh menulis Rencana Kerja (admin selalu ikut), dihitung dari
   `user_roles` + kolom lama `user.roleId`. Saran judul task tetap seperti sebelumnya.
 
+### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
+
+- Tab **Pengaturan** di menu Rencana Kerja terbuka untuk **semua akun**, bukan hanya admin.
+  Tiap akun mengubah miliknya sendiri: warna kartu kalender (`PATCH /api/tasks/calendars`) dan
+  daftar **Tipe Pekerjaan** miliknya. Admin mendapat pemilih akun untuk mengatur milik akun lain.
+- **Tidak ada tipe bawaan.** Tabel `task_types` mulai kosong untuk setiap akun — seeding
+  `DEFAULT_TYPES`/`ensureDefaults()` sudah dihapus (2 Nov 2026). Pemilik menambah tipe sendiri;
+  selama kosong, kolom Tipe di form Task menampilkan "Belum ada tipe — tambah di tab Pengaturan"
+  dan task tersimpan dengan kode bawaan `task`.
+- Daftar tipe tetap **milik masing-masing akun** (`task_types.userId`); filter Tipe di daftar Task
+  digabung per **kode** supaya nama yang sama tidak muncul berulang mengikuti jumlah akun.
+- Tipe yang masih dipakai task tidak bisa dihapus (409); tipe milik akun lain hanya bisa diubah admin.
+
 ---
 
 ## 9. Ringkasan Aturan Bisnis Penting

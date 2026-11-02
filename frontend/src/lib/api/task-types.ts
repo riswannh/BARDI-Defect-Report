@@ -6,17 +6,6 @@ import { requireMenu } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { taskTypeCreateSchema, taskTypeUpdateSchema } from "@/lib/api/validation";
 
-/**
- * Tipe bawaan untuk setiap akun baru. `code` inilah yang disimpan di
- * `tasks.issueType`, jadi tipe contoh di task lama tetap terbaca.
- */
-const DEFAULT_TYPES = [
-  { code: "task", name: "Tugas" },
-  { code: "bug", name: "Bug" },
-  { code: "feature", name: "Fitur" },
-  { code: "subtask", name: "Sub-task" },
-];
-
 /** "Bug UI/UX!" → "bug-ui-ux"; dipakai sebagai nilai tasks.issueType. */
 function slugify(name: string): string {
   const slug = name
@@ -26,29 +15,6 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
   return slug || "tipe";
-}
-
-/** Isi daftar bawaan sekali per akun, supaya dropdown tidak pernah kosong. */
-async function ensureDefaults(userId: string) {
-  const [row] = await db
-    .select({ total: sql<number>`count(*)` })
-    .from(taskTypes)
-    .where(eq(taskTypes.userId, userId));
-  if (Number(row?.total ?? 0) > 0) return;
-
-  const now = new Date();
-  await db
-    .insert(taskTypes)
-    .values(
-      DEFAULT_TYPES.map((item, index) => ({
-        userId,
-        code: item.code,
-        name: item.name,
-        sortOrder: index,
-        createdAt: now,
-      }))
-    )
-    .onConflictDoNothing();
 }
 
 /** Jumlah task per (pemilik, kode) — dipakai untuk badge & larangan hapus. */
@@ -78,12 +44,13 @@ async function userExists(userId: string) {
  * Daftar tipe SEMUA akun (nama & warna tidak sensitif) supaya kalender dan
  * dropdown pemilik bisa menampilkan penanda tipe milik orang lain. Menulis
  * tetap dibatasi pemiliknya sendiri (atau admin).
+ *
+ * Daftar TIDAK diisi otomatis: akun baru mulai dengan tipe kosong dan pemiliknya
+ * menambah sendiri di tab Pengaturan Rencana Kerja (permintaan 2 Nov 2026).
  */
 export async function taskTypesGET() {
   const guard = await requireMenu("tasks", "read");
   if (!guard.ok) return guard.response;
-
-  await ensureDefaults(guard.user.id);
 
   const [rows, used] = await Promise.all([
     db
@@ -123,8 +90,6 @@ export async function taskTypesPOST(req: NextRequest) {
   if (targetUserId !== guard.user.id && !(await userExists(targetUserId))) {
     return jsonError("Akun pemilik tipe tidak ditemukan.", 400);
   }
-
-  await ensureDefaults(targetUserId);
 
   const base = slugify(parsed.data.name);
   let code = base;

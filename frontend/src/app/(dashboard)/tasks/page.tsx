@@ -105,7 +105,19 @@ export default function TasksPage() {
   const mine = mineData ?? [];
   const everything = allData ?? [];
   const activities = activityData ?? [];
-  const types = typeData ?? [];
+  const types = useMemo(() => typeData ?? [], [typeData]);
+  /**
+   * Opsi filter tipe: satu baris per KODE, bukan per akun. Daftar tipe milik
+   * tiap akun, jadi tanpa penggabungan ini nama yang sama muncul berulang
+   * (Tugas, Bug, … × jumlah akun).
+   */
+  const typeFilterOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const item of types) {
+      if (!seen.has(item.code)) seen.set(item.code, item.name);
+    }
+    return [...seen].map(([value, label]) => ({ value, label }));
+  }, [types]);
   const owners = ownerData ?? [];
   /** Tampilan tersimpan akun; null di server berarti daftar. */
   const storedView: TaskView = viewData?.view === "board" ? "board" : "list";
@@ -487,7 +499,7 @@ export default function TasksPage() {
         <MultiFilter
           label={t("tasks.colType")}
           emptyLabel={t("tasks.allTypes")}
-          options={types.map((item) => ({ value: item.code, label: item.name }))}
+          options={typeFilterOptions}
           selected={typeFilter}
           onChange={(next) => {
             setTypeFilter(next);
@@ -545,7 +557,9 @@ export default function TasksPage() {
     { value: "tasks", label: t("tasks.tabTasks"), icon: ListTree },
     { value: "calendar", label: t("tasks.tabCalendar"), icon: CalendarDays },
     { value: "docs", label: t("tasks.tabDocs"), icon: FileText },
-    ...(isAdmin ? [{ value: "settings", label: t("tasks.tabSettings"), icon: Settings }] : []),
+    // Pengaturan selalu ada: tiap akun mengatur warna kalender & tipe miliknya
+    // sendiri; admin boleh membuka milik akun lain lewat pemilih akun.
+    { value: "settings", label: t("tasks.tabSettings"), icon: Settings },
   ];
 
   return (

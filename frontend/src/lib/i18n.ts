@@ -144,6 +144,11 @@ const translations = {
   "tasks.settingsAddPlaceholder": { id: "Nama tipe baru", en: "New type name", zh: "新类型名称" },
   "tasks.settingsAdd": { id: "Tambah tipe", en: "Add type", zh: "添加类型" },
   "tasks.settingsEmpty": { id: "Belum ada tipe.", en: "No types yet.", zh: "暂无类型。" },
+  "tasks.typeEmptyHint": {
+    id: "Belum ada tipe — tambah di tab Pengaturan.",
+    en: "No types yet — add them in the Settings tab.",
+    zh: "暂无类型 — 请在“设置”标签中添加。",
+  },
   "tasks.settingsUsed": { id: "{count} task", en: "{count} tasks", zh: "{count} 个任务" },
   "tasks.settingsDelete": { id: "Hapus tipe", en: "Delete type", zh: "删除类型" },
   "tasks.settingsDeleteBlocked": {
