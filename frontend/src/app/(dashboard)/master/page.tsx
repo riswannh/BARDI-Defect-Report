@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import type {
@@ -93,6 +94,10 @@ function SearchBox({
 
 export default function MasterPage() {
   const { t } = useLanguage();
+  // CRUD master mengikuti izin master.write (bukan status admin). Alat tingkat
+  // tabel — template/impor/ekspor/hapus semua — tetap admin.
+  const { isAdmin, can } = useAuth();
+  const canWrite = can("master", "write");
   const [tab, setTab] = useState("products");
   /** Dinaikkan setelah impor Excel supaya tab harga sparepart memuat ulang. */
   const [sparePartPriceVersion, setSparePartPriceVersion] = useState(0);
@@ -394,6 +399,8 @@ export default function MasterPage() {
         description={t("master.description")}
         actions={
           <>
+          {isAdmin && (
+            <>
             <input
               ref={fileInputRef}
               type="file"
@@ -438,6 +445,8 @@ export default function MasterPage() {
             >
               <Trash2 className="size-4" /> {t("deleteAll.button")}
             </Button>
+            </>
+          )}
           </>
         }
       />
@@ -451,7 +460,11 @@ export default function MasterPage() {
             {t("sparePartPrice.tab")}
           </TabsTrigger>
           <TabsTrigger value="problems">{t("common.problem")}</TabsTrigger>
-          <TabsTrigger value="allowances">{t("allowance.tab")}</TabsTrigger>
+          {/* Allowance Defect masih khusus admin: endpoint /api/allowances
+              admin-only, jadi tabnya pun tidak ditampilkan untuk non-admin. */}
+          {isAdmin && (
+            <TabsTrigger value="allowances">{t("allowance.tab")}</TabsTrigger>
+          )}
         </TabsList>
 
         <Card size="sm" className="mt-4">
@@ -469,6 +482,7 @@ export default function MasterPage() {
               <MasterList
                 items={pagedProducts}
                 withSku
+                readOnly={!canWrite}
                 addPlaceholder={t("master.newProduct")}
                 emptyLabel={
                   productSearch.trim() ? t("masterList.emptyFiltered") : undefined
@@ -513,6 +527,7 @@ export default function MasterPage() {
               />
               <MasterList
                 items={pagedProblems}
+                readOnly={!canWrite}
                 addPlaceholder={t("master.newProblem")}
                 emptyLabel={
                   problemSearch.trim() ? t("masterList.emptyFiltered") : undefined
@@ -631,6 +646,7 @@ export default function MasterPage() {
                 options={products}
                 priceTypes={PRICE_TYPES}
                 defaultPriceType={DEFAULT_PRICE_TYPE}
+                readOnly={!canWrite}
                 onAdd={addPrice}
                 onUpdate={updatePrice}
                 onDelete={deletePrice}
@@ -667,6 +683,7 @@ export default function MasterPage() {
               <MasterList
                 items={pagedSpareParts}
                 withSku
+                readOnly={!canWrite}
                 addPlaceholder={t("master.newSparePart")}
                 emptyLabel={
                   sparePartSearch.trim()
@@ -708,9 +725,11 @@ export default function MasterPage() {
             <TabsContent value="sparepart-prices">
               <SparePartPricesTab reloadToken={sparePartPriceVersion} />
             </TabsContent>
-            <TabsContent value="allowances">
-              <AllowanceTab />
-            </TabsContent>
+            {isAdmin && (
+              <TabsContent value="allowances">
+                <AllowanceTab />
+              </TabsContent>
+            )}
           </CardContent>
         </Card>
       </Tabs>

@@ -88,7 +88,10 @@ const emptyForm: SaleForm = {
 };
 
 export default function SalesPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, can } = useAuth();
+  // Aksi tulis mengikuti izin menu `sales.write`, bukan status admin (aturan
+  // yang sama dengan halaman Defect). Angka Rupiah tetap admin-only.
+  const canWrite = can("sales", "write");
   const { t } = useLanguage();
 
   const { data: saleData, loading, reload } = useApi<SaleRow[]>("/api/sales");
@@ -282,7 +285,10 @@ export default function SalesPage() {
       factoryId: Number(form.factoryId),
       month: form.month,
       quantity: Number(form.quantity) || 0,
-      value: Number(form.value) || 0,
+      // Hanya admin yang menerima angka Rupiah dari server, jadi non-admin
+      // TIDAK boleh mengirim `value` — kalau dikirim, suntingan operator akan
+      // menulis 0 dan menghapus nilai baris (column `value` tidak ikut di GET).
+      ...(isAdmin ? { value: Number(form.value) || 0 } : {}),
     };
     if (!payload.productId || !payload.factoryId) return;
 
@@ -431,15 +437,16 @@ export default function SalesPage() {
         title={t("sales.title")}
         description={t("sales.description")}
         actions={
-          isAdmin && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImportFile}
-              />
+          <>
+            {isAdmin && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
               <Button
                 variant="outline"
                 size="sm"
@@ -485,11 +492,14 @@ export default function SalesPage() {
               >
                 <Trash2 className="size-4" /> {t("deleteAll.button")}
               </Button>
+              </>
+            )}
+            {canWrite && (
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
-            </>
-          )
+            )}
+          </>
         }
       />
 
@@ -707,7 +717,7 @@ export default function SalesPage() {
           </div>
         </CardContent>
 
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
             <span className="text-xs font-medium">
               {t("bulk.selected", { count: selectedIds.size })}
@@ -736,15 +746,17 @@ export default function SalesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={allPageSelected}
-                    onChange={toggleAllPage}
-                    aria-label="Pilih semua"
-                  />
-                </TableHead>
+                {canWrite && (
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={allPageSelected}
+                      onChange={toggleAllPage}
+                      aria-label="Pilih semua"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>{t("common.product")}</TableHead>
                 <TableHead>{t("common.factory")}</TableHead>
                 <TableHead>{t("common.month")}</TableHead>
@@ -756,21 +768,23 @@ export default function SalesPage() {
                     {t("common.value")}
                   </TableHead>
                 )}
-                {isAdmin && <TableHead className="w-24"></TableHead>}
+                {canWrite && <TableHead className="w-24"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {pagedSales.map((s) => (
                 <TableRow key={s.id}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={selectedIds.has(s.id)}
-                      onChange={() => toggleOne(s.id)}
-                      aria-label={`Pilih ${productName(products, s.productId)}`}
-                    />
-                  </TableCell>
+                  {canWrite && (
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={selectedIds.has(s.id)}
+                        onChange={() => toggleOne(s.id)}
+                        aria-label={`Pilih ${productName(products, s.productId)}`}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
                     {productName(products, s.productId)}
                   </TableCell>
@@ -786,7 +800,7 @@ export default function SalesPage() {
                       {formatIDR(s.value ?? 0)}
                     </TableCell>
                   )}
-                  {isAdmin && (
+                  {canWrite && (
                     <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button
@@ -811,7 +825,7 @@ export default function SalesPage() {
               {visibleSales.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 7 : 5}
+                    colSpan={4 + (canWrite ? 1 : 0) + (isAdmin ? 1 : 0) + (canWrite ? 1 : 0)}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}

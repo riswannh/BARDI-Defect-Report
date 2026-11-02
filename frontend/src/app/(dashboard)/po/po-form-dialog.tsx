@@ -127,6 +127,7 @@ export function PoFormDialog({
   products,
   factories,
   productPrices,
+  showFinance,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -138,6 +139,12 @@ export function PoFormDialog({
   factories: Factory[];
   /** Semua harga produk (semua periode) — dipilih untuk menghitung Value RW. */
   productPrices: ProductPrice[];
+  /**
+   * Tampilkan isian uang (harga/pcs, mata uang, PPN, jenis harga, harga master,
+   * Total, Value RW). Akun non-admin tidak menerima angka itu dari server, jadi
+   * isiannya disembunyikan dan nilainya tidak dikirim saat menyimpan.
+   */
+  showFinance: boolean;
 }) {
   const { t } = useLanguage();
   const isEditing = editingId !== null;
@@ -373,6 +380,8 @@ export function PoFormDialog({
                 />
               </div>
 
+              {showFinance && (
+                <>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="po-price">{t("po.pricePerPcs")}</Label>
                 <Input
@@ -535,6 +544,8 @@ export function PoFormDialog({
                   className="bg-muted/50 font-medium tabular-nums"
                 />
               </div>
+                </>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

@@ -46,6 +46,7 @@ import {
 import { apiDelete, apiPatch, apiPost, apiUpload, downloadUrl } from "@/lib/api-client";
 import { useApi } from "@/lib/use-api";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import { formatIDR, formatNumber, MONTHS } from "@/lib/format";
 import { pickProductPrice } from "@/lib/prices";
 import type {
@@ -88,6 +89,10 @@ const monthOf = (value: string) => (/^\d{4}-\d{2}$/.test(value) ? value.slice(5)
 
 export default function RepairsPage() {
   const { t } = useLanguage();
+  // Tambah/ubah/hapus baris mengikuti izin repairs.write (bukan status admin).
+  // Alat tingkat tabel (template/impor/ekspor/sync/hapus semua) tetap admin.
+  const { isAdmin, can } = useAuth();
+  const canWrite = can("repairs", "write");
   const { data, loading, error, reload } = useApi<Repair[]>("/api/repairs");
   const { data: productData } = useApi<Product[]>("/api/products");
   const { data: problemData } = useApi<Problem[]>("/api/problems");
@@ -359,6 +364,8 @@ export default function RepairsPage() {
           description={t("repair.description")}
           actions={
             <>
+            {isAdmin && (
+              <>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -416,9 +423,13 @@ export default function RepairsPage() {
               >
                 <Trash2 className="size-4" /> {t("deleteAll.button")}
               </Button>
+              </>
+            )}
+            {canWrite && (
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
+            )}
             </>
           }
         />
@@ -600,7 +611,7 @@ export default function RepairsPage() {
           </CardContent>
         </Card>
 
-        {selected.length > 0 && (
+        {canWrite && selected.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
             <span className="text-xs text-muted-foreground">
               {t("bulk.selected", { count: selected.length })}
@@ -622,19 +633,21 @@ export default function RepairsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
-                      <input
-                        type="checkbox"
-                        className="size-4 accent-primary"
-                        checked={allSelected}
-                        onChange={(e) =>
-                          setSelected(
-                            e.target.checked ? paged.map((row) => row.id) : []
-                          )
-                        }
-                        aria-label={t("bulk.selected", { count: 0 })}
-                      />
-                    </TableHead>
+                    {canWrite && (
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-primary"
+                          checked={allSelected}
+                          onChange={(e) =>
+                            setSelected(
+                              e.target.checked ? paged.map((row) => row.id) : []
+                            )
+                          }
+                          aria-label={t("bulk.selected", { count: 0 })}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>{t("repair.table.date")}</TableHead>
                     <TableHead>{t("repair.table.claim")}</TableHead>
                     <TableHead>{t("common.product")}</TableHead>
@@ -653,21 +666,23 @@ export default function RepairsPage() {
                 <TableBody>
                   {paged.map((row) => (
                     <TableRow key={row.id} data-repair-id={row.id}>
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          className="size-4 accent-primary"
-                          checked={selected.includes(row.id)}
-                          onChange={(e) =>
-                            setSelected((prev) =>
-                              e.target.checked
-                                ? [...prev, row.id]
-                                : prev.filter((id) => id !== row.id)
-                            )
-                          }
-                          aria-label={row.claimId}
-                        />
-                      </TableCell>
+                      {canWrite && (
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-primary"
+                            checked={selected.includes(row.id)}
+                            onChange={(e) =>
+                              setSelected((prev) =>
+                                e.target.checked
+                                  ? [...prev, row.id]
+                                  : prev.filter((id) => id !== row.id)
+                              )
+                            }
+                            aria-label={row.claimId}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="whitespace-nowrap tabular-nums">
                         {row.date}
                       </TableCell>
@@ -718,6 +733,8 @@ export default function RepairsPage() {
                           >
                             <Eye className="size-4" />
                           </Button>
+                          {canWrite && (
+                            <>
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -734,6 +751,8 @@ export default function RepairsPage() {
                           >
                             <Trash2 className="size-4" />
                           </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -741,7 +760,7 @@ export default function RepairsPage() {
                   {paged.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={11}
+                        colSpan={11 + (canWrite ? 1 : 0)}
                         className="py-6 text-center text-muted-foreground"
                       >
                         {loading

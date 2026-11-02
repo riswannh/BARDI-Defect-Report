@@ -8,7 +8,7 @@ import {
   sparePartPrices,
   spareParts,
 } from "@/lib/db/schema";
-import { requireAdmin, requireUser } from "@/lib/api/guard";
+import { requireMenu, requireUser } from "@/lib/api/guard";
 import { jsonError, jsonOk } from "@/lib/api/response";
 import { backupDatabase } from "@/lib/api/bulk";
 import {
@@ -195,7 +195,7 @@ export function masterCollectionHandlers(table: MasterTable) {
     },
 
     POST: async (req: NextRequest) => {
-      const guard = await requireAdmin();
+      const guard = await requireMenu("master", "write");
       if (!guard.ok) return guard.response;
 
       const parsed = masterInputSchema(table).safeParse(await req.json());
@@ -211,7 +211,7 @@ export function masterCollectionHandlers(table: MasterTable) {
     },
 
     DELETE: async () => {
-      const guard = await requireAdmin();
+      const guard = await requireMenu("master", "write");
       if (!guard.ok) return guard.response;
 
       if (table === spareParts && (await sparePartHasPrices())) {
@@ -244,7 +244,7 @@ export function masterItemHandlers(table: MasterTable) {
       req: NextRequest,
       ctx: { params: Promise<{ id: string }> }
     ) => {
-      const guard = await requireAdmin();
+      const guard = await requireMenu("master", "write");
       if (!guard.ok) return guard.response;
 
       const { id } = await ctx.params;
@@ -268,7 +268,7 @@ export function masterItemHandlers(table: MasterTable) {
       _req: NextRequest,
       ctx: { params: Promise<{ id: string }> }
     ) => {
-      const guard = await requireAdmin();
+      const guard = await requireMenu("master", "write");
       if (!guard.ok) return guard.response;
 
       const { id } = await ctx.params;

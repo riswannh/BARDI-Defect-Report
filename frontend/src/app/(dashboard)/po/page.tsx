@@ -79,7 +79,11 @@ import {
 } from "./po-demo-data";
 
 export default function PoPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, can } = useAuth();
+  // Hak tambah/ubah/hapus PO mengikuti izin menu, bukan status admin. Angka uang
+  // tetap admin: server membuangnya dari respons non-admin dan mengabaikannya
+  // saat menyimpan, jadi isian uangnya disembunyikan (`showFinance`).
+  const canWrite = can("po", "write");
   const { t } = useLanguage();
 
   // Mode demo: seluruh data (termasuk daftar produk dan pabrik) datang dari
@@ -302,23 +306,29 @@ export default function PoPage() {
   }
 
   async function handleSubmit(mode: "save" | "saveAndAddAnother" = "save") {
-    const payload = {
+    const payload: Record<string, unknown> = {
       poNumber: form.poNumber.trim(),
       // Tanggal PO dari operator; server menyimpannya sebagai `poDate`.
       poDate: form.poDate,
       productId: Number(form.productId),
       factoryId: Number(form.factoryId),
       quantity: Number(form.quantity) || 0,
-      pricePerPcs: Number(form.pricePerPcs) || 0,
-      currency: form.currency,
-      ppn: form.ppn,
       keterangan: form.keterangan,
+    };
+    // Angka uang hanya dikirim admin. Non-admin tidak menerima nilai itu dari
+    // API, jadi mengirimnya akan menulis 0 dan menghapus harga di database.
+    if (isAdmin) {
+      payload.pricePerPcs = Number(form.pricePerPcs) || 0;
+      payload.currency = form.currency;
+      payload.ppn = form.ppn;
       // Jenis harga yang dipilih operator di form.
-      priceType: form.priceType,
+      payload.priceType = form.priceType;
       // Harga master yang dipakai untuk Value RW; null bila produk itu belum
       // punya harga jenis tersebut di periode PO.
-      productPriceId: form.productPriceId ? Number(form.productPriceId) : null,
-    };
+      payload.productPriceId = form.productPriceId
+        ? Number(form.productPriceId)
+        : null;
+    }
     if (!payload.poNumber || !payload.productId || !payload.factoryId) {
       toast.error(t("po.incomplete"));
       return;
@@ -444,8 +454,10 @@ export default function PoPage() {
     });
   }
 
-  // Admin: checkbox + PPN + Price/pcs + Total Currency + Value RW + kolom aksi.
-  const columnCount = isAdmin ? 12 : 6;
+  // Kolom dasar 6 (nomor, tanggal, keterangan, produk, pabrik, qty);
+  // checkbox + aksi mengikuti izin tulis, 4 kolom uang hanya admin.
+  const columnCount =
+    6 + (canWrite ? 1 : 0) + (isAdmin ? 4 : 0) + (canWrite ? 1 : 0);
 
   return (
     // AuthGuard, bukan AdminGuard: halaman PO memang dibuka untuk role Pabrik
@@ -457,7 +469,8 @@ export default function PoPage() {
           title={t("po.title")}
           description={t("po.description")}
           actions={
-            isAdmin && (
+            <>
+            {isAdmin && (
               <>
                 <input
                   ref={fileInputRef}
@@ -521,11 +534,14 @@ export default function PoPage() {
                 >
                   <Trash2 className="size-4" /> {t("deleteAll.button")}
                 </Button>
-                <Button size="sm" onClick={openCreate}>
-                  <Plus className="size-4" /> {t("common.add")}
-                </Button>
               </>
-            )
+            )}
+            {canWrite && (
+              <Button size="sm" onClick={openCreate}>
+                <Plus className="size-4" /> {t("common.add")}
+              </Button>
+            )}
+            </>
           }
         />
 
@@ -726,7 +742,7 @@ export default function PoPage() {
         </Card>
 
         <Card size="sm" className="mt-4">
-          {isAdmin && selectedIds.size > 0 && (
+          {canWrite && selectedIds.size > 0 && (
             <div className="flex items-center justify-between gap-3 border-b px-4 py-2 text-sm">
               <span className="text-muted-foreground">
                 {t("po.selected", { count: selectedIds.size })}
@@ -745,7 +761,7 @@ export default function PoPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {isAdmin && (
+                    {canWrite && (
                       <TableHead className="w-10">
                         <input
                           type="checkbox"
@@ -782,13 +798,13 @@ export default function PoPage() {
                         </TableHead>
                       </>
                     )}
-                    {isAdmin && <TableHead className="w-24" />}
+                    {canWrite && <TableHead className="w-24" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pagedRows.map((row) => (
                     <TableRow key={row.id}>
-                      {isAdmin && (
+                      {canWrite && (
                         <TableCell>
                           <input
                             type="checkbox"
@@ -880,7 +896,7 @@ export default function PoPage() {
                           </TableCell>
                         </>
                       )}
-                      {isAdmin && (
+                      {canWrite && (
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Button
@@ -935,7 +951,7 @@ export default function PoPage() {
           </CardContent>
         </Card>
 
-        {isAdmin && (
+        {canWrite && (
           <PoFormDialog
             open={dialogOpen}
             onOpenChange={setDialogOpen}
@@ -946,6 +962,7 @@ export default function PoPage() {
             products={products}
             factories={factories}
             productPrices={productPrices}
+            showFinance={isAdmin}
           />
         )}
 

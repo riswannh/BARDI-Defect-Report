@@ -36,6 +36,7 @@ import {
 import { apiPost } from "@/lib/api-client";
 import { MONTHS, formatIDR, formatNumber } from "@/lib/format";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import { useApi } from "@/lib/use-api";
 import type { WarrantyClaim } from "@/lib/types";
 import type { WarrantySyncSummary } from "@/lib/api/warranty-gsheet";
@@ -64,6 +65,10 @@ const monthLabel = (month: string) => {
 
 function WarrantyClaimsView() {
   const { t } = useLanguage();
+  // Sinkronisasi mengubah data (upsert dari sheet), jadi hanya untuk pemegang
+  // izin claim-garansi.write. Tanpa izin, halaman ini murni baca.
+  const { can } = useAuth();
+  const canWrite = can("claim-garansi", "write");
   const { data, loading, error, reload } = useApi<WarrantyClaim[]>("/api/warranty-claims");
 
   const [search, setSearch] = useState("");
@@ -160,10 +165,12 @@ function WarrantyClaimsView() {
         title={t("warranty.title")}
         description={t("warranty.description")}
         actions={
-          <Button size="sm" onClick={handleSync} disabled={syncing}>
-            {syncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-            {syncing ? t("warranty.syncing") : t("warranty.sync")}
-          </Button>
+          canWrite ? (
+            <Button size="sm" onClick={handleSync} disabled={syncing}>
+              {syncing ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              {syncing ? t("warranty.syncing") : t("warranty.sync")}
+            </Button>
+          ) : undefined
         }
       />
 

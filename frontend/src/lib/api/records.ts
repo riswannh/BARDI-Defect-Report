@@ -343,11 +343,26 @@ export async function findProductPriceId(
   poDate: string,
   priceType: string = DEFAULT_PRICE_TYPE
 ): Promise<number | null> {
+  const row = await findProductPriceRow(productId, poDate, priceType);
+  return row?.id ?? null;
+}
+
+/**
+ * Baris harga master (id + harga) untuk produk/periode/jenis tertentu.
+ * Dipakai server saat non-admin membuat PO: harganya diambil dari master, bukan
+ * dari kiriman klien, supaya Value tetap terisi walau form operator tidak
+ * menampilkan isian uang.
+ */
+async function findProductPriceRow(
+  productId: number,
+  poDate: string,
+  priceType: string = DEFAULT_PRICE_TYPE
+): Promise<{ id: number; price: number } | null> {
   const year = poDate.slice(0, 4);
   const month = poDate.slice(5, 7);
   if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return null;
   const rows = await db
-    .select({ id: productPrices.id })
+    .select({ id: productPrices.id, price: productPrices.price })
     .from(productPrices)
     .where(
       and(
@@ -357,7 +372,7 @@ export async function findProductPriceId(
         eq(productPrices.month, month)
       )
     );
-  return rows[0]?.id ?? null;
+  return rows[0] ?? null;
 }
 
 export async function listPurchaseOrderRows(
@@ -674,7 +689,15 @@ export async function salesPOST(req: NextRequest) {
     return jsonError("Kombinasi Produk + Pabrik + Bulan sudah ada.", 409);
   }
 
-  const [row] = await db.insert(sales).values(parsed.data).returning();
+  const [row] = await db
+    .insert(sales)
+    .values({
+      ...parsed.data,
+      // Angka Rupiah Sales tetap milik admin: non-admin yang boleh menulis tetap
+      // boleh membuat baris, tapi value tidak diambil dari klien.
+      value: guard.user.isAdmin ? parsed.data.value : 0,
+    })
+    .returning();
   return jsonOk(row, 201);
 }
 
@@ -719,7 +742,15 @@ export async function salesPATCH(
 
   const [row] = await db
     .update(sales)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({
+      ...parsed.data,
+      // Sama seperti POST: nilai uang hanya boleh datang dari admin, selain itu
+      // nilai lama dipertahankan supaya menyunting qty tidak menghapus Rupiah.
+      value: guard.user.isAdmin
+        ? parsed.data.value ?? current[0].value
+        : current[0].value,
+      updatedAt: new Date(),
+    })
     .where(eq(sales.id, rowId))
     .returning();
   return jsonOk(row);
@@ -787,15 +818,25 @@ export async function purchaseOrdersPOST(req: NextRequest) {
   const { poNumber, poDate, productId, factoryId } = parsed.data;
   // quantity/pricePerPcs opsional di skema; pada create nilainya di-default 0.
   const quantity = parsed.data.quantity ?? 0;
-  const pricePerPcs = parsed.data.pricePerPcs ?? 0;
+  // Angka uang hanya boleh datang dari admin. Non-admin (mis. role baru yang
+  // diberi po.write) tidak menerima harga dari GET karena stripPoFinance(),
+  // jadi kalau kirimannya dipakai akan tertulis 0 dan menghapus harga lama.
+  const finance = guard.user.isAdmin;
+  const masterPrice = finance
+    ? null
+    : await findProductPriceRow(productId, poDate, DEFAULT_PRICE_TYPE);
+  const pricePerPcs = finance ? parsed.data.pricePerPcs ?? 0 : masterPrice?.price ?? 0;
 
   // Harga master: pakai yang dipilih operator, atau cari otomatis sesuai
   // jenis harga + bulan/tahun tanggal PO. Boleh null bila produk itu belum
   // punya harga jenis tersebut.
-  const priceType = normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE;
-  const productPriceId =
-    parsed.data.productPriceId !== undefined &&
-    parsed.data.productPriceId !== null
+  const priceType = finance
+    ? normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE
+    : DEFAULT_PRICE_TYPE;
+  const productPriceId = !finance
+    ? masterPrice?.id ?? null
+    : parsed.data.productPriceId !== undefined &&
+        parsed.data.productPriceId !== null
       ? parsed.data.productPriceId
       : await findProductPriceId(productId, poDate, priceType);
 
@@ -812,8 +853,8 @@ export async function purchaseOrdersPOST(req: NextRequest) {
       pricePerPcs,
       // Total dihitung di server; angka dari klien tidak dipercaya.
       value: pricePerPcs * quantity,
-      currency: normalizeCurrency(parsed.data.currency),
-      ppn: normalizePpn(parsed.data.ppn),
+      currency: finance ? normalizeCurrency(parsed.data.currency) : normalizeCurrency(undefined),
+      ppn: finance ? normalizePpn(parsed.data.ppn) : normalizePpn(undefined),
       keterangan: normalizeKeterangan(parsed.data.keterangan) ?? DEFAULT_KETERANGAN,
       priceType,
       productPriceId,
@@ -844,12 +885,18 @@ export async function purchaseOrdersPATCH(
 
   // Gabungkan dulu supaya total dihitung dari nilai final, bukan dari sebagian
   // field yang dikirim klien.
+  const finance = guard.user.isAdmin;
   const merged = {
     quantity: parsed.data.quantity ?? current[0].quantity,
-    pricePerPcs: parsed.data.pricePerPcs ?? current[0].pricePerPcs,
+    // Non-admin mempertahankan harga lama: mengubah qty tidak boleh menulis 0.
+    pricePerPcs: finance
+      ? parsed.data.pricePerPcs ?? current[0].pricePerPcs
+      : current[0].pricePerPcs,
     productId: parsed.data.productId ?? current[0].productId,
     poDate: parsed.data.poDate ?? current[0].poDate,
-    priceType: normalizePriceType(parsed.data.priceType) ?? current[0].priceType,
+    priceType: finance
+      ? normalizePriceType(parsed.data.priceType) ?? current[0].priceType
+      : current[0].priceType,
   };
 
   /**
@@ -858,8 +905,9 @@ export async function purchaseOrdersPATCH(
    * tanggal PO, produknya, atau jenis harganya mungkin ikut berubah, sehingga
    * rujukan harga lama bisa jadi tidak nyambung lagi.
    */
-  const productPriceId =
-    parsed.data.productPriceId !== undefined
+  const productPriceId = !finance
+    ? current[0].productPriceId
+    : parsed.data.productPriceId !== undefined
       ? parsed.data.productPriceId
       : await findProductPriceId(
           merged.productId,
@@ -885,10 +933,12 @@ export async function purchaseOrdersPATCH(
       value: merged.pricePerPcs * merged.quantity,
       priceType: merged.priceType,
       productPriceId,
-      ...(parsed.data.currency !== undefined
+      ...(finance && parsed.data.currency !== undefined
         ? { currency: normalizeCurrency(parsed.data.currency) }
         : {}),
-      ...(parsed.data.ppn !== undefined ? { ppn: normalizePpn(parsed.data.ppn) } : {}),
+      ...(finance && parsed.data.ppn !== undefined
+        ? { ppn: normalizePpn(parsed.data.ppn) }
+        : {}),
       ...(parsed.data.keterangan !== undefined
         ? {
             keterangan:

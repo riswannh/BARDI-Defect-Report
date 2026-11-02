@@ -645,6 +645,8 @@ Menu **Repair Data** (`/repairs`) memuat isi tab **"Data Reparasi"** sheet
 [Reparasi RFB](https://docs.google.com/spreadsheets/d/1kmRdS3eREi-6-ZyDZboeWxJYNiCoeeRt8wVt81ZQHUg/edit).
 Kolom yang tampil di daftar: **Tanggal | Claim ID | Resi | Produk | Status | Saving Value | Aksi**.
 
+- **Hak tulis mengikuti `repairs.write`** (3 Nov 2026): tombol Tambah, Pencil/Hapus per baris, checkbox, dan hapus massal hanya tampil bila role memberi izin tulis; tombol mata (detail) selalu ada. Template/Import/Export/Sync/Hapus Semua tetap admin.
+
 - Satu **CLAIM ID boleh dipakai beberapa baris** selama tanggal/produknya beda (keputusan user
   12 Okt 2026). Identitas baris = `claimId` + `date` + `productId` (`repairMatchKey()`), jadi sync dan
   impor Excel mencocokkan baris 1:1 dan tidak ada baris ganda yang dibuang. Baris kembar persis
@@ -705,6 +707,8 @@ Role Pabrik menerima qty-nya tetapi baris PO-nya **tanpa** `pricePerPcs`/`value`
 Cermin tab **"Raw Combine CG"** spreadsheet **Data Garansi Produk** (`CG_GSHEET_ID`,
 default `1TzJAH7mgIp8OK4l_VsE1GSYAp-IldcyM7TQwmdC8S3U`). Menu `/claim-garansi`, tabel `warranty_claims`.
 Modul ini **baca-saja**: tidak ada tambah/ubah/hapus di app — satu-satunya jalan masuk data adalah sync.
+Tombol **Sync** hanya tampil bila role memberi `claim-garansi.write` (3 Nov 2026; tanpa izin halaman
+tetap bisa dibaca).
 
 | Method | Endpoint | Akses | Keterangan |
 |---|---|---|---|
@@ -1086,6 +1090,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - Halaman dilindungi `AuthGuard` (redirect ke `/login`).
 - Halaman admin dilindungi `AdminGuard` (role Pabrik diarahkan ke `/report`).
 - Halaman login tidak menampilkan akun demo.
+- **Akses tulis selalu mengikuti izin menu, bukan status admin** (aturan 3 Nov 2026): di semua menu, tombol/aksi yang mengubah data — Tambah, Ubah, Hapus, checkbox baris, dan hapus massal — hanya tampil bila role memberi `can(menu, "write")`, dan API-nya memang sudah dijaga `requireMenu(menu, "write")`. Berlaku untuk Defect, Sales, PO Product, Repair Data, Data Master, dan Claim Garansi (hanya tombol Sync). Tombol tingkat tabel yang menyentuh seluruh data — **Template, Import Excel, Export Excel, Sync Google Sheet, Hapus Semua** — tetap **admin saja**, karena aksi itu menghitung ulang seluruh baris. Angka Rupiah (`value`, `pricePerType`/`priceType`, PPN) juga tetap **admin saja**: non-admin tidak menerima nilainya dari GET dan server tidak mengambil nilai uang dari kirimannya (POST mengisi 0/default, PATCH mempertahankan nilai lama), sehingga operator boleh menyunting quantity tanpa menghapus nilai. Menu **User Management** tetap khusus admin (`ADMIN_ONLY_MENUS`).
 
 ### 8.2 Report (Laporan Analisis)
 
@@ -1161,6 +1166,7 @@ cuma dihitung sebagai informasi), dengan tambahan:
 - Tabel: Produk, Pabrik, Bulan, Qty, Value (admin).
 - Filter produk/pabrik/bulan + pencarian; paging 5/10/25/50/100.
 - Tambah/Ubah/Hapus (Produk, Pabrik, Bulan, Qty, Value); unik per `produk+pabrik+bulan`.
+- Hak tulis mengikuti `sales.write`: akun non-admin ber-izin tulis bisa menambah/menyunting/menghapus baris, tetapi isian **Value** dan kartu totalnya tetap admin (`stripValue` + server mengabaikan `value` dari non-admin). Template/Import/Export/Sync/Hapus Semua tetap admin.
 - Bulk ubah/hapus massal.
 - Excel import/export/template.
 
@@ -1171,6 +1177,11 @@ cuma dihitung sebagai informasi), dengan tambahan:
   lagi di app maupun sheet)
   (komponen `master-list.tsx` untuk master nama, `price-list.tsx` untuk harga, `allowance-tab.tsx`
   untuk limit tahunan).
+- **Hak tulis mengikuti `master.write`** (3 Nov 2026): server `master.ts` (POST/PATCH/DELETE produk,
+  problem, sparepart, pabrik) memakai `requireMenu("master","write")`, dan halaman meneruskan
+  `readOnly={!canWrite}` ke `MasterList`/`PriceList` sehingga tanpa izin form tambah serta tombol
+  ubah/hapus tidak muncul. Template/Import/Export/Hapus Semua tetap admin. Tab **Allowance Defect**
+  tetap admin saja di API.
 - **Tab Produk memakai dua kolom: Nama dan SKU.** Formulir tambah punya dua isian, baris daftar
   menampilkan nama dengan SKU di bawahnya (`Tanpa SKU` bila kosong), dan mode ubah menyediakan
   kedua isian. SKU opsional tetapi unik — duplikat ditolak dengan pesan "SKU sudah dipakai produk lain."
@@ -1308,6 +1319,7 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - **Keterangan di-hardcode** (`Product Order` / `Sparepart Order` / `Replacement`); nilai asing jatuh ke
   default saat POST/PATCH, sedangkan pada impor Excel barisnya ditolak dengan alasan.
 - Role Pabrik tidak menerima `pricePerPcs`, `value`, `currency`, `ppn`, `priceType`, maupun `productPrice*`.
+- **Hak tulis mengikuti `po.write`** (3 Nov 2026): akun non-admin ber-izin tulis melihat tombol Tambah, kolom aksi, checkbox, dan hapus massal, tetapi **semua isian uang disembunyikan dari form** (`showFinance={isAdmin}`) dan tidak dikirim klien; server mengisi `pricePerPcs` 0 / mempertahankan nilai lama pada PATCH. Template/Import/Export/Sync/Hapus Semua tetap admin.
 
 ### 8.11 Notifikasi Lonceng & Mention
 
