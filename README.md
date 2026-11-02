@@ -1331,9 +1331,10 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - Popup `@` di **editor Docs Tasks** memakai aturan daftar yang sama: `GET /api/tasks/mentions`
   hanya menyarankan akun yang boleh menulis Rencana Kerja (admin selalu ikut), dihitung dari
   `user_roles` + kolom lama `user.roleId`. Saran judul task tetap seperti sebelumnya.
-- **Chip mention di dokumen hanya menampilkan nama**, tanpa awalan `@` (permintaan user 2 Nov 2026):
-  `renderHTML` di `src/components/rich-text/mention.ts` menulis label saja, atribut `data-*` tetap.
-  Dokumen lama yang sudah tersimpan dengan teks `@Nama` tetap terbaca; chip baru ditulis sebagai nama.
+- **Daftar `@` di editor Docs hanya menampilkan nama akun** (permintaan user 2 Nov 2026):
+  baris popup tidak lagi menampilkan `@username` di bawah nama (`fetchItems` di
+  `src/components/rich-text/mention.ts` mengisi `detail` kosong untuk orang). Chip mention di dokumen
+  tetap seperti bawaan Tiptap (`@Nama`); tidak ada perubahan pada HTML yang tersimpan.
 
 ### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
 

@@ -11,7 +11,7 @@ export interface MentionItem {
   id: string;
   /** Nama orang atau judul tugas yang tampil di chip. */
   label: string;
-  /** Baris kecil di popup: @username, atau status + pemilik tugas. */
+  /** Baris kecil di popup: kosong untuk orang, status + pemilik untuk tugas. */
   detail: string;
 }
 
@@ -29,7 +29,9 @@ async function fetchItems(query: string, signal: AbortSignal): Promise<MentionIt
       kind: "user",
       id: user.id,
       label: user.name || user.username,
-      detail: user.username ? `@${user.username}` : "",
+      // Daftar `@` cukup nama (permintaan user 2 Nov 2026): username tidak
+      // ditampilkan sebagai baris kecil di bawahnya.
+      detail: "",
     })),
     ...payload.tasks.map<MentionItem>((task) => ({
       kind: "task",
@@ -57,18 +59,6 @@ export const mentionExtension = Mention.extend({
         }),
       },
     };
-  },
-  /**
-   * Chip hanya menampilkan NAMA, tanpa awalan "@" (permintaan user 2 Nov
-   * 2026). Tiptap bawaannya menulis "@nama"; atribut `data-*` tetap sama
-   * supaya pembaca dokumen dan popup detail tidak berubah.
-   */
-  renderHTML({ node, HTMLAttributes }) {
-    return [
-      "span",
-      { "data-type": "mention", ...HTMLAttributes },
-      String(node.attrs.label ?? node.attrs.id ?? ""),
-    ];
   },
 }).configure({
   HTMLAttributes: { class: "mention-chip" },
