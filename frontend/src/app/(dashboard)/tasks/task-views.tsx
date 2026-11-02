@@ -520,6 +520,11 @@ export function TaskBoardView({
                           {t("tasks.overdue")}
                         </span>
                       )}
+                      {task.mentionedMe === true && (
+                        <span className="rounded-full bg-primary/12 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          {t("tasks.mentionBadge")}
+                        </span>
+                      )}
                       {archived && (
                         <span className="rounded-full bg-slate-500/12 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:text-slate-300">
                           {t("tasks.archiveBadge")}

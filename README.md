@@ -1335,6 +1335,13 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   baris popup tidak lagi menampilkan `@username` di bawah nama (`fetchItems` di
   `src/components/rich-text/mention.ts` mengisi `detail` kosong untuk orang). Chip mention di dokumen
   tetap seperti bawaan Tiptap (`@Nama`); tidak ada perubahan pada HTML yang tersimpan.
+- **Task yang menyebut saya tetap tampil di daftar** (perbaikan 2 Nov 2026): filter bawaan tab Tugas
+  dulu hanya meloloskan `task.userId === saya`, sehingga task milik orang lain yang menyebut kita
+  hilang dari daftar walau `GET /api/tasks?scope=mine` sudah mengirimnya. Sekarang saat filter akun
+  belum disentuh (`ownerFilter === null`) yang diloloskan adalah **pemilik sendiri atau
+  `mentionedMe === true`**; begitu pengguna memilih akun secara eksplisit, pilihannya dipakai apa
+  adanya (termasuk "semua akun" saat dikosongkan). Kolom Pembuat ikut muncul saat ada task orang lain,
+  dan baris/card-nya diberi badge **Di-@** (`tasks.mentionBadge`) sebagai penanda delegasi.
 - **Batang task di Kalender berhenti di tanggal selesai** (permintaan user 2 Nov 2026): task berstatus
   `Selesai` yang selesai lebih awal digambar hanya sampai `completedAt` (tidak menunggu due date).
   Aturannya di `calendarBarEnd()` (`src/app/(dashboard)/tasks/task-types.ts`) — dipakai tampilan Hari,

@@ -323,6 +323,7 @@ const translations = {
     en: "Type @ in the description to mention someone. They get a notification and this task shows up in their list.",
     zh: "在描述中输入 @ 来提及某人。对方会收到通知，此任务也会出现在他们的列表中。",
   },
+  "tasks.mentionBadge": { id: "Di-@", en: "Mentioned", zh: "已提及" },
   "tasks.fieldProgress": { id: "Kemajuan (%)", en: "Progress (%)", zh: "进度（%）" },
   "tasks.fieldPriority": { id: "Prioritas", en: "Priority", zh: "优先级" },
   "tasks.fieldDifficulty": { id: "Tingkat Kesulitan", en: "Difficulty", zh: "难度" },

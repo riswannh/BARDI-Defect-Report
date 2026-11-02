@@ -151,22 +151,31 @@ export default function TasksPage() {
   /** Admin membaca semua task; akun biasa hanya task miliknya (scope=mine). */
   const activeRows = isAdmin ? everything : mine;
   /**
-   * Bawaan filter akun = diri sendiri ("Tugas Saya"); mengosongkan filter
-   * berarti semua akun. Kolom pembuat hanya perlu saat tidak lagi satu akun.
+   * Tampilan filter akun: bawaan menyorot diri sendiri, kosong berarti semua
+   * akun. Penyaringan sebenarnya memakai `ownerFilter` mentah (lihat `filtered`)
+   * supaya tugas yang menyebut saya tetap tampil walau milik akun lain.
    */
   const activeOwnerFilter = useMemo(
     () => ownerFilter ?? (user ? [user.id] : []),
     [ownerFilter, user],
   );
-  const showOwnerColumn = !(
-    activeOwnerFilter.length === 1 && activeOwnerFilter[0] === user?.id
+  /**
+   * Filter bawaan = tugas milik sendiri DITAMBAH tugas yang menyebut saya
+   * (scope=mine sudah memuat keduanya dari server). Begitu pengguna memilih
+   * filter akun secara eksplisit, pilihannya dipakai apa adanya.
+   */
+  const hasMentionedRows = activeRows.some(
+    (task) => task.mentionedMe === true && task.userId !== user?.id,
   );
+  const showOwnerColumn = ownerFilter !== null || hasMentionedRows;
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const archiveOnly = statusFilter.includes(ARCHIVE_FILTER);
     const pickedStatus = statusFilter.filter((value) => value !== ARCHIVE_FILTER);
     return activeRows.filter((task) => {
-      if (activeOwnerFilter.length > 0 && !activeOwnerFilter.includes(task.userId)) {
+      if (ownerFilter !== null) {
+        if (ownerFilter.length > 0 && !ownerFilter.includes(task.userId)) return false;
+      } else if (user && task.userId !== user.id && task.mentionedMe !== true) {
         return false;
       }
       if (pickedStatus.length > 0 && !pickedStatus.includes(task.status)) return false;
@@ -193,14 +202,15 @@ export default function TasksPage() {
       );
     });
   }, [
-    activeOwnerFilter,
     activeRows,
     difficultyFilter,
+    ownerFilter,
     priorityFilter,
     quickFilter,
     search,
     statusFilter,
     typeFilter,
+    user,
   ]);
 
   const paged = useMemo(() => {
@@ -335,6 +345,11 @@ export default function TasksPage() {
                   {isTaskArchived(task) && (
                     <span className="ml-1.5 inline-flex items-center rounded-full bg-slate-500/12 px-1.5 py-0.5 align-middle text-[10px] font-medium text-slate-700 dark:text-slate-300">
                       {t("tasks.archiveBadge")}
+                    </span>
+                  )}
+                  {task.mentionedMe === true && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-primary/12 px-1.5 py-0.5 align-middle text-[10px] font-medium text-primary">
+                      {t("tasks.mentionBadge")}
                     </span>
                   )}
                   {task.description && (
