@@ -225,7 +225,7 @@ export function TaskFormDialog({
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto overscroll-contain supports-[height:100dvh]:max-h-[calc(100dvh-2rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{task ? t("tasks.editTask") : t("tasks.newTask")}</DialogTitle>
         </DialogHeader>
@@ -310,27 +310,24 @@ export function TaskFormDialog({
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldIssueType")}</Label>
-              <Select
-                value={issueType}
-                onValueChange={(value) => setIssueType(String(value))}
-                items={issueOptions}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {issueOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("tasks.fieldIssueType")}</Label>
+            <Select
+              value={issueType}
+              onValueChange={(value) => setIssueType(String(value))}
+              items={issueOptions}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {issueOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
