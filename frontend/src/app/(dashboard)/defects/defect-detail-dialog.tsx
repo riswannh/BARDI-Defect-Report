@@ -26,6 +26,7 @@ export function DefectDetailDialog({
   factories,
   problems,
   isAdmin,
+  canWrite,
   onEdit,
   onDelete,
   onTranslated,
@@ -36,6 +37,11 @@ export function DefectDetailDialog({
   factories: Factory[];
   problems: Problem[];
   isAdmin: boolean;
+  /**
+   * Boleh mengubah/menghapus defect ini. Mengikuti izin `defects.write` milik
+   * role, bukan status admin (admin selalu lolos).
+   */
+  canWrite: boolean;
   /** Buka form ubah untuk defect ini (tombol pindah dari tabel ke popup). */
   onEdit?: (defect: DefectRow) => void;
   onDelete?: (defect: DefectRow) => void;
@@ -240,9 +246,11 @@ export function DefectDetailDialog({
             </div>
           </dl>
         )}
-        {defect && isAdmin && (onEdit || onDelete) && (
+        {defect && (
           <DialogFooter className="sm:justify-between">
-            {onDelete ? (
+            {/* Hapus & Ubah hanya untuk akun ber-izin defects.write; akun
+                pembaca tetap mendapat tombol Tutup di footer yang sama. */}
+            {canWrite && onDelete ? (
               <Button
                 type="button"
                 variant="outline"
@@ -263,7 +271,7 @@ export function DefectDetailDialog({
               >
                 {t("common.close")}
               </Button>
-              {onEdit ? (
+              {canWrite && onEdit ? (
                 <Button type="button" onClick={() => onEdit(defect)}>
                   <Pencil className="size-4" />
                   {t("common.edit")}

@@ -444,7 +444,12 @@ export async function defectsPOST(req: NextRequest) {
   // (keputusan user: satu isian "Value RW" saja, angka di kotak itu yang masuk
   // database). Harga master tetap dipakai form sebagai isian awal.
   // Jenis harga tetap dicatat supaya pilihan operator terbaca saat baris disunting.
-  const priceType = normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE;
+  // Hanya ADMIN yang boleh menulis angka uang. Akun non-admin tidak menerima
+  // harga/nilai dari server, jadi apa pun yang mereka kirim untuk kolom ini
+  // diabaikan (bukan diterima sebagai 0 lalu menghapus nilai).
+  const priceType = guard.user.isAdmin
+    ? normalizePriceType(parsed.data.priceType) ?? DEFAULT_PRICE_TYPE
+    : DEFAULT_PRICE_TYPE;
   const [row] = await db
     .insert(defects)
     .values({
@@ -454,7 +459,7 @@ export async function defectsPOST(req: NextRequest) {
       priceType,
       timeStamp: timestamp,
       productPriceId: null,
-      value: parsed.data.value ?? 0,
+      value: guard.user.isAdmin ? parsed.data.value ?? 0 : 0,
     })
     .returning();
   return jsonOk(row, 201);
@@ -558,10 +563,17 @@ export async function defectsPATCH(
       quantity: finalQuantity,
       // Jenis harga yang tidak dikenal jatuh ke jenis baris sebelumnya (bukan
       // ke default) supaya menyunting field lain tidak mengubah pilihan jenis.
-      priceType: normalizePriceType(parsed.data.priceType) ?? current[0].priceType,
+      // Hanya ADMIN yang boleh mengubah angka uang: akun non-admin tidak pernah
+      // menerima harga/value dari server (lihat stripValue), jadi kiriman mereka
+      // diabaikan dan nilai lama dipertahankan.
+      priceType: guard.user.isAdmin
+        ? normalizePriceType(parsed.data.priceType) ?? current[0].priceType
+        : current[0].priceType,
       // Nilai disimpan apa adanya; tautan harga master tidak dipakai lagi untuk
       // defect, jadi dikosongkan juga saat baris lama disunting.
-      value: parsed.data.value ?? current[0].value,
+      value: guard.user.isAdmin
+        ? parsed.data.value ?? current[0].value
+        : current[0].value,
       productPriceId: null,
       updatedAt: new Date(),
     })

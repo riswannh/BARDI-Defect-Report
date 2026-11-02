@@ -313,6 +313,8 @@ export function ProductDetailDialog({
             factories={report?.factories ?? []}
             problems={problems}
             isAdmin={isAdmin}
+            // Drill-down laporan hanya untuk melihat: tidak ada tombol ubah/hapus.
+            canWrite={false}
           />
         </div>
       </DialogContent>

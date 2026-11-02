@@ -1137,7 +1137,9 @@ cuma dihitung sebagai informasi), dengan tambahan:
 
 - Ringkasan total quantity & value defect (value hanya admin).
 - Tabel: Code Garansi, Timestamp, Produk, Pabrik, Problem, Qty, Value (admin).
-- **Klik baris** → dialog detail defect; dari popup itu juga bisa **Ubah** dan **Hapus** (admin) — kolom aksi di tabel tidak ada lagi.
+- **Klik baris** → dialog detail defect; dari popup itu juga bisa **Ubah** dan **Hapus** — kolom aksi di tabel tidak ada lagi.
+- **Hak tulis mengikuti izin role `defects.write`, bukan status admin** (perbaikan 2 Nov 2026): akun non-admin yang role-nya punya izin tulis melihat tombol **Tambah**, tombol **Ubah/Hapus** di popup detail, checkbox baris, dan **Ubah/Hapus massal**. Tombol tingkat data — **Template, Import Excel, Export Excel, Sync Google Sheet, Hapus Semua** — tetap **admin saja** karena menyentuh seluruh isi tabel dan angka Rupiah. Dulu semua aksi di halaman ini memakai `isAdmin`, sehingga akun seperti *Product Optimization* tidak bisa menyunting defect sama sekali walau izinnya ada.
+- **Angka uang (Value + Jenis Harga) tetap admin**: server **mengabaikan** `value`/`priceType` kiriman akun non-admin (POST menyimpan 0, PATCH mempertahankan nilai lama) dan form tidak mengirimkannya untuk non-admin. Ini mencegah sunting qty oleh operator non-admin menghapus nilai Rupiah baris tersebut (nilai tidak pernah dikirim ke klien non-admin oleh `stripValue`).
 - **Filter**: periode (harian/mingguan/bulanan/rentang), produk, problem, pabrik + **pencarian**.
 - **Paging**: pilih ukuran 5/10/25/50/100 + lompat ke halaman.
 - **Tambah/Ubah/Hapus**: form lengkap (Code Garansi, Timestamp `datetime-local`, link foto/video, Problem, Problem Detail, Produk, Qty, Pabrik, **Jenis Harga**, **Harga**, **Total Value**).

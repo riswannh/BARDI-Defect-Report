@@ -80,7 +80,10 @@ import {
 } from "./defect-form";
 
 export default function DefectsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, can } = useAuth();
+  // Hak TULIS mengikuti matriks role (`defects.write`), bukan status admin.
+  // Admin selalu lolos karena izinnya penuh. Angka Rupiah tetap admin-only.
+  const canWrite = can("defects", "write");
   const { t } = useLanguage();
 
   const { data: defectData, loading, reload } =
@@ -311,7 +314,7 @@ export default function DefectsPage() {
   }
 
   async function handleSubmit(mode: "save" | "saveAndAddAnother" = "save") {
-    const payload = {
+    const payload: Record<string, unknown> = {
       codeGaransi: form.codeGaransi.trim(),
       timestamp: form.timestamp,
       photosLink: form.photosLink.trim(),
@@ -322,13 +325,23 @@ export default function DefectsPage() {
       productId: Number(form.productId),
       quantity: Number(form.quantity) || 0,
       factoryId: Number(form.factoryId),
+    };
+    if (isAdmin) {
       // Jenis harga yang dipakai sebagai asal angka Harga di form.
-      priceType: form.priceType,
+      payload.priceType = form.priceType;
       // Nilai baris defect = Harga × Quantity, dihitung di form. Server tetap
       // menyimpannya apa adanya dan tidak mengisi productPriceId.
-      value: defectTotalValue(form),
+      // Hanya ADMIN yang mengirim nilai uang: akun non-admin tidak menerima
+      // harga/nilai dari server, jadi kiriman 0 dari form mereka akan menghapus
+      // angka Rupiah yang sudah ada (kasus sunting defect).
+      payload.value = defectTotalValue(form);
+    }
+    const body = payload as {
+      codeGaransi: string;
+      productId: number;
+      factoryId: number;
     };
-    if (!payload.codeGaransi || !payload.productId || !payload.factoryId) return;
+    if (!body.codeGaransi || !body.productId || !body.factoryId) return;
 
     try {
       if (editingId === null) {
@@ -485,65 +498,77 @@ export default function DefectsPage() {
         title={t("defects.title")}
         description={t("defects.description")}
         actions={
-          isAdmin && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImportFile}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => downloadUrl("/api/excel/defects/template")}
-              >
-                <FileDown className="size-4" /> {t("common.template")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="size-4" /> {t("common.importExcel")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => downloadUrl("/api/excel/defects/export")}
-              >
-                <Download className="size-4" /> {t("common.exportExcel")}
-              </Button>
-              {importResult && (
+          <>
+            {/* Alat tingkat data (impor, sinkron sheet, hapus semua, ekspor
+                berisi angka Rupiah) tetap ADMIN saja. Akun non-admin dengan izin
+                defects.write cukup mendapat tombol Tambah. */}
+            {isAdmin && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setImportDialogOpen(true)}
+                  onClick={() => downloadUrl("/api/excel/defects/template")}
                 >
-                  <History className="size-4" /> {t("import.lastResult")}
+                  <FileDown className="size-4" /> {t("common.template")}
                 </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={runSheetSync} disabled={syncBusy}>
-                {syncBusy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="size-4" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="size-4" /> {t("common.importExcel")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadUrl("/api/excel/defects/export")}
+                >
+                  <Download className="size-4" /> {t("common.exportExcel")}
+                </Button>
+                {importResult && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setImportDialogOpen(true)}
+                  >
+                    <History className="size-4" /> {t("import.lastResult")}
+                  </Button>
                 )}
-                {t("gsheet.button")}
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setDeleteAllOpen(true)}
-              >
-                <Trash2 className="size-4" /> {t("deleteAll.button")}
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={runSheetSync}
+                  disabled={syncBusy}
+                >
+                  {syncBusy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-4" />
+                  )}
+                  {t("gsheet.button")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteAllOpen(true)}
+                >
+                  <Trash2 className="size-4" /> {t("deleteAll.button")}
+                </Button>
+              </>
+            )}
+            {canWrite && (
               <Button size="sm" onClick={openCreate}>
                 <Plus className="size-4" /> {t("common.add")}
               </Button>
-            </>
-          )
+            )}
+          </>
         }
       />
 
@@ -758,7 +783,7 @@ export default function DefectsPage() {
           )}
         </CardContent>
 
-        {selectedIds.size > 0 && (
+        {canWrite && selectedIds.size > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
             <span className="text-xs font-medium">
               {t("bulk.selected", { count: selectedIds.size })}
@@ -787,15 +812,17 @@ export default function DefectsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={allPageSelected}
-                    onChange={toggleAllPage}
-                    aria-label="Pilih semua"
-                  />
-                </TableHead>
+                {canWrite && (
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={allPageSelected}
+                      onChange={toggleAllPage}
+                      aria-label="Pilih semua"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>{t("common.codeGaransi")}</TableHead>
                 <TableHead>{t("common.timestamp")}</TableHead>
                 <TableHead>{t("common.product")}</TableHead>
@@ -819,15 +846,17 @@ export default function DefectsPage() {
                   className="cursor-pointer"
                   onClick={() => setDetailDefect(d)}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-primary"
-                      checked={selectedIds.has(d.id)}
-                      onChange={() => toggleOne(d.id)}
-                      aria-label={`Pilih ${d.codeGaransi}`}
-                    />
-                  </TableCell>
+                  {canWrite && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-primary"
+                        checked={selectedIds.has(d.id)}
+                        onChange={() => toggleOne(d.id)}
+                        aria-label={`Pilih ${d.codeGaransi}`}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-mono text-xs">
                     {d.codeGaransi}
                   </TableCell>
@@ -879,7 +908,7 @@ export default function DefectsPage() {
               {visibleDefects.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={isAdmin ? 9 : 7}
+                    colSpan={7 + (canWrite ? 1 : 0) + (isAdmin ? 1 : 0)}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {loading ? t("common.loading") : t("common.noData")}
@@ -918,6 +947,7 @@ export default function DefectsPage() {
         factories={factories}
         problems={problems}
         isAdmin={isAdmin}
+        canWrite={canWrite}
         onEdit={(d) => {
           // Tombol Ubah pindah dari tabel ke popup detail (permintaan user).
           setDetailDefect(null);
