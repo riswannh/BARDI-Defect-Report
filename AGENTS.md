@@ -70,6 +70,10 @@ jangan dinegosiasi ulang per tugas:
 - Panduan pengguna per modul ada di `docs/` (mis. `docs/TUTORIAL-task-planner.md` untuk
   Rencana Kerja). Bila perilaku UI modul tersebut berubah, perbarui panduannya juga,
   bukan hanya README.
+- Panduan Rencana Kerja punya versi PDF (`docs/TUTORIAL-task-planner.pdf`) yang **dihasilkan**
+  dari Markdown di atas: `node frontend/scripts/guide-pdf.mjs`. Jangan menyunting PDF langsung —
+  ubah Markdown/gambar lalu jalankan ulang skrip. Screenshot panduan disimpan di
+  `docs/img/task-guide/`.
 - Keputusan yang tidak terlihat dari kode dicatat beserta alasannya.
 
 **Ship-readiness**

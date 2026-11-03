@@ -1,483 +1,287 @@
-# Tutorial Rencana Kerja (Task Planner)
+# Panduan Lengkap Rencana Kerja
 
-Panduan ini menjelaskan **semua fitur** di menu **Rencana Kerja**, termasuk langkah
-awal yang **wajib** dilakukan setiap pengguna di tab **Pengaturan**.
+Panduan ini menjelaskan **semua** yang bisa dilakukan di menu **Rencana Kerja** (Task Planner), dari menyiapkan pengaturan sampai menyelesaikan tugas sehari-hari. Ditulis langkah demi langkah dengan bahasa sederhana, jadi bisa diikuti siapa pun tanpa pelatihan khusus.
 
-Rencana Kerja dipakai untuk mencatat pekerjaan, membaginya ke anggota tim, memantau
-tenggat, dan menyimpan catatan bersama.
+Ada dua hal yang perlu diingat sejak awal:
 
----
+- **Tab Pengaturan wajib diisi dulu** oleh setiap akun. Tanpa itu, daftar Tipe masih kosong dan form tugas akan menampilkan pesan "Belum ada tipe".
+- **Setiap akun punya daftar tipe sendiri.** Admin bisa mengatur tipe dan warna akun lain.
 
-## Daftar isi
+> Panduan ini dibuat untuk tampilan aplikasi versi 3 November 2026.
 
-1. [Wajib dulu: atur di tab Pengaturan](#1-wajib-dulu-atur-di-tab-pengaturan)
-2. [Peta halaman Rencana Kerja](#2-peta-halaman-rencana-kerja)
-3. [Tab Ringkasan](#3-tab-ringkasan)
-4. [Tab Tugas: Daftar dan Papan](#4-tab-tugas-daftar-dan-papan)
-5. [Membuat tugas baru](#5-membuat-tugas-baru)
-6. [Mengubah, menyelesaikan, dan menghapus tugas](#6-mengubah-menyelesaikan-dan-menghapus-tugas)
-7. [Menyebut orang dengan @](#7-menyebut-orang-dengan-)
-8. [Pop up Rincian Tugas](#8-pop-up-rincian-tugas)
-9. [Tab Kalender](#9-tab-kalender)
-10. [Tab Dokumentasi](#10-tab-dokumentasi)
-11. [Notifikasi lonceng](#11-notifikasi-lonceng)
-12. [Hak akses dan group role](#12-hak-akses-dan-group-role)
-13. [Alur kerja harian yang disarankan](#13-alur-kerja-harian-yang-disarankan)
-14. [Pertanyaan yang sering muncul](#14-pertanyaan-yang-sering-muncul)
+## 1. Peta halaman Rencana Kerja
 
----
+Menu Rencana Kerja punya lima tab. Semuanya terbuka lewat menu di sebelah kiri.
 
-## 1. Wajib dulu: atur di tab Pengaturan
+| Tab | Isinya |
+| --- | --- |
+| Ringkasan | Angka ringkas, sebaran status/prioritas/tipe, beban tim, aktivitas terbaru |
+| Tugas | Daftar dan papan seluruh tugas, lengkap dengan filter dan pencarian |
+| Kalender | Batang tugas per tanggal dalam tampilan Hari, Minggu, atau Bulan |
+| Dokumentasi | Catatan bersama dengan editor teks dan sebutan `@` |
+| Pengaturan | Warna kartu kalender dan daftar tipe pekerjaan |
 
-Tab **Pengaturan** terbuka untuk **semua akun** (bukan hanya admin). Lakukan dua hal
-berikut **sebelum** membuat tugas pertama.
+Di pojok kanan atas ada dua tombol yang selalu tersedia:
 
-### 1.1 Pilih warna kartu kalender
+- **Ikon riwayat** — membuka daftar seluruh aktivitas tugas: siapa melakukan apa dan kapan.
+- **Tambah Tugas** — membuat tugas baru. Tombol ini hanya muncul bila akun punya izin menulis di menu Rencana Kerja.
 
-1. Buka **Rencana Kerja**.
-2. Klik tab **Pengaturan**.
-3. Arahkan kursor ke kartu **Warna Kartu Kalender**. Kolom **Akun** menampilkan akun
-   yang akan diatur, lalu pilih **Warna kalender**.
-4. Klik **Simpan**.
+## 2. Wajib dulu: atur tab Pengaturan
 
-Warna ini adalah penanda kartu/kotak tugas milik akun tersebut di tab **Kalender**,
-sehingga nama tidak perlu dibaca satu per satu. **Admin** boleh memilih akun lain pada
-dropdown **Akun** untuk mengatur warna anggota tim.
+Lakukan dua hal ini **sebelum** membuat tugas pertama. Tab Pengaturan terbuka untuk semua akun, bukan hanya admin.
 
-### 1.2 Buat daftar tipe pekerjaan
+![Tab Pengaturan berisi Warna Kartu Kalender dan Tipe Pekerjaan](img/task-guide/pengaturan.png)
 
-Ada **tidak ada tipe bawaan** — setiap akun mulai dengan daftar kosong.
+### 2.1 Pilih warna kartu kalender
+
+1. Buka **Rencana Kerja**, lalu klik tab **Pengaturan**.
+2. Arahkan kursor ke kartu **Warna Kartu Kalender**.
+3. Pada kolom **Akun**, pastikan nama Anda yang dipilih.
+4. Klik **Warna kalender**, lalu pilih warna.
+5. Klik **Simpan**.
+
+Warna ini menjadi penanda kartu dan batang tugas milik akun tersebut di tab **Kalender**. Jadi di kalender ramai, Anda tidak perlu membaca nama pemilik satu per satu — cukup lihat warnanya. Admin bisa memilih akun lain pada dropdown **Akun** untuk mengatur warna anggota tim.
+
+### 2.2 Buat daftar tipe pekerjaan
+
+Aplikasi **tidak** menyediakan tipe bawaan. Setiap akun mulai dengan daftar kosong.
 
 1. Di tab **Pengaturan**, lihat kartu **Tipe Pekerjaan**.
-2. Ketik nama tipe pada kolom **Nama tipe baru**, misalnya `Tugas`, `Bug`, `Fitur`,
-   atau `Sub-task`.
+2. Ketik nama tipe pada kolom **Nama tipe baru**, misalnya `Tugas`, `Bug`, `Fitur`, atau `Sub-task`.
 3. Klik **Tambah tipe**.
-4. Ulangi untuk semua tipe yang biasa dipakai.
+4. Ulangi untuk semua tipe yang biasa Anda pakai.
 
-Hal penting:
+Beberapa hal penting:
 
-- Tipe disimpan **per akun**. Daftar tipe yang muncul di form tugas adalah daftar milik
-  **pemilik tugas** yang sedang dipilih.
-- Jika daftar kosong, form tugas menampilkan pesan
-  **"Belum ada tipe — tambah di tab Pengaturan."**
-- Tipe yang masih dipakai tidak bisa dihapus. Muncul pesan
-  **"Tipe masih dipakai {jumlah} task, tidak bisa dihapus."**
-- **Admin** dapat memilih akun lain pada dropdown **Akun** untuk merapikan tipe anggota
-  timnya.
+- Tipe disimpan **per akun**. Daftar yang muncul di form tugas adalah milik **pemilik tugas** yang sedang dipilih, bukan milik pembuat form.
+- Bila daftar tipe masih kosong, form tugas menampilkan pesan **"Belum ada tipe — tambah di tab Pengaturan."**
+- Tipe yang sudah dipakai tidak bisa dihapus. Muncul pesan **"Tipe masih dipakai (jumlah) task, tidak bisa dihapus."**
+- Admin dapat memilih akun lain pada dropdown **Akun** untuk merapikan tipe anggota timnya.
 
-> **Kenapa wajib?** Tanpa tipe, tugas tetap bisa disimpan dengan kode tipe dasar
-> `task`, tetapi filter **Tipe** di tab Tugas dan grafik **Jenis pekerjaan** di tab
-> Ringkasan tidak berguna karena semua tugas masuk satu kelompok.
-
----
-
-## 2. Peta halaman Rencana Kerja
-
-Saat menu **Rencana Kerja** dibuka, tersedia lima tab:
-
-| Tab | Kegunaan |
-| --- | --- |
-| **Ringkasan** | Angka ringkas, sebaran status/prioritas/tipe, beban tim, aktivitas terbaru |
-| **Tugas** | Daftar dan papan (kanban) semua tugas + filter dan pencarian |
-| **Kalender** | Tampilan Hari/Minggu/Bulan berisi batang tugas per tanggal |
-| **Dokumentasi** | Catatan bersama dengan editor teks dan sebutan `@` |
-| **Pengaturan** | Warna kalender dan daftar tipe pekerjaan (lihat bagian 1) |
-
-Di bagian atas halaman ada dua tombol:
-
-- **Ikon riwayat** — membuka daftar seluruh aktivitas tugas (siapa melakukan apa dan kapan).
-- **Tambah Tugas** — membuat tugas baru. Tombol ini hanya muncul bila akun punya izin
-  **menulis** di menu Rencana Kerja.
-
----
+> **Kenapa wajib?** Tanpa tipe, tugas tetap bisa disimpan dengan kode tipe dasar `task`. Tetapi filter **Tipe** di tab Tugas dan grafik **Jenis pekerjaan** di tab Ringkasan jadi tidak berguna karena semua tugas masuk satu kelompok.
 
 ## 3. Tab Ringkasan
 
-Tab **Ringkasan** adalah dasbor singkat. Isinya:
+Tab Ringkasan adalah dasbor singkat. Isinya:
+
+![Tab Ringkasan dengan empat kartu angka, status, prioritas, tipe, beban tim, dan aktivitas](img/task-guide/ringkasan.png)
 
 1. **Empat kartu angka** (masing-masing bisa diklik):
    - **Dibuat 7 hari** — tugas yang dibuat dalam 7 hari terakhir.
    - **Diperbarui 7 hari** — tugas yang diubah dalam 7 hari terakhir.
-   - **Selesai** — semua tugas berstatus `Selesai`.
+   - **Selesai** — semua tugas berstatus Selesai.
    - **Jatuh tempo** — tugas belum selesai yang tenggatnya dalam 7 hari ke depan.
    Klik salah satu kartu: halaman pindah ke tab **Tugas** dengan filter cepat yang sesuai.
-   Untuk menghapus filter kartu, klik chip **Hapus filter kartu**.
-2. **Ringkasan status** — jumlah tugas `Belum`, `Proses`, `Selesai` beserta legenda
-   **Lewat tenggat**, **Selesai**, dan **Sedang berjalan**.
-3. **Sebaran prioritas** — jumlah tugas per prioritas (Rendah/Sedang/Tinggi/Kritis).
-   Klik salah satu baris untuk memfilter tab Tugas menurut prioritas itu.
-4. **Jenis pekerjaan** — jumlah tugas per tipe. Tipe yang sama dari akun berbeda
-   digabung menjadi satu baris.
-5. **Beban tim** — jumlah tugas yang **belum selesai** per anggota. Tugas yang sudah
-   selesai tidak dihitung.
-6. **Aktivitas terbaru** — daftar aktivitas terakhir; klik satu baris untuk membuka
-   **Rincian Tugas** terkait.
-
----
+2. **Ringkasan status** — jumlah Belum, Proses, Selesai beserta legenda, warna, dan tombol **Hapus filter kartu**.
+3. **Sebaran prioritas** — jumlah tugas per prioritas (Mendesak, Segera, Normal). Klik batangnya untuk memfilter.
+4. **Jenis pekerjaan** — jumlah tugas per tipe. Tipe yang sama dari akun berbeda digabung menjadi satu baris.
+5. **Beban tim** — jumlah tugas **belum selesai** per anggota. Tugas yang sudah selesai tidak dihitung agar beban terlihat nyata.
+6. **Aktivitas terbaru** — daftar perubahan terakhir. Klik satu baris untuk membuka **Rincian Tugas**.
 
 ## 4. Tab Tugas: Daftar dan Papan
+
+Tab Tugas menyajikan data yang sama dalam dua tampilan. Pilihan tampilan tersimpan di profil Anda, jadi saat membuka lagi akan kembali seperti terakhir dipakai.
 
 ### 4.1 Siapa melihat tugas apa
 
 - **Admin** melihat seluruh tugas semua akun.
-- **Akun biasa** melihat tugas miliknya sendiri **dan** tugas yang menyebut dia
-  dengan `@` (lihat bagian 7).
+- **Akun biasa** melihat tugas miliknya sendiri **dan** tugas yang menyebut dirinya dengan `@`.
+- Tugas yang menyebut Anda tetap muncul walaupun bukan milik Anda. Di tabel ada tanda **Di-@** di samping judul, dan kolom Pemilik ikut ditampilkan supaya jelas.
 
-### 4.2 Tombol dan filter di toolbar
+### 4.2 Tampilan Daftar
+
+![Tampilan Daftar: pencarian, filter, kolom, dan aksi per baris](img/task-guide/daftar-tugas.png)
 
 - **Kotak cari** — mencari judul dan keterangan tugas.
-- **Filter Pemilik** — khusus admin.
-- **Filter Status** — `Belum`, `Proses`, `Selesai`, dan `Arsip`.
-- **Filter Tipe** dan **Filter Prioritas** — bisa memilih lebih dari satu nilai.
-- **Chip filter cepat** — sisa filter dari kartu Ringkasan; klik **Hapus filter kartu**
-  untuk membersihkan.
-- **Pilih tampilan** — mengganti antara **Daftar** dan **Papan**. Pilihan ini disimpan
-  ke profil, jadi tetap sama saat halaman dibuka lagi.
+- **Filter** — Pemilik (khusus admin), Status, Tipe, Prioritas. Bisa dipilih lebih dari satu nilai.
+- **Pelaku** di kanan atas — berpindah antara **Daftar** dan **Papan**.
+- **Kolom** — Judul, Tipe, Prioritas, Tenggat (dengan tanggal mulai kecil di bawahnya), Kemajuan, Status, dan Aksi.
+- **Aksi per baris**:
+  - **Grafik naik** — membuka dialog *Perbarui Kemajuan*.
+  - **Pensil** — mengubah tugas.
+  - **Centang** — menandai selesai (atau membuka lagi bila sudah selesai).
+  - **Tempat sampah** — menghapus tugas.
+- **Baris arsip** — tugas selesai lebih dari 7 hari otomatis disembunyikan dari daftar utama. Pilih filter Status **Arsip** untuk melihatnya. Tugas arsip tetap tampil di Kalender dan Ringkasan.
 
-### 4.3 Tampilan Daftar
+### 4.3 Tampilan Papan
 
-Kolom yang ditampilkan: **Judul Tugas**, **Tipe**, **Pembuat** (admin), **Prioritas**,
-**Tenggat**, **Kemajuan**, **Status**, dan **Aksi**.
+![Tampilan Papan dengan tiga kolom status dan kartu tugas](img/task-guide/papan.png)
 
-- Klik **baris** untuk membuka Rincian Tugas.
-- **Ikon centang** menandai tugas `Selesai` — muncul dialog **Selesaikan Tugas** untuk
-  catatan penyelesaian (bagian 6). Klik lagi untuk **Buka lagi** (langsung, tanpa dialog).
-- **Kemajuan** tampil sebagai bilah dan angka persen. Klik tombol kecil di sebelahnya
-  untuk membuka dialog **Perbarui Kemajuan**.
-- **Menu aksi** berisi **Ubah** dan **Hapus**.
-- Tugas yang sudah selesai lebih dari 7 hari otomatis diberi badge **Arsip** dan
-  disembunyikan dari daftar biasa (lihat bagian 4.5).
-- Daftar memakai halaman; gunakan panah di bawah tabel untuk berpindah halaman.
+Papan punya tiga kolom tetap: **Belum**, **Proses**, dan **Selesai**. Setiap kartu bisa digeser ke kolom lain:
 
-### 4.4 Tampilan Papan
-
-Tampilan papan membagi tugas ke tiga kolom: **Belum**, **Proses**, dan **Selesai**.
-
-- **Geser kartu** ke kolom lain untuk memindahkan statusnya. Saat kartu dilepas ke
-  kolom **Selesai**, muncul dialog **Selesaikan Tugas** untuk mengisi catatan
-  penyelesaian (opsional). Ini cara tercepat menutup tugas.
-- Tombol panah **←** dan **→** pada kartu juga memindahkan tugas ke status sebelumnya
-  atau berikutnya — praktis saat layar sentuh atau bila tidak ingin menggeser.
-- Menu aksi pada kartu berisi **Ubah** dan **Hapus**.
-- Klik kartu untuk membuka Rincian Tugas.
-
-### 4.5 Tentang arsip
-
-Tugas yang sudah `Selesai` lebih dari **7 hari** tidak lagi tampil di daftar biasa.
-Tugas tersebut **tetap** muncul di **Kalender** dan **Ringkasan**.
-
-Untuk melihatnya kembali: pilih **Arsip** pada **Filter Status**.
-
----
+- **Geser kartu** ke kolom tujuan, lalu lepas. Status tugas langsung berubah.
+- Bila kartu digeser ke kolom **Selesai**, dialog catatan penyelesaian muncul lebih dulu (lihat bagian 6).
+- Bila perangkat tidak mendukung geser-lepas, gunakan tombol **panah kiri/kanan** di kartu sebagai alternatif.
+- Tombol **titik tiga** membuka menu Ubah dan Hapus.
 
 ## 5. Membuat tugas baru
 
-Klik **Tambah Tugas**. Isi form berikut:
+Klik **Tambah Tugas** di kanan atas. Form yang muncul berisi tujuh isian; sisanya diisi otomatis oleh server.
 
-| Isian | Keterangan |
+![Form Tambah Tugas dengan kartu Pengulangan selebar dialog](img/task-guide/form-tambah-tugas.png)
+
+| Isian | Wajib? | Keterangan |
+| --- | --- | --- |
+| Judul Tugas | Wajib | Nama singkat pekerjaan |
+| Keterangan | Opsional | Penjelasan, boleh menyebut orang dengan `@` |
+| Pemilik task | Otomatis | Terisi Anda; admin bisa memilih akun lain |
+| Tipe | Opsional | Diambil dari daftar tipe milik pemilik tugas |
+| Prioritas | Otomatis | Normal, Segera, atau Mendesak |
+| Tenggat | Opsional | Tanggal batas; tidak boleh sebelum tanggal mulai |
+| Pengulangan | Otomatis | Tidak berulang, Harian, Mingguan, atau Bulanan |
+
+Nilai yang tidak diisi akan memakai default server: **tanggal mulai hari ini**, status **Belum**, dan kemajuan **0%**. Karena itu tanggal mulai tidak perlu diisi di form.
+
+### 5.1 Pengulangan
+
+Kartu **Pengulangan** kini selebar form supaya isiannya tidak menggantung di setengah kolom.
+
+| Pilihan | Isian tambahan yang muncul |
 | --- | --- |
-| **Judul Tugas** | Wajib. Ringkas dan jelas. |
-| **Keterangan** | Penjelasan pekerjaan. Bisa menyebut orang dengan `@` (bagian 7). |
-| **Pemilik task** | Hanya admin. Menentukan siapa yang memegang tugas ini, dan tipe mana yang muncul di pilihan **Tipe**. |
-| **Tipe** | Diambil dari daftar tipe milik pemilik tugas. Kosong berarti pemilik belum mengatur tipe. |
-| **Prioritas** | Mendesak / Segera / Normal. |
-| **Tenggat** | Tanggal selesai yang diharapkan. Tidak boleh lebih awal dari tanggal mulai. |
-| **Pengulangan** | Tidak berulang / Harian / Mingguan / Bulanan. Bila dipilih **Mingguan**, muncul pilihan **Hari Pengulangan**; bila **Bulanan**, muncul **Tanggal Pengulangan**. Isian ini berbentuk satu kartu selebar form dan berbagi baris dengan pilihan hari/tanggal tersebut. |
+| Tidak berulang | Tidak ada — tugas berhenti setelah selesai |
+| Harian | Tidak ada — tugas berikutnya dibuat setiap hari |
+| Mingguan | **Hari Pengulangan** (Senin–Minggu) |
+| Bulanan | **Tanggal Pengulangan** (1–31) |
 
-Tiga hal **tidak perlu diisi** dan tidak muncul di form:
+Saat tugas berulang ditandai selesai, sistem **otomatis** membuat tugas berikutnya dengan tenggat tanggal lanjutan. Tugas baru memakai orang yang sama dan menyebut siapa pun yang di-`@`, tetapi **tidak** mengirim notifikasi ulang.
 
-- **Tanggal Mulai** — otomatis **hari ini**.
-- **Status** — otomatis `Belum`.
-- **Kemajuan** — otomatis **0%** dan diubah setelah tugas berjalan lewat dialog
-  **Perbarui Kemajuan** atau tombol centang.
+### 5.2 Menyebut orang dengan @
 
-Klik **Simpan** untuk menyimpan, atau **Batal** untuk membatalkan.
+Ketik `@` di kolom **Keterangan**, lalu pilih nama. Sebutan yang sudah cocok dengan akun akan **disorot** di atas kolom, jadi Anda tahu sebutan itu berhasil.
 
-Hal yang perlu diketahui tentang **Pengulangan**: saat tugas ditandai **Selesai**,
-sistem otomatis membuat tugas berikutnya dengan tenggat lanjutan sesuai aturan.
-Tugas baru itu tetap memakai orang yang sama dan menyimpan daftar sebutan `@`, tetapi
-**tidak** mengirim notifikasi lagi.
+Orang yang disebut akan:
 
----
+- menerima notifikasi di lonceng,
+- melihat tugas itu di daftar tugasnya (dengan tanda **Di-@**),
+- boleh mengubah tugas tersebut.
 
-## 6. Mengubah, menyelesaikan, dan menghapus tugas
+Daftar nama pada popup `@` hanya menampilkan **nama akun**, bukan username.
 
-### Mengubah
+## 6. Menyelesaikan tugas (empat cara)
 
-Ada dua cara:
+Semua cara di bawah berakhir sama: status berubah menjadi **Selesai**, kemajuan menjadi **100%**, dan **catatan penyelesaian** bisa ditambahkan.
 
-1. Klik baris/kartu tugas → pop up **Rincian Tugas** → tombol **Ubah**.
-2. Buka **menu aksi** pada baris/kartu → **Ubah**.
+| Cara | Di mana | Yang terjadi |
+| --- | --- | --- |
+| Ikon centang | Kolom **Aksi** pada tab Tugas tampilan Daftar | Dialog **Selesaikan Tugas** terbuka |
+| Geser kartu | Tab Tugas tampilan **Papan** | Seret kartu ke kolom **Selesai**, lalu isi catatan |
+| Panah → | Kartu pada tampilan Papan | Pindah status bertahap; saat masuk kolom Selesai, dialog catatan terbuka |
+| Kemajuan 100% | Ikon grafik pada baris tugas (dialog **Perbarui Kemajuan**) | Angka 100 memicu petunjuk "otomatis menandai tugas selesai" |
 
-Yang boleh mengubah: **pembuat tugas**, **admin**, atau **orang yang disebut `@`**
-pada tugas tersebut. Akun lain hanya dapat membaca.
+### 6.1 Dialog Selesaikan Tugas
 
-### Menyelesaikan
+![Dialog Selesaikan Tugas dengan kolom catatan](img/task-guide/dialog-selesaikan.png)
 
-Semua cara di bawah membuka dialog **Selesaikan Tugas**: ada satu kolom **Catatan**
-(opsional) untuk menjelaskan hasil akhirnya, lalu tombol **Tanda selesai**.
+- Kolom **Catatan** bersifat **opsional**. Boleh dikosongkan.
+- Tombol **Tandai selesai** **tidak menunggu** catatan diisi.
+- Catatan yang diisi akan tersimpan sebagai bagian dari log aktivitas tugas, bukan mengubah keterangan tugas.
 
-1. **Ikon centang** di baris daftar.
-2. **Geser kartu** ke kolom **Selesai** di tampilan Papan.
-3. Tekan panah **→** di kartu Papan sampai kolom `Selesai`.
-4. Buka dialog **Perbarui Kemajuan**, isi **Kemajuan** dengan **100** — muncul petunjuk
-   "Kemajuan 100% otomatis menandai tugas selesai", lalu simpan.
+> **Membuka tugas lagi:** klik ikon centang sekali lagi. Status kembali ke **Belum** dan tugas dibuka tanpa membuka dialog, karena tidak ada yang perlu dicatat saat membatalkan.
 
-Catatan yang diisi ikut tercatat di **Log aktivitas** tugas (bagian 8) dan di daftar
-aktivitas global (ikon riwayat di header). Boleh dikosongkan bila tidak ada yang perlu
-dicatat.
+### 6.2 Menyelesaikan lewat Kemajuan 100%
 
-Saat status berubah menjadi `Selesai`, tanggal selesai dicatat dan dipakai Kalender
-untuk memotong panjang batang tugas (bagian 9). Bila tugas berulang, tugas berikutnya
-langsung dibuat.
+![Dialog Perbarui Kemajuan berisi 100 dan petunjuk otomatis selesai](img/task-guide/kemajuan-100.png)
 
-Untuk membuka tugas yang sudah selesai, klik **ikon centang** sekali lagi (tombolnya
-menjadi **Buka lagi**); status kembali `Belum` tanpa dialog.
+Buka dialog **Perbarui Kemajuan** dari ikon grafik, isi `100`, lalu simpan. Aplikasi menampilkan petunjuk *"Kemajuan 100% otomatis menandai tugas selesai"* dan status langsung berubah menjadi Selesai beserta catatannya.
 
-### Menghapus
+Bila Anda mengisi angka 100 **tanpa** catatan, tugas tetap selesai — catatan hanya membantu orang lain memahami hasil akhirnya. Angka di atas 99 tapi di bawah 100 akan disimpan sebagai 99% agar tugas tidak selesai tanpa sengaja.
 
-Buka **menu aksi** → **Hapus**, lalu konfirmasi. Hapus bersifat permanen dan hanya
-tersedia untuk **pembuat tugas** atau **admin**.
+## 7. Rincian tugas
 
-Setiap perubahan tercatat di **Log aktivitas** (bagian 8) dan di daftar aktivitas global
-(ikon riwayat di header halaman).
+Klik judul tugas di tampilan Daftar, atau klik kartu di Papan, untuk membuka **Rincian Tugas**.
 
----
+![Popup Rincian Tugas dengan tab Informasi dan Log aktivitas](img/task-guide/rincian-tugas.png)
 
-## 7. Menyebut orang dengan @
+- Tab **Informasi** memuat keterangan, kemajuan, **catatan terbaru**, pembuat, status, prioritas, tanggal mulai, tenggat, pengulangan, waktu dibuat/diperbarui, dan waktu selesai.
+- Tab **Log aktivitas** memuat riwayat perubahan, termasuk semua catatan penyelesaian.
+- Tombol **Ubah** dan **Hapus** hanya muncul bila akun punya izin menulis. Pembaca tetap bisa membuka rincian dan melihat log.
 
-Sebutan dipakai agar orang lain tahu dan tugas ikut muncul di daftar mereka.
+## 8. Tab Kalender
 
-### Di keterangan tugas
+![Tab Kalender tampilan Bulan dengan batang tugas berwarna](img/task-guide/kalender.png)
 
-1. Ketik `@` di kolom **Keterangan**.
-2. Daftar nama muncul tepat di bawah posisi kursor. Daftar ini **sama** dengan daftar
-   pada **Filter Pemilik** dan panel **Kalender**, yaitu akun yang punya akses menulis
-   di Rencana Kerja.
-3. Lanjutkan mengetik untuk mempersempit (misalnya `@bi`), atau gunakan **panah atas/bawah**
-   lalu **Enter**/**Tab** untuk memilih. **Esc** menutup daftar.
-4. Setelah dipilih, nama yang disebut **disorot** (latar biru) sehingga terlihat jelas
-   bahwa sebutan berhasil.
-
-Hint di bawah kolom: "Ketik @ di deskripsi untuk menyebut orang. Mereka menerima
-notifikasi dan task ini muncul di daftar mereka."
-
-Yang terjadi setelah menyimpan:
-
-- Orang yang disebut menerima **notifikasi lonceng**.
-- Tugas muncul di daftar **Tugas** milik orang itu walaupun dia bukan pemiliknya.
-- Orang itu **boleh mengubah** tugas tersebut (status, kemajuan, keterangan, dan isian
-  lain), sesuai keputusan pemilik sistem.
-
-### Di Dokumentasi
-
-Sama caranya: ketik `@` di isi catatan. Daftar yang muncul hanya menampilkan **nama**
-akun (tanpa `@username`). Menyebut tugas juga bisa dari editor ini untuk menautkan
-catatan ke tugas terkait.
-
-Notifikasi hanya dikirim untuk **sebutan baru**. Menyimpan ulang catatan tanpa
-menambahkan sebutan baru tidak mengirim notifikasi lagi.
-
----
-
-## 8. Pop up Rincian Tugas
-
-Klik baris/kartu tugas untuk membukanya. Ada dua tab:
-
-1. **Informasi** — judul, keterangan, tipe, pemilik, prioritas, tanggal mulai, tenggat,
-   status, pengulangan, catatan terakhir, serta **Dibuat**, **Diperbarui**, dan
-   **Selesai pada** (bila sudah selesai).
-2. **Log aktivitas** — riwayat perubahan tugas tersebut: siapa, melakukan apa, kapan.
-
-Di bagian bawah pop up tersedia tombol:
-
-- **Ubah** — membuka form ubah (hanya bila berhak).
-- **Hapus** — menghapus tugas (hanya pembuat/admin).
-- **Tutup**.
-
----
-
-## 9. Tab Kalender
-
-Kalender menampilkan tugas sebagai batang sesuai rentang tanggalnya.
-
-### Tampilan
-
-Pilih **Hari**, **Minggu**, atau **Bulan** (tombol **Pilih tampilan**). Gunakan panah
-**Sebelumnya** / **Berikutnya** untuk berpindah periode, dan **Hari ini** untuk kembali
-ke tanggal sekarang.
-
-### Panel Kalender (per akun)
-
-Panel di sisi kalender berisi daftar akun dengan kotak centang:
-
-- Centang akun untuk menampilkan tugasnya, hilangkan centang untuk menyembunyikan.
-- Tombol **Tampilkan semua pengguna** mencentang semua akun; **Sembunyikan** menghapus
-  semua centang.
-- Warna tiap akun mengikuti pengaturan **Warna Kartu Kalender** (bagian 1.1).
-
-### Membaca warna dan legenda
-
-Legenda di bawah kalender:
-
-- **Selesai** — tugas yang sudah selesai.
-- **Sedang berjalan** — tugas berstatus `Proses`.
-- **Lewat tenggat** — tugas belum selesai yang tenggatnya sudah lewat.
-
-### Panjang batang tugas
-
-- Batang dimulai pada **tanggal mulai** dan berakhir pada **tenggat**.
-- Jika tugas ditandai **Selesai sebelum tenggat**, batangnya **berhenti di tanggal
-  selesai**, bukan di tenggat. Jadi kalender menunjukkan pekerjaan yang benar-benar
-  selesai lebih cepat.
-- Arahkan kursor ke batang untuk melihat ringkasan; bila selesai lebih awal, tooltip
-  menampilkan **"Selesai pada <tanggal>"**.
-
-### Berinteraksi
-
+- Pilih tampilan **Hari**, **Minggu**, atau **Bulan**.
+- **Filter** membuka pilihan anggota yang ditampilkan. Tombol **Tampilkan semua pengguna** menampilkan seluruh tim sekaligus.
+- **Legenda** menjelaskan warna: merah lewat tenggat, hijau selesai, abu-abu sedang berjalan.
+- **Batang tugas** digambar dari tanggal mulai sampai tenggat. Bila tugas diselesaikan lebih awal, batangnya **berhenti di tanggal selesai** — sisa waktunya tidak lagi terpakai. Arahkan kursor ke batang untuk melihat keterangan *Selesai pada …*.
+- Klik tanda **+jumlah** di sebuah tanggal untuk membuka tampilan Hari pada tanggal itu.
 - Klik batang tugas untuk membuka Rincian Tugas.
-- Bila satu tanggal memuat lebih banyak tugas daripada yang muat, muncul tautan
-  **+N** di bawah tanggal tersebut. Klik tautan itu untuk membuka **tampilan Hari**
-  pada tanggal itu dan melihat seluruh tugasnya.
 
----
+## 9. Tab Dokumentasi
 
-## 10. Tab Dokumentasi
+Tab Dokumentasi menyimpan catatan bersama tim, misalnya SOP atau hasil rapat.
 
-Dokumentasi adalah tempat catatan bersama (SOP, hasil rapat, panduan singkat).
+![Tab Dokumentasi dengan kartu catatan yang disematkan](img/task-guide/dokumentasi.png)
 
-### Membaca catatan
+- **Cari catatan** dan urutkan berdasarkan **Terbaru** atau **Judul**.
+- **Tulis Catatan** membuka editor. Isi judul, lalu tulis di editor: tebal, miring, garis bawah, coret, warna, perataan, daftar, indentasi, kutipan, tautan, dan `@` untuk menyebut orang atau tugas.
+- **Sematkan** membuat catatan selalu muncul paling atas.
+- **Ubah** dan **Hapus** tersedia sesuai izin.
+- Menyebut orang dengan `@` di catatan mengirim notifikasi, sama seperti di tugas.
 
-- Setiap catatan tampil sebagai kartu: judul, potongan isi, dan keterangan
-  "diperbarui oleh …".
-- Catatan yang disematkan diberi tanda pin dan tampil paling atas.
-- Gunakan **kotak pencarian** untuk mencari judul/isi, dan **Urutkan catatan** untuk
-  memilih **Terbaru** atau **Judul**.
-- Klik kartu untuk membaca di pop up. Di pop up ada tombol **Sematkan**/**Lepas sematan**,
-  **Ubah**, dan **Hapus** (bila berhak).
+## 10. Notifikasi dan riwayat
 
-### Menulis catatan
+- **Lonceng** di header menampilkan notifikasi: sebutan `@`, tugas yang menyebut Anda, dan perubahan terkait. Angka merah menunjukkan yang belum dibaca.
+- **Ikon riwayat** di halaman Rencana Kerja membuka dialog seluruh aktivitas tugas: siapa, melakukan apa, kapan, dan catatannya.
 
-1. Klik **Tulis Catatan**.
-2. Isi **Judul** (maksimal 160 karakter).
-3. Bila perlu, klik **Sematkan di atas** agar catatan selalu di urutan teratas.
-4. Tulis isi catatan di editor. Toolbar menyediakan: **jenis huruf**, **ukuran huruf**,
-   **tebal**, **miring**, **garis bawah**, **coret**, **warna teks**, **perataan**,
-   **daftar berbutir**, **daftar bernomor**, **indentasi**, **kutipan**, **tautan**,
-   **hapus format**, serta sebutan `@` untuk orang atau tugas.
-5. Klik **Simpan**.
+## 11. Hak akses dan peran
 
-Catatan yang menyebut orang dengan `@` akan mengirim notifikasi ke orang tersebut
-(lihat bagian 11).
+- Izin diatur per menu: **baca** dan **tulis**. Bila akun punya izin tulis di Rencana Kerja, tombol Tambah, Ubah, Hapus, dan geser kartu muncul.
+- **Admin** melihat dan mengubah semua tugas, termasuk milik akun lain.
+- **Akun biasa** mengurus tugasnya sendiri dan tugas yang menyebut dirinya.
+- **Hapus tugas** hanya untuk pembuat tugas dan admin.
+- Bila sebuah tombol tidak muncul, kemungkinan akun tidak punya izin tulis di menu tersebut — bukan karena aplikasi rusak.
 
----
+## 12. Alur kerja harian yang disarankan
 
-## 11. Notifikasi lonceng
+1. **Pagi** — buka tab Ringkasan, lihat kartu **Jatuh tempo** dan **Beban tim**.
+2. **Menambah pekerjaan** — klik Tambah Tugas, isi judul dan tenggat, pilih tipe. Sertakan `@` bila pekerjaan perlu bantuan orang lain.
+3. **Sepanjang hari** — pindahkan kartu di Papan (Belum → Proses → Selesai) atau perbarui kemajuan lewat ikon grafik.
+4. **Saat selesai** — tulis catatan penyelesaian: apa hasilnya, apa yang tersisa, atau tautan bukti.
+5. **Sore** — cek lonceng, lalu tab Kalender untuk melihat beban beberapa hari ke depan.
+6. **Akhir minggu** — buka Ringkasan, lihat **Selesai** dan **Jenis pekerjaan** untuk mengevaluasi.
 
-Ikon **lonceng** ada di header aplikasi, di sebelah pemilih bahasa.
+## 13. Pertanyaan yang sering muncul
 
-- Angka kecil di lonceng menunjukkan jumlah notifikasi yang belum dibaca (maksimal
-  ditampilkan `9+`).
-- Klik lonceng untuk membuka daftar notifikasi terbaru.
-- Klik satu notifikasi: notifikasi ditandai terbaca dan aplikasi membuka halaman terkait.
-- Tombol **Tandai semua dibaca** membersihkan semua tanda belum dibaca.
-- Daftar dimuat ulang otomatis setiap **60 detik**.
+**Tugas saya tidak muncul di daftar, padahal orang lain menyebut saya.**
+Coba muat ulang halaman. Bila tetap tidak ada, periksa filter Pemilik: pastikan tidak sedang memfilter akun lain. Tugas yang menyebut Anda selalu punya tanda **Di-@**.
 
-Jenis notifikasi saat ini:
+**Kenapa tombol Tambah Tugas tidak ada?**
+Akun Anda tidak punya izin tulis di menu Rencana Kerja. Hubungi admin untuk mengatur izin role.
 
-| Jenis | Kapan muncul |
-| --- | --- |
-| Sebutan di tugas | Saat Anda disebut `@` pada keterangan tugas |
-| Sebutan di dokumentasi | Saat Anda disebut `@` pada catatan Dokumentasi |
-
-Catatan: menyebut diri sendiri tidak menghasilkan notifikasi.
-
----
-
-## 12. Hak akses dan group role
-
-- **Admin** dapat melihat semua tugas, mengatur semua akun, dan mengubah/menghapus
-  semua data di Rencana Kerja.
-- **Akun biasa** melihat tugas miliknya dan tugas yang menyebutnya.
-- Setiap **group role** memberi izin **baca** dan **tulis** per menu. Bila satu akun
-  punya beberapa group role, izinnya **digabung** — yang paling longgar menang.
-- Tanpa izin tulis di menu Rencana Kerja, tombol **Tambah Tugas**, **Tulis Catatan**,
-  dan menu **Ubah/Hapus** tidak muncul; halaman tetap bisa dibaca.
-- Sebutan `@` hanya menyarankan akun yang punya akses tulis di Rencana Kerja, supaya
-  tugas yang muncul di daftar mereka memang bisa mereka kerjakan.
-
----
-
-## 13. Alur kerja harian yang disarankan
-
-**Sekali di awal (per akun):**
-
-1. Tab **Pengaturan** → pilih **Warna Kartu Kalender** → **Simpan**.
-2. Tab **Pengaturan** → tambahkan tipe pekerjaan yang biasa dipakai.
-
-**Setiap pagi:**
-
-1. Buka **Ringkasan**, lihat kartu **Jatuh tempo** (7 hari ke depan).
-2. Buka **Kalender** untuk melihat beban minggu ini.
-
-**Saat mengerjakan:**
-
-1. Ubah status tugas menjadi `Proses`.
-2. Perbarui **Kemajuan (%)** secara berkala.
-3. Butuh bantuan orang lain? Tulis `@nama` di keterangan dan simpan.
-
-**Saat selesai:**
-
-1. Klik **ikon centang** (atau ubah status menjadi `Selesai`).
-2. Tugas berulang otomatis membuat tugas berikutnya.
-3. Tugas yang selesai lebih dari 7 hari masuk **Arsip**.
-
-**Menyimpan pengetahuan:**
-
-1. Buka **Dokumentasi** → **Tulis Catatan**.
-2. Sematkan catatan penting agar selalu di atas.
-
----
-
-## 14. Pertanyaan yang sering muncul
-
-**Tipe tidak ada di form tugas.**
-Daftar tipe mengikuti **pemilik tugas**. Buka tab **Pengaturan** dan tambahkan tipe
-untuk akun tersebut (admin bisa memilih akun lain pada dropdown **Akun**).
-
-**Tugas hilang dari daftar.**
-Tugas yang selesai lebih dari 7 hari masuk **Arsip**. Pilih **Arsip** pada
-**Filter Status**, atau lihat di **Kalender**/**Ringkasan**.
-
-**Kalender kosong.**
-Periksa panel **Kalender**: mungkin akun Anda belum dicentang, atau tugas tersebut bukan
-milik akun yang ditampilkan. Akun biasa hanya melihat tugasnya sendiri dan tugas yang
-menyebutnya.
-
-**Tombol Ubah/Hapus tidak muncul.**
-Anda bukan pembuat tugas, bukan admin, dan tidak disebut `@` pada tugas itu.
-
-**Tidak bisa menghapus tipe pekerjaan.**
-Tipe masih dipakai tugas. Pesan **"Tipe masih dipakai {jumlah} task, tidak bisa dihapus."**
-Ubah dulu tipe tugas tersebut, baru hapus.
-
-**Notifikasi tidak berbunyi.**
-Notifikasi hanya dikirim untuk **sebutan baru**. Menyimpan ulang tanpa menambah sebutan
-baru tidak mengirim notifikasi.
-
-**Tugas berulang muncul sebagai tugas baru.**
-Itu memang perilakunya: saat tugas berulang ditandai **Selesai**, tugas berikutnya
-dibuat otomatis dengan tenggat lanjutan.
-
-**Batang kalender tidak sampai tenggat padahal tugas belum selesai.**
-Batang hanya dipotong bila tugas **berstatus Selesai**. Kalau belum selesai, periksa
-tenggat dan tanggal mulai tugas tersebut.
+**Kenapa daftar Tipe kosong?**
+Setiap akun punya daftar tipe sendiri dan tidak ada tipe bawaan. Tambahkan di tab Pengaturan (bagian 2.2).
 
 **Apakah catatan penyelesaian wajib?**
-Tidak. Dialog **Selesaikan Tugas** tetap bisa disimpan dengan catatan kosong; catatan
-hanya membantu orang lain memahami hasil akhirnya di Log aktivitas.
+Tidak. Dialog bisa disimpan tanpa catatan; tombol Tandai selesai hanya nonaktif ketika proses simpan sedang berjalan.
+
+**Kartu tidak mau berpindah saat digeser.**
+Pastikan Anda menggeser kartu, bukan tombol di dalamnya. Bila perangkat tidak mendukung, gunakan tombol panah kiri/kanan pada kartu.
+
+**Tugas yang selesai hilang dari daftar.**
+Tugas tetap ada. Setelah 7 hari, tugas selesai masuk arsip; pilih filter Status **Arsip** untuk melihatnya.
+
+**Bisakah catatan penyelesaian diubah?**
+Catatan adalah bagian log aktivitas dan tidak bisa disunting. Untuk koreksi, tulis catatan baru lewat dialog kemajuan atau tulis hasilnya di Dokumentasi.
+
+**Apakah tugas berulang membuat notifikasi baru untuk orang yang di-@?**
+Tidak. Tugas lanjutan mewarisi sebutan tanpa mengirim notifikasi ulang.
+
+## 14. Lampiran: istilah yang dipakai
+
+| Istilah | Artinya |
+| --- | --- |
+| Tugas | Satu pekerjaan dengan judul, pemilik, status, dan tenggat |
+| Tipe | Label pekerjaan milik satu akun, misalnya `Tugas`, `Bug`, `Fitur` |
+| Prioritas | Tingkat kepentingan: Mendesak, Segera, atau Normal |
+| Tenggat | Tanggal batas penyelesaian |
+| Tanggal mulai | Tanggal tugas mulai dihitung; diisi otomatis hari ini |
+| Kemajuan | Persentase pekerjaan; 100% berarti selesai |
+| Pengulangan | Aturan pembuatan tugas berikutnya secara otomatis |
+| Arsip | Kumpulan tugas selesai yang lebih tua dari 7 hari |
+| Di-@ | Sebutan yang menghubungkan tugas dengan akun tertentu |
+| Role | Kelompok izin yang menentukan menu dan aksi yang boleh dipakai |
 
 ---
 
-Dokumen ini mengikuti perilaku aplikasi per **3 November 2026**. Bila tampilan berubah,
-perbarui bagian yang terkait di file ini: `docs/TUTORIAL-task-planner.md`.
+Panduan ini akan diperbarui bila tampilan aplikasi berubah. Dokumen ini menggantikan panduan singkat *PANDUAN-task-selesai-catatan* yang terbit sebelumnya.

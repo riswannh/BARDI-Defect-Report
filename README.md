@@ -1403,9 +1403,10 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
 - Tipe yang masih dipakai task tidak bisa dihapus (409); tipe milik akun lain hanya bisa diubah admin.
 - Panduan pengguna langkah demi langkah untuk seluruh modul Rencana Kerja (termasuk kewajiban
   mengatur tab Pengaturan lebih dulu) ada di [`docs/TUTORIAL-task-planner.md`](docs/TUTORIAL-task-planner.md).
-- Panduan singkat khusus menyelesaikan tugas (empat cara selesai, catatan penyelesaian, papan
-  seret-lepas, dan kartu Pengulangan) tersedia sebagai PDF:
-  [`docs/PANDUAN-task-selesai-catatan.pdf`](docs/PANDUAN-task-selesai-catatan.pdf).
+- Versi PDF dari panduan lengkap itu: [`docs/TUTORIAL-task-planner.pdf`](docs/TUTORIAL-task-planner.pdf)
+  ("Panduan Lengkap Rencana Kerja", 16 halaman, dibuat 3 Nov 2026). PDF dihasilkan dari Markdown di
+  atas lewat `frontend/scripts/guide-pdf.mjs` — jalankan ulang skrip itu setiap panduan diubah.
+  Panduan singkat `PANDUAN-task-selesai-catatan.pdf` sudah digabung ke dokumen ini.
 
 ---
 
