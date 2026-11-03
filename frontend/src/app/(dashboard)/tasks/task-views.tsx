@@ -439,6 +439,10 @@ export function TaskBoardView({
 }) {
   const { t, language } = useLanguage();
   const today = todayISO();
+  /** Task yang sedang digeser dan kolom yang sedang disorot sebagai tujuan. */
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dropStatus, setDropStatus] = useState<string | null>(null);
+  const draggedTask = dragId === null ? null : (rows.find((task) => task.id === dragId) ?? null);
   const columns = TASK_STATUSES.map((status) => ({
     status,
     items: rows
@@ -446,10 +450,49 @@ export function TaskBoardView({
       .sort((a, b) => (a.boardOrder || 0) - (b.boardOrder || 0)),
   }));
 
+  function endDrag() {
+    setDragId(null);
+    setDropStatus(null);
+  }
+
+  /** Lepas kartu: pindah status, dan kolom Selesai membuka dialog catatan. */
+  function dropOn(status: string, event: React.DragEvent) {
+    const raw = Number(event.dataTransfer.getData("text/plain"));
+    const task = rows.find((item) => item.id === raw) ?? draggedTask;
+    endDrag();
+    if (!task || task.status === status) return;
+    onStatusChange?.(task, status);
+  }
+
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {columns.map((column, index) => (
-        <div key={column.status} className="flex flex-col gap-2 rounded-xl bg-muted/40 p-2">
+        <div
+          key={column.status}
+          data-board-column={column.status}
+          onDragOver={(event) => {
+            if (!onStatusChange || !draggedTask) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            setDropStatus(column.status);
+          }}
+          onDragLeave={(event) => {
+            const next = event.relatedTarget as Node | null;
+            if (next && event.currentTarget.contains(next)) return;
+            setDropStatus((current) => (current === column.status ? null : current));
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            dropOn(column.status, event);
+          }}
+          className={cn(
+            "flex flex-col gap-2 rounded-xl bg-muted/40 p-2 transition-colors",
+            dropStatus === column.status &&
+              draggedTask &&
+              draggedTask.status !== column.status &&
+              "bg-primary/10 ring-2 ring-primary/30"
+          )}
+        >
           <div className="flex items-center gap-2 px-1 py-0.5">
             <span
               className={cn(
@@ -486,6 +529,14 @@ export function TaskBoardView({
                 role="button"
                 tabIndex={0}
                 aria-label={task.title}
+                draggable={Boolean(onStatusChange)}
+                onDragStart={(event) => {
+                  if (!onStatusChange) return;
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", String(task.id));
+                  setDragId(task.id);
+                }}
+                onDragEnd={endDrag}
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (
@@ -502,7 +553,10 @@ export function TaskBoardView({
                   event.preventDefault();
                   onOpen(task);
                 }}
-                className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  "flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 shadow-xs transition-colors outline-none hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring",
+                  onStatusChange && "cursor-grab active:cursor-grabbing"
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-col gap-1">

@@ -1370,6 +1370,24 @@ Price/pcs, Currency (Rp/USD/RMB), **PPN** (PPN / Non PPN), **Jenis Harga**, **Ha
   2 Nov 2026): task baru otomatis mulai **hari ini** (`todayDateISO()` di `src/lib/api/validation.ts`
   jadi default `startDate` di `taskCreateSchema`), berstatus `Belum`, dan progres `0`. Saat menyunting,
   `startDate` tidak ikut dikirim sehingga tanggal mulai tugas lama tidak berubah.
+- **Kartu Pengulangan didesain ulang** (permintaan user 3 Nov 2026): isian **Pengulangan** kini satu
+  kartu selebar dialog (ikon + label di atas) berisi Select aturan yang berbagi baris dengan Select
+  **Hari Pengulangan**/**Tanggal Pengulangan** — pilihan kedua muncul di kanan hanya saat
+  Mingguan/Bulanan, sejajar bawah — dan teks bantuan di bawahnya (`tasks.repeatHint` /
+  `tasks.repeatNoneHint`). Sebelumnya isian ini setengah lebar dan menyisakan kolom kosong.
+- **Menyelesaikan tugas selalu menawarkan catatan penyelesaian** (permintaan user 3 Nov 2026):
+  tiga jalur yang berakhir di status `Selesai` — tombol centang di daftar (`toggleDone`), panah
+  "kolom berikutnya" di papan, dan **geser kartu** ke kolom Selesai — semuanya lewat
+  `requestStatus()` di `page.tsx` yang membuka `TaskCompleteDialog` (`task-dialogs.tsx`). Dialog
+  mengirim `{ status: "Selesai", progress: 100, note }`; catatan masuk `task_activities.note` dan
+  tampil di tab **Log aktivitas** Rincian Tugas serta dialog riwayat. Catatan opsional — boleh kosong.
+- **Kemajuan 100% = selesai**: dialog **Perbarui Kemajuan** menampilkan petunjuk
+  `tasks.progressDoneHint` begitu angkanya 100 dan ikut mengirim `status: "Selesai"`. Ini perlu
+  karena `syncStatusProgress()` di `src/lib/api/tasks.ts` memangkas progres 100 menjadi 99 selama
+  status belum Selesai.
+- **Papan bisa digeser (drag & drop)**: kartu memakai `draggable` HTML5 dan tiap kolom menjadi drop
+  target (`data-board-column`); melepas kartu memanggil jalur status yang sama (kolom Selesai membuka
+  dialog catatan). Tombol panah ← → tetap ada sebagai cara alternatif.
 
 ### 8.12 Rencana Kerja: Pengaturan Tipe & Warna Kalender
 

@@ -43,16 +43,20 @@ export function TaskProgressDialog({
   const [progress, setProgress] = useState(String(task.progress));
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const progressValue = Number(progress) || 0;
+  /** 100% = selesai: server menolak progres 100 selama status belum Selesai. */
+  const willComplete = progressValue >= 100;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
     try {
       await apiPatch(`/api/tasks/${task.id}`, {
-        progress: Number(progress) || 0,
+        progress: willComplete ? 100 : progressValue,
+        ...(willComplete && task.status !== "Selesai" ? { status: "Selesai" } : {}),
         note: note.trim(),
       });
-      toast.success(t("tasks.saved"));
+      toast.success(willComplete ? t("tasks.markedDone") : t("tasks.saved"));
       onSaved();
     } catch {
       toast.error(t("tasks.saveFailed"));
@@ -85,6 +89,9 @@ export function TaskProgressDialog({
               value={progress}
               onChange={(e) => setProgress(e.target.value)}
             />
+            {willComplete && (
+              <p className="text-xs text-muted-foreground">{t("tasks.progressDoneHint")}</p>
+            )}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>{t("tasks.fieldNote")}</Label>
@@ -96,6 +103,79 @@ export function TaskProgressDialog({
             </Button>
             <Button type="submit" disabled={saving}>
               {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Dialog penyelesaian task. Dipakai tiga jalur: tombol Tandai selesai, panah
+ * "kolom berikutnya" di papan, dan geser kartu ke kolom Selesai. Catatan
+ * opsional ikut disimpan sebagai log aktivitas berstatus selesai.
+ */
+export function TaskCompleteDialog({
+  task,
+  onSaved,
+  onCancel,
+}: {
+  task: TaskRow;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLanguage();
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await apiPatch(`/api/tasks/${task.id}`, {
+        status: "Selesai",
+        progress: 100,
+        note: note.trim(),
+      });
+      toast.success(t("tasks.markedDone"));
+      onSaved();
+    } catch {
+      toast.error(t("tasks.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onCancel();
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("tasks.completeTitle")}</DialogTitle>
+          <DialogDescription className="line-clamp-2">{task.title}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label>{t("tasks.fieldNote")}</Label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">{t("tasks.completeHint")}</p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {t("tasks.markDone")}
             </Button>
           </DialogFooter>
         </form>

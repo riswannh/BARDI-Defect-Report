@@ -140,7 +140,8 @@ Kolom yang ditampilkan: **Judul Tugas**, **Tipe**, **Pembuat** (admin), **Priori
 **Tenggat**, **Kemajuan**, **Status**, dan **Aksi**.
 
 - Klik **baris** untuk membuka Rincian Tugas.
-- **Ikon centang** menandai tugas `Selesai` (klik lagi untuk **Buka lagi**).
+- **Ikon centang** menandai tugas `Selesai` — muncul dialog **Selesaikan Tugas** untuk
+  catatan penyelesaian (bagian 6). Klik lagi untuk **Buka lagi** (langsung, tanpa dialog).
 - **Kemajuan** tampil sebagai bilah dan angka persen. Klik tombol kecil di sebelahnya
   untuk membuka dialog **Perbarui Kemajuan**.
 - **Menu aksi** berisi **Ubah** dan **Hapus**.
@@ -152,8 +153,11 @@ Kolom yang ditampilkan: **Judul Tugas**, **Tipe**, **Pembuat** (admin), **Priori
 
 Tampilan papan membagi tugas ke tiga kolom: **Belum**, **Proses**, dan **Selesai**.
 
-- Tombol panah **←** dan **→** pada kartu memindahkan tugas ke status sebelumnya atau
-  berikutnya.
+- **Geser kartu** ke kolom lain untuk memindahkan statusnya. Saat kartu dilepas ke
+  kolom **Selesai**, muncul dialog **Selesaikan Tugas** untuk mengisi catatan
+  penyelesaian (opsional). Ini cara tercepat menutup tugas.
+- Tombol panah **←** dan **→** pada kartu juga memindahkan tugas ke status sebelumnya
+  atau berikutnya — praktis saat layar sentuh atau bila tidak ingin menggeser.
 - Menu aksi pada kartu berisi **Ubah** dan **Hapus**.
 - Klik kartu untuk membuka Rincian Tugas.
 
@@ -178,7 +182,7 @@ Klik **Tambah Tugas**. Isi form berikut:
 | **Tipe** | Diambil dari daftar tipe milik pemilik tugas. Kosong berarti pemilik belum mengatur tipe. |
 | **Prioritas** | Mendesak / Segera / Normal. |
 | **Tenggat** | Tanggal selesai yang diharapkan. Tidak boleh lebih awal dari tanggal mulai. |
-| **Pengulangan** | Tidak berulang / Harian / Mingguan / Bulanan. Bila dipilih **Mingguan**, muncul pilihan **Hari Pengulangan**; bila **Bulanan**, muncul **Tanggal Pengulangan**. |
+| **Pengulangan** | Tidak berulang / Harian / Mingguan / Bulanan. Bila dipilih **Mingguan**, muncul pilihan **Hari Pengulangan**; bila **Bulanan**, muncul **Tanggal Pengulangan**. Isian ini berbentuk satu kartu selebar form dan berbagi baris dengan pilihan hari/tanggal tersebut. |
 
 Tiga hal **tidak perlu diisi** dan tidak muncul di form:
 
@@ -210,12 +214,25 @@ pada tugas tersebut. Akun lain hanya dapat membaca.
 
 ### Menyelesaikan
 
-- Klik **ikon centang** di baris daftar, atau
-- tekan panah **→** di tampilan Papan sampai kolom `Selesai`.
+Semua cara di bawah membuka dialog **Selesaikan Tugas**: ada satu kolom **Catatan**
+(opsional) untuk menjelaskan hasil akhirnya, lalu tombol **Tanda selesai**.
+
+1. **Ikon centang** di baris daftar.
+2. **Geser kartu** ke kolom **Selesai** di tampilan Papan.
+3. Tekan panah **→** di kartu Papan sampai kolom `Selesai`.
+4. Buka dialog **Perbarui Kemajuan**, isi **Kemajuan** dengan **100** — muncul petunjuk
+   "Kemajuan 100% otomatis menandai tugas selesai", lalu simpan.
+
+Catatan yang diisi ikut tercatat di **Log aktivitas** tugas (bagian 8) dan di daftar
+aktivitas global (ikon riwayat di header). Boleh dikosongkan bila tidak ada yang perlu
+dicatat.
 
 Saat status berubah menjadi `Selesai`, tanggal selesai dicatat dan dipakai Kalender
 untuk memotong panjang batang tugas (bagian 9). Bila tugas berulang, tugas berikutnya
 langsung dibuat.
+
+Untuk membuka tugas yang sudah selesai, klik **ikon centang** sekali lagi (tombolnya
+menjadi **Buka lagi**); status kembali `Belum` tanpa dialog.
 
 ### Menghapus
 
@@ -456,7 +473,11 @@ dibuat otomatis dengan tenggat lanjutan.
 Batang hanya dipotong bila tugas **berstatus Selesai**. Kalau belum selesai, periksa
 tenggat dan tanggal mulai tugas tersebut.
 
+**Apakah catatan penyelesaian wajib?**
+Tidak. Dialog **Selesaikan Tugas** tetap bisa disimpan dengan catatan kosong; catatan
+hanya membantu orang lain memahami hasil akhirnya di Log aktivitas.
+
 ---
 
-Dokumen ini mengikuti perilaku aplikasi per **2 November 2026**. Bila tampilan berubah,
+Dokumen ini mengikuti perilaku aplikasi per **3 November 2026**. Bila tampilan berubah,
 perbarui bagian yang terkait di file ini: `docs/TUTORIAL-task-planner.md`.

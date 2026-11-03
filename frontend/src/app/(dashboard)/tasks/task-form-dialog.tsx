@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/i18n";
 import { apiPatch, apiPost } from "@/lib/api-client";
@@ -360,43 +361,28 @@ export function TaskFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label>{t("tasks.fieldRepeat")}</Label>
-              <Select
-                value={repeatRule === "" ? NONE : repeatRule}
-                onValueChange={(value) => {
-                  const next = String(value);
-                  setRepeatRule(next === NONE ? "" : next);
-                }}
-                items={repeatOptions}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {repeatOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-center gap-2">
+              <Repeat className="size-3.5 text-muted-foreground" />
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t("tasks.fieldRepeat")}
+              </Label>
             </div>
-
-            {repeatRule === "weekly" && (
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("tasks.fieldWeekday")}</Label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
                 <Select
-                  value={repeatWeekday}
-                  onValueChange={(value) => setRepeatWeekday(String(value))}
-                  items={weekdayOptions}
+                  value={repeatRule === "" ? NONE : repeatRule}
+                  onValueChange={(value) => {
+                    const next = String(value);
+                    setRepeatRule(next === NONE ? "" : next);
+                  }}
+                  items={repeatOptions}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {weekdayOptions.map((option) => (
+                    {repeatOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -404,34 +390,59 @@ export function TaskFormDialog({
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {repeatRule === "monthly" && (
-              <div className="flex flex-col gap-1.5">
-                <Label>{t("tasks.fieldRepeatDay")}</Label>
-                <Select
-                  value={repeatDay}
-                  onValueChange={(value) => setRepeatDay(String(value))}
-                  items={dayOptions}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dayOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+              {repeatRule === "weekly" && (
+                <div className="flex min-w-0 flex-col gap-1 sm:w-44">
+                  <span className="text-[11px] text-muted-foreground">
+                    {t("tasks.fieldWeekday")}
+                  </span>
+                  <Select
+                    value={repeatWeekday}
+                    onValueChange={(value) => setRepeatWeekday(String(value))}
+                    items={weekdayOptions}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weekdayOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {repeatRule === "monthly" && (
+                <div className="flex min-w-0 flex-col gap-1 sm:w-44">
+                  <span className="text-[11px] text-muted-foreground">
+                    {t("tasks.fieldRepeatDay")}
+                  </span>
+                  <Select
+                    value={repeatDay}
+                    onValueChange={(value) => setRepeatDay(String(value))}
+                    items={dayOptions}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dayOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {repeatRule === "" ? t("tasks.repeatNoneHint") : t("tasks.repeatHint")}
+            </p>
           </div>
-
-          {repeatRule !== "" && (
-            <p className="text-xs text-muted-foreground">{t("tasks.repeatHint")}</p>
-          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>

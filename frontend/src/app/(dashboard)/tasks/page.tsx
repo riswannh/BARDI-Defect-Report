@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskFormDialog } from "./task-form-dialog";
-import { TaskDetailDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
+import { TaskCompleteDialog, TaskDetailDialog, TaskLogList, TaskProgressDialog } from "./task-dialogs";
 import { TaskCalendar } from "./task-calendar";
 import { MultiFilter } from "./task-multi-filter";
 import { TaskBoardView, TaskSummaryView, matchesQuickFilter, type QuickFilterKey } from "./task-views";
@@ -140,6 +140,8 @@ export default function TasksPage() {
   /** undefined = dialog tertutup, null = task baru. */
   const [formTask, setFormTask] = useState<TaskRow | null | undefined>(undefined);
   const [progressTask, setProgressTask] = useState<TaskRow | null>(null);
+  /** Task yang sedang diselesaikan lewat dialog catatan penyelesaian. */
+  const [completeTask, setCompleteTask] = useState<TaskRow | null>(null);
   const [deleteTask, setDeleteTask] = useState<TaskRow | null>(null);
   const [detailTask, setDetailTask] = useState<TaskRow | null>(null);
   /** Riwayat aktivitas semua tugas: dulu tab halaman, kini dialog dari ikon di baris tab. */
@@ -228,8 +230,24 @@ export default function TasksPage() {
     }
   }
 
+  /**
+   * Semua jalur yang berakhir di status Selesai (tombol centang, panah papan,
+   * geser kartu) mampir ke dialog catatan penyelesaian lebih dulu.
+   */
+  function requestStatus(task: TaskRow, nextStatus: string) {
+    if (nextStatus === "Selesai") {
+      setCompleteTask(task);
+      return;
+    }
+    void patchStatus(task, nextStatus);
+  }
+
   async function toggleDone(task: TaskRow) {
-    await patchStatus(task, task.status === "Selesai" ? "Belum" : "Selesai");
+    if (task.status === "Selesai") {
+      await patchStatus(task, "Belum");
+      return;
+    }
+    setCompleteTask(task);
   }
 
   /**
@@ -672,7 +690,7 @@ export default function TasksPage() {
               rows={filtered}
               types={types}
               onOpen={setDetailTask}
-              onStatusChange={canWrite ? patchStatus : undefined}
+              onStatusChange={canWrite ? requestStatus : undefined}
               onProgress={canWrite ? setProgressTask : undefined}
               onEdit={canWrite ? setFormTask : undefined}
               onDelete={canWrite ? setDeleteTask : undefined}
@@ -743,6 +761,17 @@ export default function TasksPage() {
             refreshAll();
           }}
           onCancel={() => setProgressTask(null)}
+        />
+      )}
+
+      {completeTask && (
+        <TaskCompleteDialog
+          task={completeTask}
+          onSaved={() => {
+            setCompleteTask(null);
+            refreshAll();
+          }}
+          onCancel={() => setCompleteTask(null)}
         />
       )}
 
